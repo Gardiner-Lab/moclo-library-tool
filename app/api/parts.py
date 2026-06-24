@@ -678,9 +678,10 @@ def update_part(part_id: str):
                 'message': f'Part {part_id} not found'
             }), 404
         
-        # Check if user is the contributor
+        # Check if user is the contributor or an admin
         username = session.get('username')
-        if part.contributor != username:
+        is_admin = session.get('is_admin', False)
+        if part.contributor != username and not is_admin:
             return jsonify({
                 'error': 'Forbidden',
                 'message': 'You can only edit parts you have uploaded'

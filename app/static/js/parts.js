@@ -313,8 +313,10 @@ function renderPartDetails(part) {
     };
     modalHeader.insertBefore(downloadBtn, document.getElementById('closeModal'));
     
-    // Add edit button for user-uploaded parts (not system parts)
-    if (part.contributor && part.contributor !== 'system') {
+    // Add edit button for user-uploaded parts (not system parts) or if user is admin
+    const isAdmin = document.body.dataset.isAdmin === 'true';
+    const currentUsername = document.body.dataset.username;
+    if (isAdmin || (part.contributor && part.contributor !== 'system')) {
         let editBtn = document.getElementById('editPartBtn');
         if (editBtn) {
             editBtn.remove();
