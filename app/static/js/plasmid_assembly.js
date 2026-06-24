@@ -447,7 +447,8 @@ async function performAssembly() {
             })
         });
 
-        renderAssemblyResult(response);
+        // Show concentration input form before showing full results
+        showConcentrationForm(response);
     } catch (error) {
         content.innerHTML = `
             <div class="error-state">
@@ -459,9 +460,101 @@ async function performAssembly() {
 }
 
 /**
+ * Show form to collect DNA concentrations before displaying reaction mix
+ */
+function showConcentrationForm(assemblyResult) {
+    const content = document.getElementById('assemblyResultContent');
+    const plasmid = assemblyResult.plasmid || assemblyResult;
+    const plasmidName = plasmid.name || assemblyResult.name || 'Unnamed';
+
+    let fragmentRows = '';
+
+    // Backbone
+    const backboneSize = selectedBackbone ? selectedBackbone.length : 5000;
+    fragmentRows += `
+        <div class="conc-row">
+            <span class="conc-name">${escapeHtml(selectedBackbone ? selectedBackbone.name : 'Backbone')} <em>(vector, ${backboneSize} bp)</em></span>
+            <div class="conc-input-wrap">
+                <input type="number" class="conc-input" id="conc-backbone" value="" min="1" step="0.1" placeholder="ng/µL">
+                <span class="conc-unit">ng/µL</span>
+            </div>
+        </div>`;
+
+    // Cassettes
+    selectedCassettes.forEach((cassette, i) => {
+        const size = cassette.length || (cassette.assembled_sequence ? cassette.assembled_sequence.length : 0);
+        fragmentRows += `
+            <div class="conc-row">
+                <span class="conc-name">${escapeHtml(cassette.name)} <em>(insert, ${size} bp)</em></span>
+                <div class="conc-input-wrap">
+                    <input type="number" class="conc-input" id="conc-cassette-${i}" value="" min="1" step="0.1" placeholder="ng/µL">
+                    <span class="conc-unit">ng/µL</span>
+                </div>
+            </div>`;
+    });
+
+    content.innerHTML = `
+        <div class="alert alert-success">
+            <h3 style="margin-bottom: 0.5rem;">✓ Plasmid "${escapeHtml(plasmidName)}" Assembled Successfully!</h3>
+            <p style="margin: 0;">Enter your DNA concentrations below to generate the reaction mix.</p>
+        </div>
+
+        <h3 style="margin: 1.5rem 0 0.75rem; font-size: 1.15rem;">Enter DNA Concentrations</h3>
+        <p style="font-size: 0.9rem; color: var(--text-secondary); margin-bottom: 1rem;">
+            Measure your DNA concentrations (e.g. with NanoDrop) and enter them to calculate exact pipetting volumes.
+        </p>
+
+        <div class="conc-form" id="concForm">
+            ${fragmentRows}
+        </div>
+
+        <div style="display: flex; gap: 0.75rem; margin-top: 1.5rem;">
+            <button class="btn btn-primary" style="flex: 1;" onclick="generateReactionMix(window._lastAssemblyResult)">
+                Calculate Reaction Mix
+            </button>
+            <button class="btn btn-secondary" style="flex: 0 0 auto;" onclick="generateReactionMix(window._lastAssemblyResult, true)">
+                Skip (use 100 ng/µL)
+            </button>
+        </div>
+    `;
+
+    // Store result for use after concentrations are entered
+    window._lastAssemblyResult = assemblyResult;
+}
+
+/**
+ * Generate reaction mix table with user-provided concentrations
+ */
+function generateReactionMix(assemblyResult, useDefault) {
+    // Gather concentrations
+    const bbConcInput = document.getElementById('conc-backbone');
+    const bbConc = useDefault ? 100 : parseFloat(bbConcInput.value);
+
+    if (!useDefault && (!bbConc || bbConc <= 0)) {
+        alert('Please enter the backbone concentration.');
+        bbConcInput.focus();
+        return;
+    }
+
+    const cassetteConcs = [];
+    for (let i = 0; i < selectedCassettes.length; i++) {
+        const input = document.getElementById(`conc-cassette-${i}`);
+        const val = useDefault ? 100 : parseFloat(input.value);
+        if (!useDefault && (!val || val <= 0)) {
+            alert(`Please enter the concentration for ${selectedCassettes[i].name}.`);
+            input.focus();
+            return;
+        }
+        cassetteConcs.push(val);
+    }
+
+    renderAssemblyResult(assemblyResult, bbConc, cassetteConcs);
+}
+
+/**
  * Render assembly result
  */
-function renderAssemblyResult(result) {
+function renderAssemblyResult(result, bbConc, cassetteConcs) {
     const content = document.getElementById('assemblyResultContent');
     const plasmid = result.plasmid || result;
     const plasmidName = plasmid.name || result.name || 'Unnamed';
@@ -488,27 +581,28 @@ function renderAssemblyResult(result) {
     let dnaRows = '';
     let totalDnaVol = 0;
 
-    // Backbone row (assume 100 ng/µL if not known)
-    const bbConc = 100;
+    // Backbone row
     const bbVol = backboneNg / bbConc;
     totalDnaVol += bbVol;
     dnaRows += `<tr>
         <td>${escapeHtml(selectedBackbone ? selectedBackbone.name : 'Backbone')} <em>(vector)</em></td>
         <td>${bbVol.toFixed(2)}</td>
         <td>${backboneNg.toFixed(1)} ng (${vectorFmol} fmol)</td>
+        <td>${backboneSize} bp @ ${bbConc} ng/µL</td>
     </tr>`;
 
     // Cassette rows
-    selectedCassettes.forEach(cassette => {
+    selectedCassettes.forEach((cassette, i) => {
         const cassetteSize = cassette.length || (cassette.assembled_sequence ? cassette.assembled_sequence.length : 3000);
         const cassetteNg = (insertFmol * cassetteSize * 660) / 1000000;
-        const cassetteConc = 100; // assume 100 ng/µL
-        const cassetteVol = cassetteNg / cassetteConc;
+        const conc = cassetteConcs[i];
+        const cassetteVol = cassetteNg / conc;
         totalDnaVol += cassetteVol;
         dnaRows += `<tr>
             <td>${escapeHtml(cassette.name)} <em>(insert)</em></td>
             <td>${cassetteVol.toFixed(2)}</td>
             <td>${cassetteNg.toFixed(1)} ng (${insertFmol} fmol)</td>
+            <td>${cassetteSize} bp @ ${conc} ng/µL</td>
         </tr>`;
     });
 
@@ -539,7 +633,7 @@ function renderAssemblyResult(result) {
             🧪 Reaction Mix (${totalVolume} µL)
         </h3>
         <p style="font-size: 0.9rem; color: var(--text-secondary); margin-bottom: 1rem;">
-            ${levelLabel} assembly using ${enzyme}. Volumes assume DNA at 100 ng/µL — adjust if your concentrations differ.
+            ${levelLabel} assembly using ${enzyme}. 2:1 molar ratio (${insertFmol} fmol insert : ${vectorFmol} fmol vector).
         </p>
         <table style="width: 100%; border-collapse: collapse; font-size: 0.9rem;">
             <thead>
@@ -547,35 +641,43 @@ function renderAssemblyResult(result) {
                     <th style="padding: 0.6rem 1rem; text-align: left;">Component</th>
                     <th style="padding: 0.6rem 1rem; text-align: left;">Volume (µL)</th>
                     <th style="padding: 0.6rem 1rem; text-align: left;">Amount</th>
+                    <th style="padding: 0.6rem 1rem; text-align: left;">Notes</th>
                 </tr>
             </thead>
             <tbody>
                 <tr><td style="padding: 0.5rem 1rem; border-bottom: 1px solid var(--border-color);">10x Buffer G</td>
                     <td style="padding: 0.5rem 1rem; border-bottom: 1px solid var(--border-color);">${bufferVol.toFixed(1)}</td>
-                    <td style="padding: 0.5rem 1rem; border-bottom: 1px solid var(--border-color);">1x final</td></tr>
+                    <td style="padding: 0.5rem 1rem; border-bottom: 1px solid var(--border-color);">1x final</td>
+                    <td style="padding: 0.5rem 1rem; border-bottom: 1px solid var(--border-color);">Thermo Fisher</td></tr>
                 <tr><td style="padding: 0.5rem 1rem; border-bottom: 1px solid var(--border-color);">100 mM ATP</td>
                     <td style="padding: 0.5rem 1rem; border-bottom: 1px solid var(--border-color);">${atpVol.toFixed(2)}</td>
-                    <td style="padding: 0.5rem 1rem; border-bottom: 1px solid var(--border-color);">1 mM final</td></tr>
+                    <td style="padding: 0.5rem 1rem; border-bottom: 1px solid var(--border-color);">1 mM final</td>
+                    <td style="padding: 0.5rem 1rem; border-bottom: 1px solid var(--border-color);">Thermo Fisher</td></tr>
                 ${dnaRows}
                 <tr><td style="padding: 0.5rem 1rem; border-bottom: 1px solid var(--border-color);">${enzyme}</td>
                     <td style="padding: 0.5rem 1rem; border-bottom: 1px solid var(--border-color);">${enzymeVol.toFixed(1)}</td>
-                    <td style="padding: 0.5rem 1rem; border-bottom: 1px solid var(--border-color);">10 units</td></tr>
+                    <td style="padding: 0.5rem 1rem; border-bottom: 1px solid var(--border-color);">10 units</td>
+                    <td style="padding: 0.5rem 1rem; border-bottom: 1px solid var(--border-color);">Type IIS enzyme</td></tr>
                 <tr><td style="padding: 0.5rem 1rem; border-bottom: 1px solid var(--border-color);">T4 DNA Ligase</td>
                     <td style="padding: 0.5rem 1rem; border-bottom: 1px solid var(--border-color);">${ligaseVol.toFixed(2)}</td>
-                    <td style="padding: 0.5rem 1rem; border-bottom: 1px solid var(--border-color);">2 units</td></tr>
+                    <td style="padding: 0.5rem 1rem; border-bottom: 1px solid var(--border-color);">2 units</td>
+                    <td style="padding: 0.5rem 1rem; border-bottom: 1px solid var(--border-color);">Thermo Fisher</td></tr>
                 <tr><td style="padding: 0.5rem 1rem; border-bottom: 1px solid var(--border-color);">MQ Water</td>
-                    <td style="padding: 0.5rem 1rem; border-bottom: 1px solid var(--border-color);">${waterVol.toFixed(2)}</td>
-                    <td style="padding: 0.5rem 1rem; border-bottom: 1px solid var(--border-color);">—</td></tr>
+                    <td style="padding: 0.5rem 1rem; border-bottom: 1px solid var(--border-color);">${waterVol < 0 ? '0.00' : waterVol.toFixed(2)}</td>
+                    <td style="padding: 0.5rem 1rem; border-bottom: 1px solid var(--border-color);">—</td>
+                    <td style="padding: 0.5rem 1rem; border-bottom: 1px solid var(--border-color);">Molecular grade</td></tr>
                 <tr style="font-weight: 700; background: var(--bg-color);">
                     <td style="padding: 0.6rem 1rem; border-top: 2px solid var(--primary-color);"><strong>Total</strong></td>
                     <td style="padding: 0.6rem 1rem; border-top: 2px solid var(--primary-color);"><strong>${totalVolume.toFixed(1)}</strong></td>
+                    <td style="padding: 0.6rem 1rem; border-top: 2px solid var(--primary-color);"></td>
                     <td style="padding: 0.6rem 1rem; border-top: 2px solid var(--primary-color);"></td></tr>
             </tbody>
         </table>
 
+        ${waterVol < 0 ? '<div style="background: #fef3c7; border: 1px solid #f59e0b; padding: 0.75rem; border-radius: 0.375rem; margin-top: 1rem; font-size: 0.875rem;"><strong>⚠️ Warning:</strong> DNA volumes exceed reaction volume! Increase total volume or dilute your DNA.</div>' : ''}
+
         <div style="background: #dbeafe; padding: 1rem; border-radius: 0.5rem; margin-top: 1rem; font-size: 0.875rem;">
             <strong>Thermal cycling:</strong> 60 cycles of 37°C (10 min) / 22°C (10 min), then 37°C (10 min), 65°C (20 min), hold 12°C.
-            <br><strong>Tip:</strong> Adjust DNA volumes based on your actual concentrations using the calculator on the Protocol page.
         </div>
 
         <div style="display: flex; gap: 0.75rem; margin-top: 1.5rem;">
