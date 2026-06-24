@@ -430,8 +430,8 @@ function renderPartDetails(part) {
             <div class="detail-grid">
                 ${part.plasmid_id ? `
                 <div class="detail-item">
-                    <span class="detail-label">Plasmid ID:</span>
-                    <span class="detail-value">${part.plasmid_id}</span>
+                    <span class="detail-label">Source Plasmid:</span>
+                    <span class="detail-value"><a href="/plasmids" onclick="event.preventDefault(); closeModal(); setTimeout(() => viewPlasmidFromPart('${part.plasmid_id}'), 300);" style="color: var(--primary-color); text-decoration: underline; cursor: pointer;">${part.plasmid_id}</a></span>
                 </div>
                 ` : ''}
                 ${part.level ? `
@@ -788,7 +788,21 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 
+/**
+ * Navigate to plasmid detail from a part's source plasmid link
+ */
+async function viewPlasmidFromPart(plasmidId) {
+    try {
+        const plasmid = await apiRequest(`/api/plasmids/${plasmidId}`);
+        // Redirect to plasmids page - the plasmid detail will be shown there
+        window.location.href = '/plasmids';
+    } catch (error) {
+        showFlashMessage(`Could not load plasmid: ${error.message}`, 'error');
+    }
+}
+
 // Export for use in other modules
 window.initPartsBrowser = initPartsBrowser;
 window.showPartDetails = showPartDetails;
 window.closeEditPartModal = closeEditPartModal;
+window.viewPlasmidFromPart = viewPlasmidFromPart;

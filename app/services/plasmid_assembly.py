@@ -277,7 +277,8 @@ def assemble_plasmid(
                 lab_source=f"Assembled from {backbone.name}",
                 level=str(moclo_level),
                 comments=assembly_lineage,
-                features=insert_features
+                features=insert_features,
+                plasmid_id=plasmid.id
             )
             
             # Store reference to the part in plasmid metadata
