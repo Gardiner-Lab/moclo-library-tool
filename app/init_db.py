@@ -192,6 +192,26 @@ def create_seed_parts(parts_data: List[Dict[str, str]], db_path: str):
             logger.error(f"Error creating part '{name}': {e}")
 
 
+def _ensure_default_admin():
+    """
+    Ensure a default admin user exists on every startup.
+    
+    Creates an 'admin' user with password 'admin123' if no admin user exists.
+    This guarantees the application is always accessible after deployment.
+    The password should be changed after first login.
+    """
+    try:
+        existing_admin = User.get_by_username('admin')
+        if existing_admin:
+            logger.info("Admin user already exists")
+            return
+        
+        User.create('admin', 'admin123', is_admin=True)
+        logger.info("Created default admin user (username: admin, password: admin123)")
+    except Exception as e:
+        logger.warning(f"Could not create default admin user: {e}")
+
+
 def initialize_with_seed_data(db_path: str, seed_file: Optional[str] = None):
     """
     Initialize the database and optionally load seed data.
@@ -243,6 +263,9 @@ def initialize_with_seed_data(db_path: str, seed_file: Optional[str] = None):
             logger.info("No seed data to load")
     else:
         logger.info("No seed file specified, skipping seed data")
+    
+    # Always ensure a default admin user exists
+    _ensure_default_admin()
     
     logger.info("Database initialization complete")
 
