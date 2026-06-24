@@ -348,11 +348,45 @@ function renderPartDetails(part) {
         modalHeader.insertBefore(deleteBtn, document.getElementById('closeModal'));
     }
 
+    const hasFeatures = part.features && part.features.length > 0;
+    
     const html = `
         <div class="part-detail-section">
             <div class="detail-visualization">
-                <img src="/api/visualize/part/${part.id}" alt="${part.name} visualization" style="max-width: 100%; height: auto;">
+                ${hasFeatures 
+                    ? `<img src="/api/visualize/part/${part.id}/features" alt="${part.name} features" style="max-width: 100%; height: auto;">`
+                    : `<img src="/api/visualize/part/${part.id}" alt="${part.name} visualization" style="max-width: 100%; height: auto;">`
+                }
             </div>
+        </div>
+
+        ${hasFeatures ? `
+        <div class="part-detail-section">
+            <h3>Component Parts</h3>
+            <div class="feature-parts-list">
+                ${part.features
+                    .filter(f => f.qualifiers && f.qualifiers.source === 'cassette')
+                    .map((f, idx) => {
+                        const partType = f.qualifiers.part_type || f.type;
+                        const typeLabel = formatPartType(partType);
+                        const typeClass = partType ? partType.toLowerCase() : 'misc';
+                        const strand = f.strand === -1 ? ' (RC)' : '';
+                        return `
+                            <div class="feature-part-item">
+                                <div class="feature-part-order">${idx + 1}</div>
+                                <div class="feature-part-info">
+                                    <div class="feature-part-name">${f.label || 'Unknown'}${strand}</div>
+                                    <div class="feature-part-meta">
+                                        <span class="type-badge type-${typeClass}">${typeLabel}</span>
+                                        <span>${f.start}-${f.end} bp</span>
+                                        ${f.qualifiers.part_level ? `<span>Level ${f.qualifiers.part_level}</span>` : ''}
+                                    </div>
+                                </div>
+                            </div>`;
+                    }).join('')}
+            </div>
+        </div>
+        ` : ''}
         </div>
 
         <div class="part-detail-section">

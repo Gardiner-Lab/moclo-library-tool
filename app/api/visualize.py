@@ -128,3 +128,45 @@ def visualize_cassette(user, cassette, cassette_id: str):
             'error': 'Failed to generate visualization',
             'message': str(e)
         }), 500
+
+
+
+@visualize_bp.route('/part/<part_id>/features', methods=['GET'])
+@require_auth
+def visualize_part_features(user, part_id: str):
+    """
+    Get cassette-style SVG visualization of a part's features.
+    
+    For assembled parts that contain Level 0 parts as features,
+    this renders them in the same style as cassette visualizations
+    (colored blocks for promoter, CDS, terminator, etc.)
+    
+    Path Parameters:
+        part_id: Part ID
+    
+    Response (200 OK):
+        Content-Type: image/svg+xml
+    """
+    try:
+        from app.services.visualization import generate_part_features_svg
+        
+        part = Part.get_by_id(part_id)
+        if part is None:
+            return jsonify({'error': f'Part {part_id} not found'}), 404
+        
+        features = part.features if hasattr(part, 'features') and part.features else []
+        
+        if not features:
+            # Fall back to regular part SVG
+            from app.services.visualization import generate_part_svg
+            svg_content = generate_part_svg(part, width=800, height=120)
+        else:
+            svg_content = generate_part_features_svg(features, len(part.sequence))
+        
+        return Response(
+            svg_content,
+            mimetype='image/svg+xml'
+        ), 200
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500

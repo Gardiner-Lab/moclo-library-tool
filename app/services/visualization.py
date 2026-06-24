@@ -465,3 +465,134 @@ def generate_cassette_svg(
     svg_parts.append('</svg>')
     
     return '\n'.join(svg_parts)
+
+
+
+def generate_part_features_svg(features: List[Dict[str, Any]], total_length: int, width: int = 800, height: int = 120) -> str:
+    """
+    Generate a cassette-style SVG showing features (Level 0 parts) within an assembled part.
+    
+    This renders the same style as generate_cassette_svg but works from a features list
+    rather than Part objects, making it suitable for assembled parts that store their
+    component parts as features.
+    
+    Args:
+        features: List of feature dicts with type, label, start, end, strand, qualifiers
+        total_length: Total sequence length of the part
+        width: SVG width in pixels
+        height: SVG height in pixels
+        
+    Returns:
+        SVG string
+    """
+    if not features:
+        return f'<svg width="{width}" height="{height}" xmlns="http://www.w3.org/2000/svg"><text x="10" y="30" font-size="14" fill="#666">No features</text></svg>'
+    
+    # Filter to only show part-level features (CDS, promoter, terminator, intron)
+    part_features = [f for f in features if f.get('type') in ('CDS', 'promoter', 'terminator', 'intron', 'misc_feature') 
+                     and f.get('qualifiers', {}).get('source') == 'cassette']
+    
+    # If no cassette-source features, show all typed features
+    if not part_features:
+        part_features = [f for f in features if f.get('type') in ('CDS', 'promoter', 'terminator', 'intron')]
+    
+    if not part_features:
+        return f'<svg width="{width}" height="{height}" xmlns="http://www.w3.org/2000/svg"><text x="10" y="30" font-size="14" fill="#666">No annotated parts</text></svg>'
+    
+    # Sort by position
+    part_features.sort(key=lambda f: f.get('start', 0))
+    
+    # Color map (GenBank feature type → color)
+    color_map = {
+        'CDS': '#4A90E2',
+        'promoter': '#7ED321',
+        'terminator': '#D0021B',
+        'intron': '#F5A623',
+        'misc_feature': '#9B9B9B'
+    }
+    
+    # Chevron types
+    chevron_types = {'CDS', 'promoter'}
+    
+    # Layout
+    padding = 15
+    label_height = 18
+    rect_height = height - (2 * label_height) - (2 * padding)
+    rect_y = label_height + padding
+    draw_width = width - 2 * padding
+    
+    # Scale factor: bp → pixels
+    scale = draw_width / total_length if total_length > 0 else 1
+    
+    svg_parts = [
+        f'<svg width="{width}" height="{height}" xmlns="http://www.w3.org/2000/svg">',
+        f'  <!-- Part features visualization: {len(part_features)} features, {total_length} bp -->',
+        # Background line
+        f'  <rect x="{padding}" y="{rect_y + rect_height/2 - 2}" width="{draw_width}" height="4" fill="#ddd" rx="2"/>',
+    ]
+    
+    for feat in part_features:
+        start = feat.get('start', 0)
+        end = feat.get('end', 0)
+        feat_type = feat.get('type', 'misc_feature')
+        label = feat.get('label', '')
+        strand = feat.get('strand', 1)
+        color = color_map.get(feat_type, '#9B9B9B')
+        
+        # Calculate pixel position
+        x = padding + (start * scale)
+        feat_width = max((end - start) * scale, 8)  # minimum 8px wide
+        
+        # Draw feature rectangle
+        svg_parts.append(
+            f'  <rect x="{x:.1f}" y="{rect_y}" width="{feat_width:.1f}" height="{rect_height}" '
+            f'fill="{color}" stroke="#333" stroke-width="1.5" rx="3" opacity="0.9"/>'
+        )
+        
+        # Add chevrons for CDS and promoter
+        if feat_type in chevron_types and feat_width > 30:
+            num_chevrons = min(3, int(feat_width / 20))
+            chevron_w = 10
+            spacing = (feat_width - num_chevrons * chevron_w) / (num_chevrons + 1)
+            dark_color = _darken_color(color, 0.3)
+            
+            for ci in range(num_chevrons):
+                cx = x + spacing + ci * (chevron_w + spacing)
+                cy = rect_y + rect_height / 2
+                ch = rect_height * 0.25
+                
+                if strand == -1:
+                    # Left-pointing for reverse
+                    path = f'M {cx+chevron_w},{cy} L {cx+chevron_w*0.6},{cy-ch} L {cx},{cy} L {cx+chevron_w*0.6},{cy+ch} Z'
+                else:
+                    path = f'M {cx},{cy} L {cx+chevron_w*0.4},{cy-ch} L {cx+chevron_w},{cy} L {cx+chevron_w*0.4},{cy+ch} Z'
+                
+                svg_parts.append(f'  <path d="{path}" fill="{dark_color}" opacity="0.6"/>')
+        
+        # Add label if it fits
+        if feat_width > 40:
+            text_x = x + feat_width / 2
+            text_y = rect_y + rect_height / 2 + 4
+            # Truncate label to fit
+            max_chars = int(feat_width / 7)
+            display_label = label[:max_chars] + ('...' if len(label) > max_chars else '')
+            font_size = 10 if feat_width < 80 else 11
+            
+            svg_parts.append(
+                f'  <text x="{text_x:.1f}" y="{text_y:.1f}" text-anchor="middle" '
+                f'font-family="Arial, sans-serif" font-size="{font_size}" font-weight="bold" '
+                f'fill="white">{escape_xml(display_label)}</text>'
+            )
+    
+    # Add scale bar
+    svg_parts.append(
+        f'  <text x="{padding}" y="{height - 3}" font-family="monospace" font-size="10" fill="#666">'
+        f'0 bp</text>'
+    )
+    svg_parts.append(
+        f'  <text x="{width - padding}" y="{height - 3}" text-anchor="end" '
+        f'font-family="monospace" font-size="10" fill="#666">{total_length} bp</text>'
+    )
+    
+    svg_parts.append('</svg>')
+    return '\n'.join(svg_parts)
