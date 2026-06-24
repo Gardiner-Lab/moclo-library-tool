@@ -247,7 +247,26 @@ def assemble_plasmid(
                 f"Cassettes: {'; '.join(part_components)}."
             )
             
-            # Create the part with features list (same as plasmid features)
+            # Create the part with features list — only features between the enzyme sites
+            # (the insert region, not backbone features like oriV, AmpR, etc.)
+            insert_start = sites[0]['position']
+            insert_end = sites[-1]['position']
+            
+            # Filter features to only those within the insert region
+            insert_features = []
+            for feat in merged_features:
+                feat_start = feat.get('start', 0)
+                feat_end = feat.get('end', 0)
+                # Feature must be fully or mostly within the insert region
+                if feat_start >= insert_start and feat_end <= insert_end:
+                    insert_features.append(feat)
+                elif feat_start < insert_end and feat_end > insert_start:
+                    # Partially overlapping — include if majority is within insert
+                    overlap = min(feat_end, insert_end) - max(feat_start, insert_start)
+                    feat_length = feat_end - feat_start
+                    if feat_length > 0 and overlap / feat_length > 0.5:
+                        insert_features.append(feat)
+            
             new_part = Part.create(
                 name=part_name,
                 part_type=part_type,
@@ -258,7 +277,7 @@ def assemble_plasmid(
                 lab_source=f"Assembled from {backbone.name}",
                 level=str(moclo_level),
                 comments=assembly_lineage,
-                features=merged_features
+                features=insert_features
             )
             
             # Store reference to the part in plasmid metadata
