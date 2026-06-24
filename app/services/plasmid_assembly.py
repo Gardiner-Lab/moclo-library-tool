@@ -159,6 +159,9 @@ def assemble_plasmid(
     
     metadata = {
         'backbone_name': backbone.name,
+        'backbone_id': backbone.id,
+        'backbone_plasmid_id': backbone.plasmid_id if hasattr(backbone, 'plasmid_id') else None,
+        'backbone_size': backbone.size,
         'cassette_names': [c.name for c in cassettes],
         'assembly_method': 'MoClo Golden Gate',
         'slots_used': slots,
@@ -228,6 +231,22 @@ def assemble_plasmid(
             # Create part name with level designation
             part_name = f"{name}_L{moclo_level}"
             
+            # Build assembly lineage description
+            part_components = []
+            for cassette in cassettes:
+                if cassette.parts_metadata:
+                    cassette_parts = [p.get('part_name', 'Unknown') for p in cassette.parts_metadata]
+                    part_components.append(f"{cassette.name} [{', '.join(cassette_parts)}]")
+                else:
+                    part_components.append(cassette.name)
+            
+            assembly_lineage = (
+                f"MoClo Level {moclo_level} construct. "
+                f"Backbone: {backbone.name}"
+                f"{' (' + backbone.plasmid_id + ')' if hasattr(backbone, 'plasmid_id') and backbone.plasmid_id else ''}. "
+                f"Cassettes: {'; '.join(part_components)}."
+            )
+            
             # Create the part
             new_part = Part.create(
                 name=part_name,
@@ -236,9 +255,9 @@ def assemble_plasmid(
                 overhang_5prime=overhang_5prime,
                 overhang_3prime=overhang_3prime,
                 contributor=owner_id,
-                lab_source=f"Assembled from plasmid {name}",
+                lab_source=f"Assembled from {backbone.name}",
                 level=str(moclo_level),
-                comments=f"MoClo Level {moclo_level} construct. Auto-generated from plasmid assembly."
+                comments=assembly_lineage
             )
             
             # Store reference to the part in plasmid metadata
@@ -590,13 +609,17 @@ def _get_cassette_features(cassette: Cassette, insertion_pos: int, orientation: 
             'strand': strand,
             'label': part.name + (' (RC)' if orientation == 'reverse' else ''),
             'qualifiers': {
+                'part_id': part.id,
                 'part_type': part.part_type,
+                'part_level': part.level or '0',
                 'source': 'cassette',
+                'source_vector': part.plasmid_id if hasattr(part, 'plasmid_id') and part.plasmid_id else None,
                 'lab_source': part.lab_source if hasattr(part, 'lab_source') else None,
                 'contributor': part.contributor if hasattr(part, 'contributor') else None,
                 'overhang_5prime': part.overhang_5prime,
                 'overhang_3prime': part.overhang_3prime,
-                'orientation': orientation
+                'orientation': orientation,
+                'description': part.description if hasattr(part, 'description') and part.description else None
             }
         }
         

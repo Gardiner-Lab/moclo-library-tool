@@ -223,6 +223,10 @@ def _capture_parts_metadata(parts: List[Part], assembled_sequence: str) -> List[
             'position_start': part_start,
             'position_end': part_end,
             'level': part.level,
+            'source_vector': part.plasmid_id if hasattr(part, 'plasmid_id') else None,
+            'size': part.size if hasattr(part, 'size') else None,
+            'lab_source': part.lab_source if hasattr(part, 'lab_source') else None,
+            'contributor': part.contributor if hasattr(part, 'contributor') else None,
             'description': part.description
         }
         
