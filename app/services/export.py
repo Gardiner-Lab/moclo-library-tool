@@ -366,12 +366,18 @@ def generate_part_genbank(part: Part) -> str:
     """
     Generate GenBank format representation of a part.
     
+    If the part contains embedded features (from assembly), those are
+    included as separate GenBank feature annotations so Level 0 parts
+    remain visible in the exported .gb file.
+    
     Args:
         part: Part instance to export
         
     Returns:
         String containing GenBank formatted data
     """
+    import json
+    import re
     from app.models.part import Part
     
     # Generate LOCUS line
@@ -402,6 +408,8 @@ def generate_part_genbank(part: Part) -> str:
     features_lines.append(f'                     /label="{part.name}"')
     features_lines.append(f'                     /part_type="{part.part_type}"')
     
+    # Clean description (remove PART_FEATURES JSON from display)
+    description = part.description or ''
     if part.description:
         features_lines.append(f'                     /note="{part.description}"')
     
@@ -415,8 +423,52 @@ def generate_part_genbank(part: Part) -> str:
         features_lines.append(f'                     /plasmid_id="{part.plasmid_id}"')
     if hasattr(part, 'donor_organism') and part.donor_organism:
         features_lines.append(f'                     /organism="{part.donor_organism}"')
+    if hasattr(part, 'level') and part.level:
+        features_lines.append(f'                     /moclo_level="{part.level}"')
+    
+    # Extract embedded part features from comments (PART_FEATURES: [...])
+    embedded_features = []
     if hasattr(part, 'comments') and part.comments:
-        features_lines.append(f'                     /comment="{part.comments}"')
+        match = re.search(r'PART_FEATURES:\s*(\[.*)', part.comments, re.DOTALL)
+        if match:
+            try:
+                embedded_features = json.loads(match.group(1))
+            except json.JSONDecodeError:
+                pass
+        
+        # Also add the lineage text (before PART_FEATURES) as a comment
+        lineage_text = part.comments.split('\n\nPART_FEATURES:')[0].strip()
+        if lineage_text:
+            features_lines.append(f'                     /comment="{lineage_text}"')
+    
+    # Write embedded features (Level 0 parts, overlaps, etc.)
+    for feat in embedded_features:
+        feat_type = feat.get('type', 'misc_feature')
+        start = feat.get('start', 0) + 1  # Convert 0-indexed to 1-indexed
+        end = feat.get('end', 0)
+        strand = feat.get('strand', 1)
+        label = feat.get('label', '')
+        qualifiers = feat.get('qualifiers', {})
+        
+        # Skip features with invalid positions
+        if start < 1 or end < 1 or end > sequence_length:
+            continue
+        
+        # Format location (complement for reverse strand)
+        if strand == -1:
+            location = f"complement({start}..{end})"
+        else:
+            location = f"{start}..{end}"
+        
+        features_lines.append(f"     {feat_type:<16}{location}")
+        if label:
+            features_lines.append(f'                     /label="{label}"')
+        
+        # Write key qualifiers
+        for key in ['part_type', 'part_level', 'source_vector', 'note', 'overhang_5prime', 'overhang_3prime']:
+            val = qualifiers.get(key)
+            if val:
+                features_lines.append(f'                     /{key}="{val}"')
     
     # Generate ORIGIN section with sequence
     origin_lines = ["ORIGIN"]
