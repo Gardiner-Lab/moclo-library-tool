@@ -185,11 +185,224 @@ def create_seed_parts(parts_data: List[Dict[str, str]], db_path: str):
                 overhang_3prime=overhang_3prime,
                 lab_source=lab_source,
                 contributor=contributor,
-                description=description
+                description=description,
+                level=part_data.get('level')
             )
             logger.info(f"Created part '{name}' with ID {part.id}")
         except Exception as e:
             logger.error(f"Error creating part '{name}': {e}")
+
+
+def _ensure_demo_backbones():
+    """
+    Ensure demo backbones and parts exist for the assembly tutorial.
+    
+    Creates demo Level 0 parts and Level 1/Level 2 backbones
+    if they don't already exist.
+    """
+    from app.models.backbone import Backbone
+    from app.models.user import User
+    import json
+    
+    # Get system/demo user
+    demo_user = User.get_by_username('demo')
+    if not demo_user:
+        demo_user = User.get_by_username('admin')
+    if not demo_user:
+        return
+    
+    # === Demo Parts ===
+    demo_parts_data = [
+        {
+            'name': 'DEMO-L0-Promoter-35S',
+            'part_type': 'NonCodingPromoter',
+            'sequence': 'GGAGCATTTCATTTGGAGAGGACACGCTGAAATCACCAGTCTCTCTCTACAAATCTATCTCTCTCTATTTTTCTCCAGAATAATGTGTGAGTAGTTCCCAGATAAGGAATCTACTAATGCAGTAGTTCCCAGATAAGGGAATCTGCTATTTCAATTTTTCTATTAAATCTTTGTGATTTCATCTAAAGAAGGAGTTATGCAGTGCTGCCATAACCATGAGTGATAACACTGCGGCCAACTTACTTCTGACAACGATCGGAGGACCGAAGGAGCTAACCGCTTTTTTGCACAACATGGGGGATCATGTAACTCGCCTTGATCGTTGGGAACCGGAGCTGAATGAAGCCATACCAAACGACGAGCGTGACACCACGATGCCTGTAGCAATGGCAACAACGTTGCGCAAACTATTAACTGGCGAACTACTTACTCTAGCTTCCCGGCAACAATTAATG',
+            'overhang_5prime': 'GGAG',
+            'overhang_3prime': 'AATG',
+            'description': 'DEMO Level 0 - CaMV 35S promoter. Assemble with DEMO-L0-CDS and DEMO-L0-Terminator into DEMO-L1-Backbone.',
+            'level': '0'
+        },
+        {
+            'name': 'DEMO-L0-Promoter-UBQ10',
+            'part_type': 'NonCodingPromoter',
+            'sequence': 'GGAGCTCGATCGTTTAAGTGGAATCGTATCGAATCGTAATCGAATGCATCGTAATCGTAATCGAATCGAATCGTAATCGAATCGTAATCGAATCGTAATCGAATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGAAAATGTGTGATCACAACTTGTACATATAGAGATAGAGAGATACTGAAACAGTACATACCACATATTCAATTGTATCAAAATCAAATCATGTGTTCAAAATCAAATCATGTGATCAAATCAAATCATGTGTGCTCATTAATACTTAAATCTAACAATCTTTCAATGGCAGAAAAGGAGATCGAGAATCGATCGATCGATCGATCGAATCGATCGAATCGATCGATCGATCAATG',
+            'overhang_5prime': 'GGAG',
+            'overhang_3prime': 'AATG',
+            'description': 'DEMO Level 0 - UBQ10 promoter. Use for second transcription unit in Level 2 assembly.',
+            'level': '0'
+        },
+        {
+            'name': 'DEMO-L0-CDS-GFP',
+            'part_type': 'Coding',
+            'sequence': 'AATGATGAGTAAAGGAGAAGAACTTTTCACTGGAGTTGTCCCAATTCTTGTTGAATTAGATGGTGATGTTAATGGGCACAAATTTTCTGTCAGTGGAGAGGGTGAAGGTGATGCAACATACGGAAAACTTACCCTTAAATTTATTTGCACTACTGGAAAACTACCTGTTCCATGGCCAACACTTGTCACTACTTTCGCGTATGGTCTTCAATGCTTTGCGAGATACCCAGATCATATGAAACAGCATGACTTTTTCAAGAGTGCCATGCCCGAAGGTTATGTACAGGAAAGAACTATATTTTTCAAAGATGACGGGAACTACAAGACACGTGCTGAAGTCAAGTTTGAAGGTGATACCCTTGTTAATAGAATCGAGTTAAAAGGTATTGATTTTAAAGAAGATGGAAACATTCTTGGACACAAATTGGAATACAACTATAACTCACACAATGTATACATCATGGCAGACAAACAAAAGAATGGAATCAAAGTTAACTTCAAAATTAGACACAACATTGAAGATGGAAGCGTTCAACTAGCAGACCATTATCAACAAAATACTCCAATTGGCGATGGCCCTGTCCTTTTACCAGACAACCATTACCTGTCCACACAATCTGCCCTTTCGAAAGATCCCAACGAAAAGAGAGACCACATGGTCCTTCTTGAGTTTGTAACAGCTGCTGGGATTACACATGGCATGGATGAACTATACAAATAAAGCTT',
+            'overhang_5prime': 'AATG',
+            'overhang_3prime': 'GCTT',
+            'description': 'DEMO Level 0 - GFP coding sequence. Assemble with a promoter and terminator.',
+            'level': '0'
+        },
+        {
+            'name': 'DEMO-L0-CDS-mCherry',
+            'part_type': 'Coding',
+            'sequence': 'AATGATGGTGAGCAAGGGCGAGGAGGATAACATGGCCATCATCAAGGAGTTCATGCGCTTCAAGGTGCACATGGAGGGCTCCGTGAACGGCCACGAGTTCGAGATCGAGGGCGAGGGCGAGGGCCGCCCCTACGAGGGCACCCAGACCGCCAAGCTGAAGGTGACCAAGGGTGGCCCCCTGCCCTTCGCCTGGGACATCCTGTCCCCTCAGTTCATGTACGGCTCCAAGGCCTACGTGAAGCACCCCGCCGACATCCCCGACTACTTGAAGCTGTCCTTCCCCGAGGGCTTCAAGTGGGAGCGCGTGATGAACTTCGAGGACGGCGGCGTGGTGACCGTGACCCAGGACTCCTCCCTGCAGGACGGCGAGTTCATCTACAAGGTGAAGCTGCGCGGCACCAACTTCCCCTCCGACGGCCCCGTAATGCAGAAGAAGACCATGGGCTGGGAGGCCTCCTCCGAGCGGATGTACCCCGAGGACGGCGCCCTGAAGGGCGAGATCAAGCAGAGGCTGAAGCTGAAGGACGGCGGCCACTACGACGCTGAGGTCAAGACCACCTACAAGGCCAAGAAGCCCGTGCAGCTGCCCGGCGCCTACAACGTCAACATCAAGTTGGACATCACCTCCCACAACGAGGACTACACCATCGTGGAACAGTACGAACGCGCCGAGGGCCGCCACTCCACCGGCGGCATGGACGAGCTGTACAAGTAAAGCTT',
+            'overhang_5prime': 'AATG',
+            'overhang_3prime': 'GCTT',
+            'description': 'DEMO Level 0 - mCherry red fluorescent protein. Use for second transcription unit.',
+            'level': '0'
+        },
+        {
+            'name': 'DEMO-L0-Terminator-NOS',
+            'part_type': 'NonCodingTerminator',
+            'sequence': 'GCTTGAATCGAATCGAAATCAAATCGGAGAGAAATCAAATCGATTTGAATGAAATGTTCATGAATGTTTGAATGTTTGAATGATTTGGATGACTTGGATGATCTGAATGATCTGGATGATCTGAAGGATCCGAAGACTTGGATAACCGTATTACCGCCTTTGAGTGAGCTGATACCGCTCGCCGCAGCCGAACGACCGAGCGCAGCGAGTCAGTGAGCGAGGAAGCGGAAGCGCT',
+            'overhang_5prime': 'GCTT',
+            'overhang_3prime': 'CGCT',
+            'description': 'DEMO Level 0 - NOS terminator. Pair with DEMO-L0-Promoter-35S and a CDS.',
+            'level': '0'
+        },
+        {
+            'name': 'DEMO-L0-Terminator-35S',
+            'part_type': 'NonCodingTerminator',
+            'sequence': 'GCTTGTCGACTCTAGAGGATCCCCGGGTACCGAGCTCGAATTCACTGGCCGTCGTTTTACAACGTCGTGACTGGGAAAACCCTGGCGTTACCCAACTTAATCGCCTTGCAGCACATCCCCCTTTCGCCAGCTGGCGTAATAGCGAAGAGGCCCGCACCGATCGCCCTTCCCAACAGTTGCGCAGCCTGAATGGCGAATGGCGCCTGATGCGGTATTTTCTCCTTACGCATCTGTGCGGTATTTCACACCGCATACAGGTGGCACTTTTCGGGGAAATGTGCGCGGAACCCCTATTTGTTTATTTTTCTAAATACATTCAAATATGTATCCGCTCATCGCT',
+            'overhang_5prime': 'GCTT',
+            'overhang_3prime': 'CGCT',
+            'description': 'DEMO Level 0 - 35S terminator. Pair with DEMO-L0-Promoter-UBQ10 and a CDS.',
+            'level': '0'
+        }
+    ]
+    
+    # Create demo parts if they don't exist
+    existing_parts = Part.get_all()
+    existing_names = [p.name for p in existing_parts]
+    
+    for part_data in demo_parts_data:
+        if part_data['name'] not in existing_names:
+            try:
+                Part.create(
+                    name=part_data['name'],
+                    part_type=part_data['part_type'],
+                    sequence=part_data['sequence'],
+                    overhang_5prime=part_data['overhang_5prime'],
+                    overhang_3prime=part_data['overhang_3prime'],
+                    lab_source='Demo Library',
+                    contributor=demo_user.username,
+                    description=part_data['description'],
+                    level=part_data['level']
+                )
+                logger.info(f"Created demo part: {part_data['name']}")
+            except Exception as e:
+                logger.error(f"Error creating demo part {part_data['name']}: {e}")
+    
+    # === Demo Backbones ===
+    all_backbones = Backbone.get_all()
+    demo_backbone_names = [b.name for b in all_backbones]
+    
+    # Level 1 backbone (BsaI) - accepts Level 0 parts
+    if 'DEMO-L1-Backbone-BsaI' not in demo_backbone_names:
+        try:
+            # Generate a minimal backbone sequence with BsaI sites
+            # Overhangs: 5'=GGAG (start of promoter), 3'=CGCT (end of terminator)
+            # BsaI site: GGTCTC N(1) [4bp overhang] ... [4bp overhang] N(1) GAGACC
+            backbone_seq = (
+                "ATGACCATGATTACGCCAAGCTATTTAGGTGACACTATAGAATACTCAAGCTATGCATCAAGCTTGGTACCGAGCTCGGATCCACTA"
+                "GTAACGGCCGCCAGTGTGCTGGAATTCGCCCTTGGTCTCAGGAG"  # BsaI site → overhang GGAG
+                "ATCGATCGATCGATCGATCGATCGATCGATCGATCG"  # Insertion region (replaced during assembly)
+                "CGCTCGAGACCAAGGGCGAATTCTGCAGATATCCATCACACTGGCGGCC"  # overhang CGCT ← BsaI site
+                "GCTCGAGTCTAGAGGGCCCGTTTAAACCCGCTGATCAGCCTCGACTGTGCCTTCTAGTTGCCAGCCATCTGTTGTTTGCCCCTCCCCCGTGCCTTCCTTGAC"
+                "CCTGGAAGGTGCCACTCCCACTGTCCTTTCCTAATAAAATGAGGAAATTGCATCGCATTGTCTGAGTAGGTGTCATTCTATTCTGGGGGGTGGGGTGGGGCAG"
+                "GACAGCAAGGGGGAGGATTGGGAAGACAATAGCAGGCATGCTGGGGATGCGGTGGGCTCTATGGCTTCTGAGGCGGAAAGAACCAGCTGGGGCTCTAGGGGGTAT"
+                "CCCCACGCGCCCTGTAGCGGCGCATTAAGCGCGGCGGGTGTGGTGGTTACGCGCAGCGTGACCGCTACACTTGCCAGCGCCCTAGCGCCCGCTCCTTTCGCTTTCTT"
+                "CCCTTCCTTTCTCGCCACGTTCGCCGGCTTTCCCCGTCAAGCTCTAAATCGGGGGCTCCCTTTAGGGTTCCGATTTAGTGCTTTACGGCACCTCGACCCCAAAAAACT"
+                "TGATTAGGGTGATGGTTCACGTAGTGGGCCATCGCCCTGATAGACGGTTTTTCGCCCTTTGACGTTGGAGTCCACGTTCTTTAATAGTGGACTCTTGTTCCAAACTGG"
+                "AACAACACTCAACCCTATCTCGGTCTATTCTTTTGATTTATAAGGGATTTTGCCGATTTCGGCCTATTGGTTAAAAAATGAGCTGATTTAACAAAAATTTAACGCGAAT"
+                "TTTAACAAAATATTAACGTTTACAATTTCAGGTGGCACTTTTCGGGGAAATGTGCGCGGAACCCCTATTTGTTTATTTTTCTAAATACATTCAAATATGTATCCGCTCAT"
+                "GAGACAATAACCCTGATAAATGCTTCAATAATATTGAAAAAGGAAGAGTATGAGTATTCAACATTTCCGTGTCGCCCTTATTCCCTTTTTTGCGGCATTTTGCCTTCCTG"
+                "TTTTTGCTCACCCAGAAACGCTGGTGAAAGTAAAAGATGCTGAAGATCAGTTGGGTGCACGAGTGGGTTACATCGAACTGGATCTCAACAGCGGTAAGATCCTTGAGAG"
+                "TTTTCGCCCCGAAGAACGTTTTCCAATGATGAGCACTTTTAAAGTTCTGCTATGTGGCGCGGTATTATCCCGTATTGACGCCGGGCAAGAGCAACTCGGTCGCCGCATA"
+                "CACTATTCTCAGAATGACTTGGTTGAGTACTCACCAGTCACAGAAAAGCATCTTACGGATGGCATGACAGTAAGAGAATTATGCAGTGCTGCCATAACCATGAGTGATAA"
+                "CACTGCGGCCAACTTACTTCTGACAACGATCGGAGGACCGAAGGAGCTAACCGCTTTTTTGCACAACATGGGGGATCATGTAACTCGCCTTGATCGTTGGGAACCGGAGC"
+                "TGAATGAAGCCATACCAAACGACGAGCGTGACACCACGATGCCTGTAGCAATGGCAACAACGTTGCGCAAACTATTAACTGGCGAACTACTTACTCTAGCTTCCCGGCAAC"
+            )
+            
+            # BsaI restriction sites for this backbone
+            bsai_sites = [
+                {
+                    'enzyme': 'BsaI',
+                    'position': 125,
+                    'strand': 'forward',
+                    'overhang_5prime': 'GGAG',
+                    'overhang_3prime': 'GGAG'
+                },
+                {
+                    'enzyme': 'BsaI',
+                    'position': 167,
+                    'strand': 'reverse',
+                    'overhang_5prime': 'CGCT',
+                    'overhang_3prime': 'CGCT'
+                }
+            ]
+            
+            Backbone.create(
+                name='DEMO-L1-Backbone-BsaI',
+                owner_id=demo_user.id,
+                sequence=backbone_seq,
+                description='DEMO Level 1 acceptor backbone (BsaI). Accepts Level 0 parts with overhangs GGAG→AATG→GCTT→CGCT to create a transcription unit.',
+                restriction_sites=bsai_sites,
+                overhang_5prime='GGAG',
+                overhang_3prime='CGCT',
+                contributor='demo',
+                lab_source='Demo Library'
+            )
+            logger.info("Created DEMO Level 1 backbone (BsaI)")
+        except Exception as e:
+            logger.error(f"Error creating demo L1 backbone: {e}")
+    
+    # Level 2 backbone (BpiI) - accepts Level 1 cassettes
+    if 'DEMO-L2-Backbone-BpiI' not in demo_backbone_names:
+        try:
+            backbone_seq_l2 = (
+                "ATGACCATGATTACGCCAAGCTATTTAGGTGACACTATAGAATACTCAAGCTATGCATCAAGCTTGGTACCGAGCTCGGATCCACTA"
+                "GTAACGGCCGCCAGTGTGCTGGAATTCGCCCTTGAAGACAAGGAG"  # BpiI site → overhang GGAG
+                "ATCGATCGATCGATCGATCGATCGATCGATCGATCG"  # Insertion region
+                "CGCTAAGTCTTCAAGGGCGAATTCTGCAGATATCCATCACACTGGCGGCC"  # overhang CGCT ← BpiI site
+                "GCTCGAGTCTAGAGGGCCCGTTTAAACCCGCTGATCAGCCTCGACTGTGCCTTCTAGTTGCCAGCCATCTGTTGTTTGCCCCTCCCCCGTGCCTTCCTTGAC"
+                "CCTGGAAGGTGCCACTCCCACTGTCCTTTCCTAATAAAATGAGGAAATTGCATCGCATTGTCTGAGTAGGTGTCATTCTATTCTGGGGGGTGGGGTGGGGCAG"
+                "GACAGCAAGGGGGAGGATTGGGAAGACAATAGCAGGCATGCTGGGGATGCGGTGGGCTCTATGGCTTCTGAGGCGGAAAGAACCAGCTGGGGCTCTAGGGGGTAT"
+                "CCCCACGCGCCCTGTAGCGGCGCATTAAGCGCGGCGGGTGTGGTGGTTACGCGCAGCGTGACCGCTACACTTGCCAGCGCCCTAGCGCCCGCTCCTTTCGCTTTCTT"
+                "CCCTTCCTTTCTCGCCACGTTCGCCGGCTTTCCCCGTCAAGCTCTAAATCGGGGGCTCCCTTTAGGGTTCCGATTTAGTGCTTTACGGCACCTCGACCCCAAAAAACT"
+                "TGATTAGGGTGATGGTTCACGTAGTGGGCCATCGCCCTGATAGACGGTTTTTCGCCCTTTGACGTTGGAGTCCACGTTCTTTAATAGTGGACTCTTGTTCCAAACTGG"
+                "AACAACACTCAACCCTATCTCGGTCTATTCTTTTGATTTATAAGGGATTTTGCCGATTTCGGCCTATTGGTTAAAAAATGAGCTGATTTAACAAAAATTTAACGCGAAT"
+            )
+            
+            bpii_sites = [
+                {
+                    'enzyme': 'BpiI',
+                    'position': 125,
+                    'strand': 'forward',
+                    'overhang_5prime': 'GGAG',
+                    'overhang_3prime': 'GGAG'
+                },
+                {
+                    'enzyme': 'BpiI',
+                    'position': 167,
+                    'strand': 'reverse',
+                    'overhang_5prime': 'CGCT',
+                    'overhang_3prime': 'CGCT'
+                }
+            ]
+            
+            Backbone.create(
+                name='DEMO-L2-Backbone-BpiI',
+                owner_id=demo_user.id,
+                sequence=backbone_seq_l2,
+                description='DEMO Level 2 acceptor backbone (BpiI). Accepts Level 1 cassettes to create multi-gene constructs. Use after assembling Level 1 cassettes.',
+                restriction_sites=bpii_sites,
+                overhang_5prime='GGAG',
+                overhang_3prime='CGCT',
+                contributor='demo',
+                lab_source='Demo Library'
+            )
+            logger.info("Created DEMO Level 2 backbone (BpiI)")
+        except Exception as e:
+            logger.error(f"Error creating demo L2 backbone: {e}")
 
 
 def _ensure_default_admin():
@@ -266,6 +479,9 @@ def initialize_with_seed_data(db_path: str, seed_file: Optional[str] = None):
     
     # Always ensure a default admin user exists
     _ensure_default_admin()
+    
+    # Ensure demo backbones exist
+    _ensure_demo_backbones()
     
     logger.info("Database initialization complete")
 

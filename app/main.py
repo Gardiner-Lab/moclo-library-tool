@@ -36,8 +36,9 @@ def create_app():
         parts_db_path = os.environ.get('PARTS_DATABASE_PATH', '/data/parts.db')
         initialize_parts_database(parts_db_path)
         # Ensure default admin exists
-        from app.init_db import _ensure_default_admin
+        from app.init_db import _ensure_default_admin, _ensure_demo_backbones
         _ensure_default_admin()
+        _ensure_demo_backbones()
     
     # Enable CORS with credentials support
     CORS(app, supports_credentials=True)
