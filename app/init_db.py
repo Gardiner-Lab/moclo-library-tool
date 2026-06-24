@@ -455,6 +455,46 @@ def _ensure_demo_backbones():
             logger.info(f"Created DEMO-L1-mCherry-Cassette ({cassette.assembled_sequence[:4]}→{cassette.assembled_sequence[-4:]})")
         except Exception as e:
             logger.error(f"Error creating demo mCherry cassette: {e}")
+    
+    # === Pre-create Demo Level 1 Plasmids ===
+    # Insert each L1 cassette into the L1 backbone to create L1 plasmids
+    # This demonstrates the full Level 0 → Level 1 plasmid path
+    from app.models.final_plasmid import FinalPlasmid
+    existing_plasmids = FinalPlasmid.get_all()
+    existing_plasmid_names = [p.name for p in existing_plasmids]
+    
+    # Re-fetch cassettes and backbones
+    all_cassettes = Cassette.get_all()
+    all_backbones = Backbone.get_all()
+    l1_backbone = next((b for b in all_backbones if b.name == 'DEMO-L1-Backbone-BsaI'), None)
+    gfp_cassette = next((cs for cs in all_cassettes if cs.name == 'DEMO-L1-GFP-Cassette'), None)
+    mch_cassette = next((cs for cs in all_cassettes if cs.name == 'DEMO-L1-mCherry-Cassette'), None)
+    
+    if l1_backbone and gfp_cassette and 'DEMO-L1-GFP-Plasmid' not in existing_plasmid_names:
+        try:
+            from app.services.plasmid_assembly import assemble_plasmid
+            plasmid = assemble_plasmid(
+                backbone=l1_backbone,
+                cassettes=[gfp_cassette],
+                name='DEMO-L1-GFP-Plasmid',
+                owner_id=demo_user.id
+            )
+            logger.info(f"Created DEMO-L1-GFP-Plasmid ({plasmid.size} bp)")
+        except Exception as e:
+            logger.error(f"Error creating demo L1 GFP plasmid: {e}")
+    
+    if l1_backbone and mch_cassette and 'DEMO-L1-mCherry-Plasmid' not in existing_plasmid_names:
+        try:
+            from app.services.plasmid_assembly import assemble_plasmid
+            plasmid = assemble_plasmid(
+                backbone=l1_backbone,
+                cassettes=[mch_cassette],
+                name='DEMO-L1-mCherry-Plasmid',
+                owner_id=demo_user.id
+            )
+            logger.info(f"Created DEMO-L1-mCherry-Plasmid ({plasmid.size} bp)")
+        except Exception as e:
+            logger.error(f"Error creating demo L1 mCherry plasmid: {e}")
 
 
 def _ensure_default_admin():
