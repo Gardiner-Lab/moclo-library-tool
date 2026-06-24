@@ -17,6 +17,13 @@ async function initPlasmids() {
 
     // Load plasmids
     await loadPlasmids();
+    
+    // Auto-open plasmid detail if ?view=<id> is in the URL
+    const urlParams = new URLSearchParams(window.location.search);
+    const viewId = urlParams.get('view');
+    if (viewId) {
+        viewPlasmid(viewId);
+    }
 }
 
 /**
