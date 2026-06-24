@@ -284,3 +284,60 @@ def check_session():
         return jsonify({
             'error': 'Internal server error'
         }), 500
+
+
+@auth_bp.route('/change-password', methods=['POST'])
+@require_session
+def change_password():
+    """
+    Change the current user's password.
+    
+    Request Body:
+        {
+            "current_password": "string",
+            "new_password": "string"
+        }
+    
+    Response (200 OK):
+        {
+            "message": "Password changed successfully"
+        }
+    
+    Error Responses:
+        400 Bad Request: Missing fields or new password too short
+        401 Unauthorized: Current password is incorrect
+    """
+    try:
+        data = request.get_json(silent=True)
+        
+        if data is None:
+            return jsonify({'error': 'Request body must be JSON'}), 400
+        
+        current_password = data.get('current_password')
+        new_password = data.get('new_password')
+        
+        if not current_password or not new_password:
+            return jsonify({'error': 'Both current_password and new_password are required'}), 400
+        
+        if len(new_password) < 6:
+            return jsonify({'error': 'New password must be at least 6 characters'}), 400
+        
+        # Get current user
+        from app.models.user import User
+        username = session.get('username')
+        user = User.get_by_username(username)
+        
+        if user is None:
+            return jsonify({'error': 'User not found'}), 401
+        
+        # Verify current password
+        if not User.verify_password(current_password, user.password_hash):
+            return jsonify({'error': 'Current password is incorrect'}), 401
+        
+        # Update password
+        user.update(password=new_password)
+        
+        return jsonify({'message': 'Password changed successfully'}), 200
+        
+    except Exception as e:
+        return jsonify({'error': 'Internal server error'}), 500
