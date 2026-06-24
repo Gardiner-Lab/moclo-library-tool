@@ -225,10 +225,10 @@ def _ensure_demo_backbones():
         {
             'name': 'DEMO-L0-Promoter-UBQ10',
             'part_type': 'NonCodingPromoter',
-            'sequence': 'GGAGCTCGATCGTTTAAGTGGAATCGTATCGAATCGTAATCGAATGCATCGTAATCGTAATCGAATCGAATCGTAATCGAATCGTAATCGAATCGTAATCGAATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGAAAATGTGTGATCACAACTTGTACATATAGAGATAGAGAGATACTGAAACAGTACATACCACATATTCAATTGTATCAAAATCAAATCATGTGTTCAAAATCAAATCATGTGATCAAATCAAATCATGTGTGCTCATTAATACTTAAATCTAACAATCTTTCAATGGCAGAAAAGGAGATCGAGAATCGATCGATCGATCGATCGAATCGATCGAATCGATCGATCGATCAATG',
-            'overhang_5prime': 'GGAG',
+            'sequence': 'AATGCTCGATCGTTTAAGTGGAATCGTATCGAATCGTAATCGAATGCATCGTAATCGTAATCGAATCGAATCGTAATCGAATCGTAATCGAATCGTAATCGAATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGAAAATGTGTGATCACAACTTGTACATATAGAGATAGAGAGATACTGAAACAGTACATACCACATATTCAATTGTATCAAAATCAAATCATGTGTTCAAAATCAAATCATGTGATCAAATCAAATCATGTGTGCTCATTAATACTTAAATCTAACAATCTTTCAATGGCAGAAAAGGAGATCGAGAATCGATCGATCGATCGATCGAATCGATCGAATCGATCGATCGATCAATG',
+            'overhang_5prime': 'AATG',
             'overhang_3prime': 'AATG',
-            'description': 'DEMO Level 0 - UBQ10 promoter. Use for second transcription unit in Level 2 assembly.',
+            'description': 'DEMO Level 0 - UBQ10 promoter (Slot 2). mCherry cassette starts AATG for L2 Slot 2.',
             'level': '0'
         },
         {
@@ -252,10 +252,10 @@ def _ensure_demo_backbones():
         {
             'name': 'DEMO-L0-Terminator-NOS',
             'part_type': 'NonCodingTerminator',
-            'sequence': 'GCTTGAATCGAATCGAAATCAAATCGGAGAGAAATCAAATCGATTTGAATGAAATGTTCATGAATGTTTGAATGTTTGAATGATTTGGATGACTTGGATGATCTGAATGATCTGGATGATCTGAAGGATCCGAAGACTTGGATAACCGTATTACCGCCTTTGAGTGAGCTGATACCGCTCGCCGCAGCCGAACGACCGAGCGCAGCGAGTCAGTGAGCGAGGAAGCGGAAGCGCT',
+            'sequence': 'GCTTGAATCGAATCGAAATCAAATCGGAGAGAAATCAAATCGATTTGAATGAAATGTTCATGAATGTTTGAATGTTTGAATGATTTGGATGACTTGGATGATCTGAATGATCTGGATGATCTGAAGGATCCGAAGACTTGGATAACCGTATTACCGCCTTTGAGTGAGCTGATACCGCTCGCCGCAGCCGAACGACCGAGCGCAGCGAGTCAGTGAGCGAGGAAGCGGAAATG',
             'overhang_5prime': 'GCTT',
-            'overhang_3prime': 'CGCT',
-            'description': 'DEMO Level 0 - NOS terminator. Pair with DEMO-L0-Promoter-35S and a CDS.',
+            'overhang_3prime': 'AATG',
+            'description': 'DEMO Level 0 - NOS terminator (Slot 1). GFP cassette ends AATG for L2 Slot 1.',
             'level': '0'
         },
         {
@@ -376,7 +376,7 @@ def _ensure_demo_backbones():
                 {
                     'enzyme': 'BpiI',
                     'position': 125,
-                    'strand': 'forward',
+                    'strand': 'reverse',
                     'recognition_site': 'GAAGAC',
                     'overhang_5prime': 'GGAG',
                     'overhang_3prime': 'GGAG',
@@ -384,12 +384,30 @@ def _ensure_demo_backbones():
                 },
                 {
                     'enzyme': 'BpiI',
-                    'position': 167,
+                    'position': 145,
+                    'strand': 'forward',
+                    'recognition_site': 'GAAGAC',
+                    'overhang_5prime': 'AATG',
+                    'overhang_3prime': 'AATG',
+                    'slot_number': 1
+                },
+                {
+                    'enzyme': 'BpiI',
+                    'position': 155,
                     'strand': 'reverse',
+                    'recognition_site': 'GAAGAC',
+                    'overhang_5prime': 'AATG',
+                    'overhang_3prime': 'AATG',
+                    'slot_number': 2
+                },
+                {
+                    'enzyme': 'BpiI',
+                    'position': 175,
+                    'strand': 'forward',
                     'recognition_site': 'GAAGAC',
                     'overhang_5prime': 'CGCT',
                     'overhang_3prime': 'CGCT',
-                    'slot_number': 1
+                    'slot_number': 2
                 }
             ]
             
@@ -456,45 +474,7 @@ def _ensure_demo_backbones():
         except Exception as e:
             logger.error(f"Error creating demo mCherry cassette: {e}")
     
-    # === Pre-create Demo Level 1 Plasmids ===
-    # Insert each L1 cassette into the L1 backbone to create L1 plasmids
-    # This demonstrates the full Level 0 → Level 1 plasmid path
-    from app.models.final_plasmid import FinalPlasmid
-    existing_plasmids = FinalPlasmid.get_all()
-    existing_plasmid_names = [p.name for p in existing_plasmids]
-    
-    # Re-fetch cassettes and backbones
-    all_cassettes = Cassette.get_all()
-    all_backbones = Backbone.get_all()
-    l1_backbone = next((b for b in all_backbones if b.name == 'DEMO-L1-Backbone-BsaI'), None)
-    gfp_cassette = next((cs for cs in all_cassettes if cs.name == 'DEMO-L1-GFP-Cassette'), None)
-    mch_cassette = next((cs for cs in all_cassettes if cs.name == 'DEMO-L1-mCherry-Cassette'), None)
-    
-    if l1_backbone and gfp_cassette and 'DEMO-L1-GFP-Plasmid' not in existing_plasmid_names:
-        try:
-            from app.services.plasmid_assembly import assemble_plasmid
-            plasmid = assemble_plasmid(
-                backbone=l1_backbone,
-                cassettes=[gfp_cassette],
-                name='DEMO-L1-GFP-Plasmid',
-                owner_id=demo_user.id
-            )
-            logger.info(f"Created DEMO-L1-GFP-Plasmid ({plasmid.size} bp)")
-        except Exception as e:
-            logger.error(f"Error creating demo L1 GFP plasmid: {e}")
-    
-    if l1_backbone and mch_cassette and 'DEMO-L1-mCherry-Plasmid' not in existing_plasmid_names:
-        try:
-            from app.services.plasmid_assembly import assemble_plasmid
-            plasmid = assemble_plasmid(
-                backbone=l1_backbone,
-                cassettes=[mch_cassette],
-                name='DEMO-L1-mCherry-Plasmid',
-                owner_id=demo_user.id
-            )
-            logger.info(f"Created DEMO-L1-mCherry-Plasmid ({plasmid.size} bp)")
-        except Exception as e:
-            logger.error(f"Error creating demo L1 mCherry plasmid: {e}")
+
 
 
 def _ensure_default_admin():

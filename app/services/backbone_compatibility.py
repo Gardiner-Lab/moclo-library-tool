@@ -76,14 +76,8 @@ def check_compatibility(
             'orientation': None
         }
     
-    # Check if sites are already in slot format (have slot_number key)
-    # or if they need to be processed from raw restriction site data
-    if sites and 'slot_number' in sites[0]:
-        # Sites are already in slot format
-        slots = sites
-    else:
-        # Sites need to be processed to identify slots
-        slots = identify_cassette_slots(sites)
+    # Always process sites through identify_cassette_slots to get proper slot pairs
+    slots = identify_cassette_slots(sites)
         
     if not slots:
         return {
