@@ -3,6 +3,7 @@ Part model with CRUD operations for MoClo genetic parts.
 """
 
 import uuid
+import json
 from typing import Optional, Dict, Any, List
 from datetime import datetime
 from app.models.parts_database import get_parts_database
@@ -47,7 +48,8 @@ class Part:
         comments: Optional[str] = None,
         ori_ecoli: Optional[str] = None,
         ori_agro: Optional[str] = None,
-        primer_for_seq: Optional[str] = None
+        primer_for_seq: Optional[str] = None,
+        features: Optional[List] = None
     ):
         """
         Initialize a Part instance.
@@ -105,6 +107,7 @@ class Part:
         self.ori_ecoli = ori_ecoli
         self.ori_agro = ori_agro
         self.primer_for_seq = primer_for_seq
+        self.features = features
     
     def to_dict(self) -> Dict[str, Any]:
         """
@@ -158,6 +161,8 @@ class Part:
             data['ori_agro'] = self.ori_agro
         if self.primer_for_seq:
             data['primer_for_seq'] = self.primer_for_seq
+        if self.features:
+            data['features'] = self.features
         
         return data
     
@@ -186,7 +191,8 @@ class Part:
         comments: Optional[str] = None,
         ori_ecoli: Optional[str] = None,
         ori_agro: Optional[str] = None,
-        primer_for_seq: Optional[str] = None
+        primer_for_seq: Optional[str] = None,
+        features: Optional[List] = None
     ) -> 'Part':
         """
         Create a new part in the database.
@@ -240,15 +246,16 @@ class Part:
                     lab_source, contributor, description,
                     plasmid_id, location_80, location_96_plate, antibiotic, level, unit,
                     donor_organism, reference, size, host_strain, sequenced, comments,
-                    ori_ecoli, ori_agro, primer_for_seq
+                    ori_ecoli, ori_agro, primer_for_seq, features
                 )
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (part_id, name, part_type, sequence, overhang_5prime, overhang_3prime,
                  lab_source, contributor, description,
                  plasmid_id, location_80, location_96_plate, antibiotic, level, unit,
                  donor_organism, reference, size, host_strain, sequenced, comments,
-                 ori_ecoli, ori_agro, primer_for_seq)
+                 ori_ecoli, ori_agro, primer_for_seq,
+                 json.dumps(features) if features else None)
             )
             
             # Retrieve the created part
@@ -601,7 +608,8 @@ class Part:
             comments=get_col('comments'),
             ori_ecoli=get_col('ori_ecoli'),
             ori_agro=get_col('ori_agro'),
-            primer_for_seq=get_col('primer_for_seq')
+            primer_for_seq=get_col('primer_for_seq'),
+            features=json.loads(get_col('features')) if get_col('features') else None
         )
     
     @staticmethod

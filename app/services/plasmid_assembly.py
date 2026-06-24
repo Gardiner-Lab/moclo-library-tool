@@ -247,13 +247,7 @@ def assemble_plasmid(
                 f"Cassettes: {'; '.join(part_components)}."
             )
             
-            # Store features as JSON so they export to GenBank
-            # Use the merged_features from the plasmid assembly
-            import json as _json
-            features_json = _json.dumps(merged_features)
-            comments_with_features = f"{assembly_lineage}\n\nPART_FEATURES: {features_json}"
-            
-            # Create the part
+            # Create the part with features list (same as plasmid features)
             new_part = Part.create(
                 name=part_name,
                 part_type=part_type,
@@ -263,7 +257,8 @@ def assemble_plasmid(
                 contributor=owner_id,
                 lab_source=f"Assembled from {backbone.name}",
                 level=str(moclo_level),
-                comments=comments_with_features
+                comments=assembly_lineage,
+                features=merged_features
             )
             
             # Store reference to the part in plasmid metadata

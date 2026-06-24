@@ -66,7 +66,8 @@ class PartsDatabase:
                     comments TEXT,
                     ori_ecoli TEXT,
                     ori_agro TEXT,
-                    primer_for_seq TEXT
+                    primer_for_seq TEXT,
+                    features TEXT
                 )
             """)
             cursor.execute("""
@@ -78,6 +79,13 @@ class PartsDatabase:
             cursor.execute("""
                 CREATE INDEX IF NOT EXISTS idx_parts_3prime ON parts(overhang_3prime)
             """)
+            
+            # Migration: add features column to existing databases
+            try:
+                cursor.execute("ALTER TABLE parts ADD COLUMN features TEXT")
+            except Exception:
+                pass  # Column already exists
+            
             conn.commit()
 
 

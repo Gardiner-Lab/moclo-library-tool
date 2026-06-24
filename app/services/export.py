@@ -426,20 +426,26 @@ def generate_part_genbank(part: Part) -> str:
     if hasattr(part, 'level') and part.level:
         features_lines.append(f'                     /moclo_level="{part.level}"')
     
-    # Extract embedded part features from comments (PART_FEATURES: [...])
-    embedded_features = []
+    # Add comments as a qualifier (assembly lineage, etc.)
     if hasattr(part, 'comments') and part.comments:
+        # Strip any PART_FEATURES JSON from old-format comments
+        comment_text = part.comments.split('\n\nPART_FEATURES:')[0].strip()
+        if comment_text:
+            features_lines.append(f'                     /comment="{comment_text}"')
+    
+    # Write part features (Level 0 parts, backbone features, overlaps)
+    # These come from part.features (list) — stored directly on assembled parts
+    embedded_features = []
+    if hasattr(part, 'features') and part.features:
+        embedded_features = part.features
+    elif hasattr(part, 'comments') and part.comments:
+        # Fallback: read from old PART_FEATURES format in comments
         match = re.search(r'PART_FEATURES:\s*(\[.*)', part.comments, re.DOTALL)
         if match:
             try:
                 embedded_features = json.loads(match.group(1))
             except json.JSONDecodeError:
                 pass
-        
-        # Also add the lineage text (before PART_FEATURES) as a comment
-        lineage_text = part.comments.split('\n\nPART_FEATURES:')[0].strip()
-        if lineage_text:
-            features_lines.append(f'                     /comment="{lineage_text}"')
     
     # Write embedded features (Level 0 parts, overlaps, etc.)
     for feat in embedded_features:
