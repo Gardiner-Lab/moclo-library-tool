@@ -236,9 +236,9 @@ class Backbone:
             INSERT INTO backbones (
                 id, name, owner_id, sequence, description,
                 genbank_data, restriction_sites, created_at,
-                contributor, donor_organism, lab_source,
+                size, contributor, donor_organism, lab_source,
                 overhang_5prime, overhang_3prime, reference, upload_date
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ''', (
             backbone.id,
             backbone.name,
@@ -248,6 +248,7 @@ class Backbone:
             json.dumps(backbone.genbank_data),
             json.dumps(backbone.restriction_sites),
             backbone.created_at.isoformat(),
+            backbone.size,
             backbone.contributor,
             backbone.donor_organism,
             backbone.lab_source,

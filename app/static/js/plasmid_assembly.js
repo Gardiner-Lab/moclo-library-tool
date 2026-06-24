@@ -94,8 +94,8 @@ function renderBackbones() {
         item.innerHTML = `
             <div class="item-name">${escapeHtml(backbone.name)}</div>
             <div class="item-meta">
-                <span>${backbone.length} bp</span>
-                <span>${backbone.slot_count} slot${backbone.slot_count !== 1 ? 's' : ''}</span>
+                <span>${backbone.size || backbone.length || 0} bp</span>
+                <span>${backbone.slot_count || backbone.cassette_slots || 0} slot${(backbone.slot_count || backbone.cassette_slots || 0) !== 1 ? 's' : ''}</span>
             </div>
         `;
 
@@ -238,7 +238,7 @@ function updatePreview() {
         const length = c.length || (c.assembled_sequence ? c.assembled_sequence.length : 0);
         return sum + length;
     }, 0);
-    const expectedSize = selectedBackbone.length + totalCassetteSize;
+    const expectedSize = selectedBackbone.size + totalCassetteSize;
     document.getElementById('previewSize').textContent = `~${expectedSize} bp`;
 
     // Render cassette slots
@@ -470,7 +470,7 @@ function showConcentrationForm(assemblyResult) {
     let fragmentRows = '';
 
     // Backbone
-    const backboneSize = selectedBackbone ? selectedBackbone.length : 5000;
+    const backboneSize = selectedBackbone ? selectedBackbone.size : 5000;
     fragmentRows += `
         <div class="conc-row">
             <span class="conc-name">${escapeHtml(selectedBackbone ? selectedBackbone.name : 'Backbone')} <em>(vector, ${backboneSize} bp)</em></span>
@@ -575,7 +575,7 @@ function renderAssemblyResult(result, bbConc, cassetteConcs) {
     const ligaseVol = 0.4;
 
     // Calculate DNA volumes
-    const backboneSize = selectedBackbone ? selectedBackbone.length : 5000;
+    const backboneSize = selectedBackbone ? selectedBackbone.size : 5000;
     const backboneNg = (vectorFmol * backboneSize * 660) / 1000000;
 
     let dnaRows = '';
