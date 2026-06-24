@@ -461,47 +461,98 @@ async function performAssembly() {
 
 /**
  * Show form to collect DNA concentrations before displaying reaction mix.
- * For plasmid assembly (Level 1→2), the cassettes are already assembled Level 1 plasmids,
- * so each cassette IS a plasmid. We also list the individual parts within each cassette
- * so the user knows what's in the reaction.
+ * 
+ * The reaction mix includes:
+ * - The acceptor backbone (vector)
+ * - Each individual Level 0 part plasmid from the cassettes (inserts)
+ * 
+ * Each part exists in its own Level 0 plasmid vector. The user enters the
+ * total plasmid size and concentration for each to calculate the volume needed.
  */
 function showConcentrationForm(assemblyResult) {
     const content = document.getElementById('assemblyResultContent');
     const plasmid = assemblyResult.plasmid || assemblyResult;
     const plasmidName = plasmid.name || assemblyResult.name || 'Unnamed';
 
+    // Determine enzyme from backbone level
+    const enzyme = selectedBackbone && selectedBackbone.level === '2' ? 'BpiI' : 'BsaI';
+
     let fragmentRows = '';
 
-    // Backbone (Level 2 acceptor vector)
+    // Backbone (acceptor vector)
     const backboneSize = selectedBackbone ? selectedBackbone.size : 5000;
     fragmentRows += `
+        <div class="conc-section-header">Acceptor Vector</div>
         <div class="conc-row">
-            <span class="conc-name">${escapeHtml(selectedBackbone ? selectedBackbone.name : 'Backbone')} <em>(Level 2 acceptor vector, ${backboneSize} bp)</em></span>
-            <div class="conc-input-wrap">
+            <div class="conc-name-col">
+                <strong>${escapeHtml(selectedBackbone ? selectedBackbone.name : 'Backbone')}</strong>
+                <span class="conc-meta">Acceptor vector · ${backboneSize} bp</span>
+            </div>
+            <div class="conc-input-col">
                 <input type="number" class="conc-input" id="conc-backbone" value="" min="1" step="0.1" placeholder="ng/µL">
                 <span class="conc-unit">ng/µL</span>
             </div>
         </div>`;
 
-    // Each cassette is a Level 1 plasmid containing multiple parts
-    selectedCassettes.forEach((cassette, i) => {
-        const size = cassette.length || (cassette.assembled_sequence ? cassette.assembled_sequence.length : 0);
-        // Show the parts inside this cassette if available
-        let partsInfo = '';
-        if (cassette.parts_metadata && cassette.parts_metadata.length > 0) {
-            const partNames = cassette.parts_metadata.map(p => p.part_name).join(', ');
-            partsInfo = ` — contains: ${partNames}`;
-        } else if (cassette.part_count) {
-            partsInfo = ` — ${cassette.part_count} parts`;
+    // Collect all parts from all cassettes
+    let partIndex = 0;
+    selectedCassettes.forEach((cassette, cassetteIdx) => {
+        fragmentRows += `<div class="conc-section-header">Cassette: ${escapeHtml(cassette.name)}</div>`;
+
+        // Get parts from parts_metadata if available
+        const parts = cassette.parts_metadata || [];
+        
+        if (parts.length > 0) {
+            parts.forEach((part, pi) => {
+                const insertSize = part.sequence_length || part.length || 0;
+                const defaultPlasmidSize = part.size || (insertSize > 0 ? insertSize + 2500 : 3000);
+                const partType = part.part_type || 'Unknown';
+
+                fragmentRows += `
+                    <div class="conc-row">
+                        <div class="conc-name-col">
+                            <strong>${escapeHtml(part.part_name || 'Part ' + (pi+1))}</strong>
+                            <span class="conc-meta">${escapeHtml(formatPartTypeLabel(partType))} · insert: ${insertSize} bp</span>
+                        </div>
+                        <div class="conc-input-col">
+                            <div class="conc-field-pair">
+                                <div>
+                                    <label>Plasmid size (bp)</label>
+                                    <input type="number" class="conc-input" id="conc-part-size-${partIndex}" value="${defaultPlasmidSize}" min="500">
+                                </div>
+                                <div>
+                                    <label>Conc. (ng/µL)</label>
+                                    <input type="number" class="conc-input" id="conc-part-conc-${partIndex}" value="" min="0.1" step="0.1" placeholder="ng/µL">
+                                </div>
+                            </div>
+                        </div>
+                    </div>`;
+                partIndex++;
+            });
+        } else {
+            // Fallback: no parts_metadata, treat cassette as a single fragment
+            const cassetteSize = cassette.length || (cassette.assembled_sequence ? cassette.assembled_sequence.length : 3000);
+            fragmentRows += `
+                <div class="conc-row">
+                    <div class="conc-name-col">
+                        <strong>${escapeHtml(cassette.name)}</strong>
+                        <span class="conc-meta">Level 1 cassette plasmid · ${cassetteSize} bp</span>
+                    </div>
+                    <div class="conc-input-col">
+                        <div class="conc-field-pair">
+                            <div>
+                                <label>Plasmid size (bp)</label>
+                                <input type="number" class="conc-input" id="conc-part-size-${partIndex}" value="${cassetteSize}" min="500">
+                            </div>
+                            <div>
+                                <label>Conc. (ng/µL)</label>
+                                <input type="number" class="conc-input" id="conc-part-conc-${partIndex}" value="" min="0.1" step="0.1" placeholder="ng/µL">
+                            </div>
+                        </div>
+                    </div>
+                </div>`;
+            partIndex++;
         }
-        fragmentRows += `
-            <div class="conc-row">
-                <span class="conc-name">${escapeHtml(cassette.name)} <em>(Level 1 cassette plasmid, ${size} bp${partsInfo})</em></span>
-                <div class="conc-input-wrap">
-                    <input type="number" class="conc-input" id="conc-cassette-${i}" value="" min="1" step="0.1" placeholder="ng/µL">
-                    <span class="conc-unit">ng/µL</span>
-                </div>
-            </div>`;
     });
 
     content.innerHTML = `
@@ -512,8 +563,8 @@ function showConcentrationForm(assemblyResult) {
 
         <h3 style="margin: 1.5rem 0 0.75rem; font-size: 1.15rem;">Enter DNA Concentrations</h3>
         <p style="font-size: 0.9rem; color: var(--text-secondary); margin-bottom: 1rem;">
-            Each cassette is a Level 1 plasmid. Enter the concentration of each plasmid as measured (e.g. NanoDrop).
-            The volume needed is calculated based on the full plasmid size to deliver the correct fmol.
+            Each Level 0 part is in its own plasmid vector. Enter the total plasmid size and your measured concentration.
+            The volume is calculated for the whole plasmid to deliver the correct fmol of insert to the ${enzyme} reaction.
         </p>
 
         <div class="conc-form" id="concForm">
@@ -530,15 +581,27 @@ function showConcentrationForm(assemblyResult) {
         </div>
     `;
 
-    // Store result for use after concentrations are entered
+    // Store data for calculation
     window._lastAssemblyResult = assemblyResult;
+    window._totalPartCount = partIndex;
+}
+
+function formatPartTypeLabel(type) {
+    const map = {
+        'Coding': 'Coding',
+        'NonCodingPromoter': 'Promoter',
+        'NonCodingTerminator': 'Terminator',
+        'NonCodingIntron': 'Intron',
+        'NonCodingOther': 'Other'
+    };
+    return map[type] || type;
 }
 
 /**
  * Generate reaction mix table with user-provided concentrations
  */
 function generateReactionMix(assemblyResult, useDefault) {
-    // Gather concentrations
+    // Gather backbone concentration
     const bbConcInput = document.getElementById('conc-backbone');
     const bbConc = useDefault ? 100 : parseFloat(bbConcInput.value);
 
@@ -548,25 +611,30 @@ function generateReactionMix(assemblyResult, useDefault) {
         return;
     }
 
-    const cassetteConcs = [];
-    for (let i = 0; i < selectedCassettes.length; i++) {
-        const input = document.getElementById(`conc-cassette-${i}`);
-        const val = useDefault ? 100 : parseFloat(input.value);
-        if (!useDefault && (!val || val <= 0)) {
-            alert(`Please enter the concentration for ${selectedCassettes[i].name}.`);
-            input.focus();
+    // Gather part concentrations
+    const totalParts = window._totalPartCount || 0;
+    const partData = [];
+    for (let i = 0; i < totalParts; i++) {
+        const sizeInput = document.getElementById(`conc-part-size-${i}`);
+        const concInput = document.getElementById(`conc-part-conc-${i}`);
+        const size = parseFloat(sizeInput.value);
+        const conc = useDefault ? 100 : parseFloat(concInput.value);
+        
+        if (!useDefault && (!conc || conc <= 0)) {
+            alert('Please enter all part concentrations.');
+            concInput.focus();
             return;
         }
-        cassetteConcs.push(val);
+        partData.push({ size, conc });
     }
 
-    renderAssemblyResult(assemblyResult, bbConc, cassetteConcs);
+    renderAssemblyResult(assemblyResult, bbConc, partData);
 }
 
 /**
- * Render assembly result
+ * Render assembly result with per-part reaction mix
  */
-function renderAssemblyResult(result, bbConc, cassetteConcs) {
+function renderAssemblyResult(result, bbConc, partData) {
     const content = document.getElementById('assemblyResultContent');
     const plasmid = result.plasmid || result;
     const plasmidName = plasmid.name || result.name || 'Unnamed';
@@ -597,25 +665,44 @@ function renderAssemblyResult(result, bbConc, cassetteConcs) {
     const bbVol = backboneNg / bbConc;
     totalDnaVol += bbVol;
     dnaRows += `<tr>
-        <td>${escapeHtml(selectedBackbone ? selectedBackbone.name : 'Backbone')} <em>(vector)</em></td>
+        <td>${escapeHtml(selectedBackbone ? selectedBackbone.name : 'Backbone')} <em>(acceptor vector)</em></td>
         <td>${bbVol.toFixed(2)}</td>
         <td>${backboneNg.toFixed(1)} ng (${vectorFmol} fmol)</td>
         <td>${backboneSize} bp @ ${bbConc} ng/µL</td>
     </tr>`;
 
-    // Cassette rows — each cassette is a Level 1 plasmid
-    selectedCassettes.forEach((cassette, i) => {
-        const cassetteSize = cassette.length || (cassette.assembled_sequence ? cassette.assembled_sequence.length : 3000);
-        const cassetteNg = (insertFmol * cassetteSize * 660) / 1000000;
-        const conc = cassetteConcs[i];
-        const cassetteVol = cassetteNg / conc;
-        totalDnaVol += cassetteVol;
-        dnaRows += `<tr>
-            <td>${escapeHtml(cassette.name)} <em>(L1 cassette plasmid)</em></td>
-            <td>${cassetteVol.toFixed(2)}</td>
-            <td>${cassetteNg.toFixed(1)} ng (${insertFmol} fmol)</td>
-            <td>${cassetteSize} bp @ ${conc} ng/µL</td>
-        </tr>`;
+    // Individual parts from all cassettes
+    let partIdx = 0;
+    selectedCassettes.forEach((cassette) => {
+        const parts = cassette.parts_metadata || [];
+        if (parts.length > 0) {
+            parts.forEach((part) => {
+                const pd = partData[partIdx];
+                const plasmidNg = (insertFmol * pd.size * 660) / 1000000;
+                const vol = plasmidNg / pd.conc;
+                totalDnaVol += vol;
+                const insertSize = part.sequence_length || 0;
+                dnaRows += `<tr>
+                    <td>${escapeHtml(part.part_name || 'Part')} <em>(${formatPartTypeLabel(part.part_type || '')}, insert ${insertSize} bp)</em></td>
+                    <td>${vol.toFixed(2)}</td>
+                    <td>${plasmidNg.toFixed(1)} ng (${insertFmol} fmol)</td>
+                    <td>plasmid ${pd.size} bp @ ${pd.conc} ng/µL</td>
+                </tr>`;
+                partIdx++;
+            });
+        } else {
+            const pd = partData[partIdx];
+            const plasmidNg = (insertFmol * pd.size * 660) / 1000000;
+            const vol = plasmidNg / pd.conc;
+            totalDnaVol += vol;
+            dnaRows += `<tr>
+                <td>${escapeHtml(cassette.name)} <em>(cassette plasmid)</em></td>
+                <td>${vol.toFixed(2)}</td>
+                <td>${plasmidNg.toFixed(1)} ng (${insertFmol} fmol)</td>
+                <td>plasmid ${pd.size} bp @ ${pd.conc} ng/µL</td>
+            </tr>`;
+            partIdx++;
+        }
     });
 
     const waterVol = totalVolume - bufferVol - atpVol - enzymeVol - ligaseVol - totalDnaVol;
