@@ -676,6 +676,89 @@
         </div>
     </section>
 
+    <!-- Reaction Mix Calculator -->
+    <section class="protocol-section">
+        <h2>🧮 Reaction Mix Calculator</h2>
+        <div class="level-description">
+            <p>
+                Calculate the exact volumes needed for your MoClo assembly reaction. Enter your DNA concentrations 
+                and sizes below to get a complete pipetting guide.
+            </p>
+        </div>
+
+        <div class="calculator-container">
+            <div class="calc-settings">
+                <h3>Reaction Parameters</h3>
+                <div class="calc-grid">
+                    <div class="calc-field">
+                        <label>Assembly Level</label>
+                        <select id="calcLevel">
+                            <option value="1">Level 1 (Parts → Cassette, BsaI)</option>
+                            <option value="2">Level 2 (Cassettes → Plasmid, BpiI)</option>
+                        </select>
+                    </div>
+                    <div class="calc-field">
+                        <label>Total Reaction Volume (µL)</label>
+                        <input type="number" id="calcVolume" value="20" min="10" max="50" step="5">
+                    </div>
+                    <div class="calc-field">
+                        <label>Vector/Backbone Amount (fmol)</label>
+                        <input type="number" id="calcVectorFmol" value="40" min="10" max="200" step="10">
+                    </div>
+                    <div class="calc-field">
+                        <label>Insert:Vector Molar Ratio</label>
+                        <select id="calcRatio">
+                            <option value="2">2:1 (standard)</option>
+                            <option value="3">3:1 (difficult assemblies)</option>
+                            <option value="1">1:1 (two-part assembly)</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <div class="calc-dna-inputs">
+                <h3>DNA Fragments</h3>
+                <div class="info-box">
+                    <strong>Formula:</strong> ng = (fmol × bp × 660) / 1,000,000
+                </div>
+                <div id="dnaFragments">
+                    <div class="dna-fragment-row">
+                        <div class="frag-field">
+                            <label>Name</label>
+                            <input type="text" class="frag-name" value="Acceptor Vector" placeholder="Name">
+                        </div>
+                        <div class="frag-field">
+                            <label>Size (bp)</label>
+                            <input type="number" class="frag-size" value="4700" min="100" placeholder="bp">
+                        </div>
+                        <div class="frag-field">
+                            <label>Concentration (ng/µL)</label>
+                            <input type="number" class="frag-conc" value="100" min="1" step="0.1" placeholder="ng/µL">
+                        </div>
+                        <div class="frag-field">
+                            <label>Role</label>
+                            <select class="frag-role">
+                                <option value="vector">Vector/Backbone</option>
+                                <option value="insert">Insert/Part</option>
+                            </select>
+                        </div>
+                        <button class="btn-remove-frag" onclick="removeFragment(this)" title="Remove">✕</button>
+                    </div>
+                </div>
+                <button class="btn btn-secondary" id="addFragmentBtn" onclick="addFragment()">+ Add DNA Fragment</button>
+            </div>
+
+            <div class="calc-actions">
+                <button class="btn btn-primary btn-large" onclick="calculateReaction()">Calculate Reaction Mix</button>
+            </div>
+
+            <div id="calcResults" class="calc-results" style="display: none;">
+                <h3>📋 Reaction Mix</h3>
+                <div id="calcResultsContent"></div>
+            </div>
+        </div>
+    </section>
+
     <!-- Call to Action -->
     <section class="protocol-cta">
         <h2>Ready to Start Building?</h2>
@@ -1455,6 +1538,146 @@
         }
     }
 
+    /* Reaction Mix Calculator */
+    .calculator-container {
+        background-color: white;
+        border-radius: 0.75rem;
+        padding: 2rem;
+        box-shadow: var(--shadow);
+        margin: 1.5rem 0;
+    }
+    .calc-settings h3, .calc-dna-inputs h3, .calc-results h3 {
+        margin-top: 0;
+        margin-bottom: 1rem;
+        font-size: 1.25rem;
+    }
+    .calc-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        gap: 1rem;
+        margin-bottom: 2rem;
+    }
+    .calc-field label {
+        display: block;
+        font-size: 0.85rem;
+        font-weight: 600;
+        margin-bottom: 0.3rem;
+        color: var(--text-secondary);
+    }
+    .calc-field input, .calc-field select {
+        width: 100%;
+        padding: 0.5rem 0.75rem;
+        border: 1px solid var(--border-color);
+        border-radius: 0.375rem;
+        font-size: 0.95rem;
+        box-sizing: border-box;
+    }
+    .calc-field input:focus, .calc-field select:focus {
+        outline: none;
+        border-color: var(--primary-color);
+        box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.2);
+    }
+    .dna-fragment-row {
+        display: flex;
+        align-items: flex-end;
+        gap: 0.75rem;
+        padding: 0.75rem;
+        margin-bottom: 0.5rem;
+        background-color: var(--bg-color);
+        border-radius: 0.5rem;
+        flex-wrap: wrap;
+    }
+    .dna-fragment-row .frag-field {
+        flex: 1;
+        min-width: 140px;
+    }
+    .dna-fragment-row .frag-field label {
+        display: block;
+        font-size: 0.8rem;
+        font-weight: 500;
+        margin-bottom: 0.25rem;
+        color: var(--text-secondary);
+    }
+    .dna-fragment-row .frag-field input,
+    .dna-fragment-row .frag-field select {
+        width: 100%;
+        padding: 0.4rem 0.6rem;
+        border: 1px solid var(--border-color);
+        border-radius: 0.375rem;
+        font-size: 0.9rem;
+        box-sizing: border-box;
+    }
+    .btn-remove-frag {
+        background: #ef4444;
+        color: white;
+        border: none;
+        border-radius: 50%;
+        width: 28px;
+        height: 28px;
+        cursor: pointer;
+        font-size: 0.875rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+        margin-bottom: 2px;
+    }
+    .btn-remove-frag:hover { background: #dc2626; }
+    .calc-actions {
+        margin: 1.5rem 0;
+        text-align: center;
+    }
+    .calc-results {
+        margin-top: 2rem;
+        padding-top: 2rem;
+        border-top: 2px solid var(--border-color);
+    }
+    .result-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 1rem 0;
+        background-color: white;
+        border-radius: 0.5rem;
+        overflow: hidden;
+        box-shadow: var(--shadow);
+    }
+    .result-table th {
+        background-color: var(--primary-color);
+        color: white;
+        padding: 0.75rem 1rem;
+        text-align: left;
+        font-weight: 600;
+    }
+    .result-table td {
+        padding: 0.65rem 1rem;
+        border-bottom: 1px solid var(--border-color);
+    }
+    .result-table tr:last-child td { border-bottom: none; }
+    .result-table tr.total-row {
+        font-weight: 700;
+        background-color: var(--bg-color);
+    }
+    .result-table tr.total-row td {
+        border-top: 2px solid var(--primary-color);
+    }
+    .result-notes {
+        margin-top: 1rem;
+        padding: 1rem;
+        background-color: #dbeafe;
+        border-radius: 0.5rem;
+        font-size: 0.9rem;
+    }
+    .result-notes ul {
+        margin: 0.5rem 0 0 1.5rem;
+        padding: 0;
+    }
+    .result-notes li { margin-bottom: 0.4rem; }
+    @media (max-width: 768px) {
+        .dna-fragment-row { flex-direction: column; align-items: stretch; }
+        .dna-fragment-row .frag-field { min-width: 100%; }
+        .btn-remove-frag { align-self: flex-end; }
+    }
+
     /* Modal Styles */
     .modal {
         display: none;
@@ -1661,6 +1884,142 @@
 
 {% block extra_js %}
 <script>
+    // Reaction Mix Calculator
+    function addFragment() {
+        const container = document.getElementById('dnaFragments');
+        const row = document.createElement('div');
+        row.className = 'dna-fragment-row';
+        row.innerHTML = `
+            <div class="frag-field">
+                <label>Name</label>
+                <input type="text" class="frag-name" value="" placeholder="Part name">
+            </div>
+            <div class="frag-field">
+                <label>Size (bp)</label>
+                <input type="number" class="frag-size" value="" min="100" placeholder="bp">
+            </div>
+            <div class="frag-field">
+                <label>Concentration (ng/µL)</label>
+                <input type="number" class="frag-conc" value="" min="1" step="0.1" placeholder="ng/µL">
+            </div>
+            <div class="frag-field">
+                <label>Role</label>
+                <select class="frag-role">
+                    <option value="insert">Insert/Part</option>
+                    <option value="vector">Vector/Backbone</option>
+                </select>
+            </div>
+            <button class="btn-remove-frag" onclick="removeFragment(this)" title="Remove">&times;</button>
+        `;
+        container.appendChild(row);
+    }
+
+    function removeFragment(btn) {
+        const row = btn.closest('.dna-fragment-row');
+        const container = document.getElementById('dnaFragments');
+        if (container.children.length > 1) {
+            row.remove();
+        }
+    }
+
+    function calculateReaction() {
+        const totalVolume = parseFloat(document.getElementById('calcVolume').value);
+        const vectorFmol = parseFloat(document.getElementById('calcVectorFmol').value);
+        const ratio = parseFloat(document.getElementById('calcRatio').value);
+        const level = document.getElementById('calcLevel').value;
+        const insertFmol = vectorFmol * ratio;
+
+        const enzyme = level === '1' ? 'BsaI' : 'BpiI';
+
+        // Gather DNA fragments
+        const rows = document.querySelectorAll('.dna-fragment-row');
+        const fragments = [];
+        let valid = true;
+
+        rows.forEach(row => {
+            const name = row.querySelector('.frag-name').value || 'Unnamed';
+            const size = parseFloat(row.querySelector('.frag-size').value);
+            const conc = parseFloat(row.querySelector('.frag-conc').value);
+            const role = row.querySelector('.frag-role').value;
+
+            if (!size || !conc) {
+                valid = false;
+                return;
+            }
+
+            const fmol = role === 'vector' ? vectorFmol : insertFmol;
+            // ng = (fmol * bp * 660) / 1,000,000
+            const ng_needed = (fmol * size * 660) / 1000000;
+            const volume = ng_needed / conc;
+
+            fragments.push({ name, size, conc, role, fmol, ng_needed, volume });
+        });
+
+        if (!valid) {
+            alert('Please fill in size and concentration for all DNA fragments.');
+            return;
+        }
+
+        // Fixed reagent volumes (for 20 µL scaled)
+        const scale = totalVolume / 20;
+        const bufferVol = 2 * scale;
+        const atpVol = 0.2 * scale;
+        const enzymeVol = 1 * scale;
+        const ligaseVol = 0.4 * scale;
+
+        // Calculate DNA total volume
+        const dnaTotal = fragments.reduce((sum, f) => sum + f.volume, 0);
+        const fixedTotal = bufferVol + atpVol + enzymeVol + ligaseVol;
+        const waterVol = totalVolume - fixedTotal - dnaTotal;
+
+        // Build results
+        let html = '<table class="result-table"><thead><tr>';
+        html += '<th>Component</th><th>Volume (µL)</th><th>Amount</th><th>Notes</th>';
+        html += '</tr></thead><tbody>';
+
+        // Buffer
+        html += `<tr><td>10x Buffer G</td><td>${bufferVol.toFixed(1)}</td><td>1x final</td><td>Thermo Fisher</td></tr>`;
+        // ATP
+        html += `<tr><td>100 mM ATP</td><td>${atpVol.toFixed(2)}</td><td>1 mM final</td><td>Thermo Fisher</td></tr>`;
+
+        // DNA fragments
+        fragments.forEach(f => {
+            const roleLabel = f.role === 'vector' ? '(Vector)' : '(Insert)';
+            html += `<tr><td>${f.name} ${roleLabel}</td><td>${f.volume.toFixed(2)}</td><td>${f.ng_needed.toFixed(1)} ng (${f.fmol} fmol)</td><td>${f.size} bp @ ${f.conc} ng/µL</td></tr>`;
+        });
+
+        // Enzyme
+        html += `<tr><td>${enzyme}</td><td>${enzymeVol.toFixed(1)}</td><td>${(10 * scale).toFixed(0)} units</td><td>Type IIS restriction enzyme</td></tr>`;
+        // Ligase
+        html += `<tr><td>T4 DNA Ligase</td><td>${ligaseVol.toFixed(2)}</td><td>${(2 * scale).toFixed(0)} units</td><td>Thermo Fisher</td></tr>`;
+        // Water
+        html += `<tr><td>MQ Water</td><td>${waterVol.toFixed(2)}</td><td>—</td><td>Molecular grade</td></tr>`;
+        // Total
+        html += `<tr class="total-row"><td><strong>Total</strong></td><td><strong>${totalVolume.toFixed(1)}</strong></td><td></td><td></td></tr>`;
+        html += '</tbody></table>';
+
+        // Warnings
+        if (waterVol < 0) {
+            html += '<div class="info-box warning"><strong>Warning:</strong> DNA volumes exceed reaction volume! Reduce DNA amounts or increase total volume.</div>';
+        }
+
+        // Notes
+        html += '<div class="result-notes">';
+        html += '<strong>Notes:</strong>';
+        html += '<ul>';
+        html += `<li>Enzyme: <strong>${enzyme}</strong> (${level === '1' ? 'Level 0 → Level 1' : 'Level 1 → Level 2'} assembly)</li>`;
+        html += `<li>Molar ratio: ${ratio}:1 insert:vector (${insertFmol} fmol insert : ${vectorFmol} fmol vector)</li>`;
+        html += '<li>Set up reaction on ice, then run thermal cycling program (60 cycles of 37°C/22°C)</li>';
+        html += '<li>Transform 5–10 µL into competent cells after cycling</li>';
+        html += '</ul></div>';
+
+        document.getElementById('calcResults').style.display = 'block';
+        document.getElementById('calcResultsContent').innerHTML = html;
+
+        // Scroll to results
+        document.getElementById('calcResults').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
     // Modal functionality
     document.addEventListener('DOMContentLoaded', function() {
         const modal = document.getElementById('toolInfoModal');
