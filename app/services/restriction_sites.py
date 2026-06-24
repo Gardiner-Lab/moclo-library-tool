@@ -261,7 +261,13 @@ def _create_slot_from_sites(
         site_3prime = site1
     
     # Calculate insertion region
-    rec_len = len(site_5prime['recognition_site'])
+    rec_site = site_5prime.get('recognition_site')
+    if rec_site:
+        rec_len = len(rec_site)
+    else:
+        # Fall back to enzyme recognition length from MOCLO_ENZYMES
+        enzyme = site_5prime.get('enzyme', 'BsaI')
+        rec_len = len(MOCLO_ENZYMES.get(enzyme, {}).get('recognition', 'GGTCTC'))
     insertion_start = site_5prime['position'] + rec_len
     insertion_end = site_3prime['position']
     
