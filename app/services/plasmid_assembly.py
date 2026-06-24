@@ -154,6 +154,9 @@ def assemble_plasmid(
                 'orientation': orientation
             })
     
+    # Determine the MoClo level based on the backbone
+    moclo_level = _determine_moclo_level(backbone)
+    
     metadata = {
         'backbone_name': backbone.name,
         'cassette_names': [c.name for c in cassettes],
@@ -200,9 +203,6 @@ def assemble_plasmid(
     )
     
     # Automatically create a part from this plasmid for hierarchical assembly
-    # Determine the MoClo level based on the backbone's restriction enzyme
-    moclo_level = _determine_moclo_level(backbone)
-    
     # Create part from the assembled plasmid
     try:
         from app.models.part import Part
