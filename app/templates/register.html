@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+
+{% block title %}Register - MoClo Library Tool{% endblock %}
+
+{% block content %}
+<div class="auth-container">
+    <div class="auth-card">
+        <h1>Register</h1>
+        <p class="auth-subtitle">Create an account to start building MoClo cassettes</p>
+        
+        <form id="registerForm" class="auth-form" novalidate>
+            <div class="form-group">
+                <label for="username">Username</label>
+                <input 
+                    type="text" 
+                    id="username" 
+                    name="username" 
+                    class="form-control" 
+                    required
+                    minlength="3"
+                    maxlength="50"
+                    autocomplete="username"
+                >
+                <div class="form-help">Username must be 3-50 characters</div>
+                <div class="error-message" id="usernameError"></div>
+            </div>
+
+            <div class="form-group">
+                <label for="password">Password</label>
+                <input 
+                    type="password" 
+                    id="password" 
+                    name="password" 
+                    class="form-control" 
+                    required
+                    minlength="8"
+                    autocomplete="new-password"
+                >
+                <div class="form-help">Password must be at least 8 characters</div>
+                <div class="error-message" id="passwordError"></div>
+            </div>
+
+            <div class="form-group">
+                <label for="confirmPassword">Confirm Password</label>
+                <input 
+                    type="password" 
+                    id="confirmPassword" 
+                    name="confirmPassword" 
+                    class="form-control" 
+                    required
+                    minlength="8"
+                    autocomplete="new-password"
+                >
+                <div class="error-message" id="confirmPasswordError"></div>
+            </div>
+
+            <div class="error-message" id="formError"></div>
+
+            <button type="submit" class="btn btn-primary btn-block">Register</button>
+        </form>
+
+        <div class="auth-footer">
+            <p>Already have an account? <a href="/login">Login here</a></p>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/auth.js') }}"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        initRegisterForm();
+    });
+</script>
+{% endblock %}

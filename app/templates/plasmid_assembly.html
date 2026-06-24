@@ -1,0 +1,321 @@
+{% extends "base.html" %}
+
+{% block title %}Plasmid Assembly - MoClo Library Tool{% endblock %}
+
+{% block extra_css %}
+<style>
+    .assembly-container {
+        max-width: 1400px;
+        margin: 0 auto;
+    }
+
+    .assembly-wizard {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 2rem;
+        margin-bottom: 2rem;
+    }
+
+    .assembly-panel {
+        background-color: var(--card-bg);
+        border-radius: 0.5rem;
+        box-shadow: var(--shadow);
+        padding: 1.5rem;
+    }
+
+    .assembly-panel h2 {
+        font-size: 1.5rem;
+        font-weight: 600;
+        margin-bottom: 1rem;
+        color: var(--text-color);
+    }
+
+    .selection-list {
+        max-height: 400px;
+        overflow-y: auto;
+        border: 1px solid var(--border-color);
+        border-radius: 0.375rem;
+    }
+
+    .selection-item {
+        padding: 1rem;
+        border-bottom: 1px solid var(--border-color);
+        cursor: pointer;
+        transition: background-color 0.2s;
+    }
+
+    .selection-item:last-child {
+        border-bottom: none;
+    }
+
+    .selection-item:hover {
+        background-color: var(--bg-color);
+    }
+
+    .selection-item.selected {
+        background-color: #dbeafe;
+        border-left: 4px solid var(--primary-color);
+    }
+
+    .item-name {
+        font-weight: 500;
+        margin-bottom: 0.25rem;
+    }
+
+    .item-meta {
+        font-size: 0.875rem;
+        color: var(--text-secondary);
+        display: flex;
+        gap: 1rem;
+        flex-wrap: wrap;
+    }
+
+    .assembly-preview {
+        grid-column: 1 / -1;
+        background-color: var(--card-bg);
+        border-radius: 0.5rem;
+        box-shadow: var(--shadow);
+        padding: 1.5rem;
+    }
+
+    .preview-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1.5rem;
+    }
+
+    .preview-stats {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        gap: 1rem;
+        margin-bottom: 1.5rem;
+    }
+
+    .stat-card {
+        background-color: var(--bg-color);
+        padding: 1rem;
+        border-radius: 0.375rem;
+        text-align: center;
+    }
+
+    .stat-label {
+        font-size: 0.875rem;
+        color: var(--text-secondary);
+        margin-bottom: 0.25rem;
+    }
+
+    .stat-value {
+        font-size: 1.5rem;
+        font-weight: 600;
+        color: var(--text-color);
+    }
+
+    .cassette-slots {
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+        margin-bottom: 1.5rem;
+    }
+
+    .slot-item {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        padding: 1rem;
+        background-color: var(--bg-color);
+        border-radius: 0.375rem;
+        border: 2px dashed var(--border-color);
+    }
+
+    .slot-item.filled {
+        border-style: solid;
+        border-color: var(--success-color);
+        background-color: #d1fae5;
+    }
+
+    .slot-number {
+        font-weight: 600;
+        font-size: 1.25rem;
+        color: var(--text-secondary);
+        min-width: 2rem;
+    }
+
+    .slot-info {
+        flex: 1;
+    }
+
+    .slot-cassette-name {
+        font-weight: 500;
+        margin-bottom: 0.25rem;
+    }
+
+    .slot-overhangs {
+        font-size: 0.875rem;
+        color: var(--text-secondary);
+        font-family: 'Courier New', monospace;
+    }
+
+    .slot-orientation {
+        display: flex;
+        gap: 0.5rem;
+        align-items: center;
+        margin-top: 0.5rem;
+    }
+
+    .orientation-btn {
+        padding: 0.25rem 0.75rem;
+        font-size: 0.875rem;
+        border: 1px solid var(--border-color);
+        background-color: white;
+        border-radius: 0.25rem;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+
+    .orientation-btn:hover {
+        background-color: var(--bg-color);
+    }
+
+    .orientation-btn.active {
+        background-color: var(--primary-color);
+        color: white;
+        border-color: var(--primary-color);
+    }
+
+    .orientation-btn.disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+
+    .orientation-label {
+        font-size: 0.875rem;
+        color: var(--text-secondary);
+        font-weight: 500;
+    }
+
+    .slot-actions button {
+        padding: 0.375rem 0.75rem;
+        font-size: 0.875rem;
+    }
+
+    .compatibility-warning {
+        background-color: #fef3c7;
+        border: 1px solid var(--warning-color);
+        color: #92400e;
+        padding: 1rem;
+        border-radius: 0.375rem;
+        margin-bottom: 1rem;
+    }
+
+    .compatibility-error {
+        background-color: #fee2e2;
+        border: 1px solid var(--error-color);
+        color: #991b1b;
+        padding: 1rem;
+        border-radius: 0.375rem;
+        margin-bottom: 1rem;
+    }
+
+    .assembly-actions {
+        display: flex;
+        gap: 1rem;
+        justify-content: flex-end;
+    }
+
+    @media (max-width: 1024px) {
+        .assembly-wizard {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="assembly-container">
+    <div class="page-header">
+        <h1>Plasmid Assembly</h1>
+        <p class="page-subtitle">Assemble cassettes into MoClo backbones</p>
+    </div>
+
+    <div class="assembly-wizard">
+        <!-- Backbone Selection -->
+        <div class="assembly-panel">
+            <h2>1. Select Backbone</h2>
+            <div id="backboneList" class="selection-list">
+                <div class="loading-spinner">Loading backbones...</div>
+            </div>
+        </div>
+
+        <!-- Cassette Selection -->
+        <div class="assembly-panel">
+            <h2>2. Select Cassettes</h2>
+            <div id="cassetteList" class="selection-list">
+                <div class="text-muted" style="padding: 1rem;">Select a backbone first</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Assembly Preview -->
+    <div class="assembly-preview" id="assemblyPreview" style="display: none;">
+        <div class="preview-header">
+            <h2>Assembly Preview</h2>
+            <button id="simulateBtn" class="btn btn-secondary" onclick="simulateAssembly()">
+                🔬 Simulate Assembly
+            </button>
+        </div>
+
+        <div id="previewContent">
+            <div class="preview-stats">
+                <div class="stat-card">
+                    <div class="stat-label">Backbone</div>
+                    <div class="stat-value" id="previewBackboneName">-</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Cassette Slots</div>
+                    <div class="stat-value" id="previewSlotCount">-</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Expected Size</div>
+                    <div class="stat-value" id="previewSize">-</div>
+                </div>
+            </div>
+
+            <div id="compatibilityMessages"></div>
+
+            <h3 style="margin-bottom: 1rem;">Cassette Assignments</h3>
+            <div id="cassetteSlots" class="cassette-slots"></div>
+
+            <div class="assembly-actions">
+                <button class="btn btn-secondary" onclick="resetAssembly()">Reset</button>
+                <button id="assembleBtn" class="btn btn-primary" onclick="performAssembly()" disabled>
+                    🧬 Assemble Plasmid
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Assembly Result Modal -->
+<div id="assemblyResultModal" class="modal" style="display: none;">
+    <div class="modal-overlay" onclick="closeAssemblyResult()"></div>
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2>Assembly Complete</h2>
+            <button class="modal-close" onclick="closeAssemblyResult()">&times;</button>
+        </div>
+        <div class="modal-body" id="assemblyResultContent">
+            <div class="loading-spinner">Assembling...</div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/plasmid_assembly.js') }}"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        initPlasmidAssembly();
+    });
+</script>
+{% endblock %}

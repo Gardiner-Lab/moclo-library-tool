@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+
+{% block title %}Login - MoClo Library Tool{% endblock %}
+
+{% block content %}
+<div class="auth-container">
+    <div class="auth-card">
+        <h1>Login</h1>
+        <p class="auth-subtitle">Sign in to access your MoClo workspace</p>
+        
+        <form id="loginForm" class="auth-form" novalidate>
+            <div class="form-group">
+                <label for="username">Username</label>
+                <input 
+                    type="text" 
+                    id="username" 
+                    name="username" 
+                    class="form-control" 
+                    required
+                    autocomplete="username"
+                >
+                <div class="error-message" id="usernameError"></div>
+            </div>
+
+            <div class="form-group">
+                <label for="password">Password</label>
+                <input 
+                    type="password" 
+                    id="password" 
+                    name="password" 
+                    class="form-control" 
+                    required
+                    autocomplete="current-password"
+                >
+                <div class="error-message" id="passwordError"></div>
+            </div>
+
+            <div class="error-message" id="formError"></div>
+
+            <button type="submit" class="btn btn-primary btn-block">Login</button>
+        </form>
+
+        <div class="auth-footer">
+            <p>Don't have an account? <a href="/register">Register here</a></p>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/auth.js') }}"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        initLoginForm();
+    });
+</script>
+{% endblock %}

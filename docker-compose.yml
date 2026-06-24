@@ -1,0 +1,17 @@
+services:
+  web:
+    build: .
+    container_name: moclo-library-tool
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./data:/data
+      - ./app:/app/app
+    environment:
+      - FLASK_APP=app.main
+      - FLASK_ENV=development
+      - DATABASE_PATH=/data/moclo.db
+      - PARTS_DATABASE_PATH=/data/parts.db
+      - BACKUP_DIR=/data/backups
+    restart: unless-stopped
+    command: ["python", "-m", "flask", "run", "--host=0.0.0.0", "--port=5000", "--reload"]

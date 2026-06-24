@@ -1,0 +1,342 @@
+{% extends "base.html" %}
+
+{% block title %}Upload Part - MoClo Library Tool{% endblock %}
+
+{% block content %}
+<div class="upload-container">
+    <div class="page-header">
+        <h1>Upload New Part</h1>
+        <p class="page-subtitle">Add a new genetic part to the MoClo library</p>
+    </div>
+
+    <!-- Upload Method Toggle -->
+    <div class="upload-method-toggle">
+        <button type="button" class="toggle-btn active" id="manualToggle">Manual Entry</button>
+        <button type="button" class="toggle-btn" id="genbankToggle">GenBank File</button>
+    </div>
+
+    <!-- Manual Upload Form -->
+    <div class="upload-card" id="manualUploadCard">
+        <form id="uploadForm" class="upload-form">
+            <!-- Part Name -->
+            <div class="form-group">
+                <label for="partName">Part Name <span class="required">*</span></label>
+                <input 
+                    type="text" 
+                    id="partName" 
+                    name="name"
+                    class="form-control" 
+                    placeholder="Enter part name"
+                    required
+                >
+                <div id="partNameError" class="error-message"></div>
+            </div>
+
+            <!-- Part Type -->
+            <div class="form-group">
+                <label for="partType">Part Type <span class="required">*</span></label>
+                <select 
+                    id="partType" 
+                    name="part_type"
+                    class="form-control" 
+                    required
+                >
+                    <option value="">Select part type</option>
+                    <option value="Coding">Coding</option>
+                    <option value="NonCodingPromoter">Non-Coding Promoter</option>
+                    <option value="NonCodingTerminator">Non-Coding Terminator</option>
+                    <option value="NonCodingIntron">Non-Coding Intron</option>
+                    <option value="NonCodingOther">Non-Coding Other</option>
+                </select>
+                <div id="partTypeError" class="error-message"></div>
+            </div>
+
+            <!-- DNA Sequence -->
+            <div class="form-group">
+                <label for="sequence">DNA Sequence <span class="required">*</span></label>
+                <textarea 
+                    id="sequence" 
+                    name="sequence"
+                    class="form-control sequence-input" 
+                    rows="6"
+                    placeholder="Enter DNA sequence (A, T, C, G only)"
+                    required
+                ></textarea>
+                <div class="form-help">
+                    Enter the complete DNA sequence including overhangs. Only A, T, C, G characters are allowed.
+                    Minimum length: 8 bases.
+                </div>
+                <div id="sequenceError" class="error-message"></div>
+                <div id="sequenceInfo" class="sequence-info"></div>
+            </div>
+
+            <!-- 5' Overhang -->
+            <div class="form-group">
+                <label for="overhang5prime">5' Overhang <span class="required">*</span></label>
+                <input 
+                    type="text" 
+                    id="overhang5prime" 
+                    name="overhang_5prime"
+                    class="form-control overhang-input" 
+                    placeholder="ATCG"
+                    maxlength="4"
+                    pattern="[ATCGatcg]{4}"
+                    required
+                >
+                <div class="form-help">
+                    Exactly 4 DNA bases (A, T, C, G)
+                </div>
+                <div id="overhang5primeError" class="error-message"></div>
+            </div>
+
+            <!-- 3' Overhang -->
+            <div class="form-group">
+                <label for="overhang3prime">3' Overhang <span class="required">*</span></label>
+                <input 
+                    type="text" 
+                    id="overhang3prime" 
+                    name="overhang_3prime"
+                    class="form-control overhang-input" 
+                    placeholder="ATCG"
+                    maxlength="4"
+                    pattern="[ATCGatcg]{4}"
+                    required
+                >
+                <div class="form-help">
+                    Exactly 4 DNA bases (A, T, C, G)
+                </div>
+                <div id="overhang3primeError" class="error-message"></div>
+            </div>
+
+            <!-- Lab Source -->
+            <div class="form-group">
+                <label for="labSource">Lab Source <span class="required">*</span></label>
+                <input 
+                    type="text" 
+                    id="labSource" 
+                    name="lab_source"
+                    class="form-control" 
+                    placeholder="Enter lab name or source"
+                    required
+                >
+                <div class="form-help">
+                    The laboratory or organization that created this part
+                </div>
+                <div id="labSourceError" class="error-message"></div>
+            </div>
+
+            <!-- Description (Optional) -->
+            <div class="form-group">
+                <label for="description">Description <span class="optional">(optional)</span></label>
+                <textarea 
+                    id="description" 
+                    name="description"
+                    class="form-control" 
+                    rows="3"
+                    placeholder="Enter additional information about this part"
+                ></textarea>
+                <div id="descriptionError" class="error-message"></div>
+            </div>
+
+            <!-- Form Actions -->
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary btn-block" id="submitButton">
+                    Upload Part
+                </button>
+                <button type="button" class="btn btn-secondary btn-block" id="cancelButton">
+                    Cancel
+                </button>
+            </div>
+
+            <!-- Form-level error message -->
+            <div id="formError" class="error-message form-error"></div>
+        </form>
+    </div>
+
+    <!-- GenBank Upload Form -->
+    <div class="upload-card" id="genbankUploadCard" style="display: none;">
+        <div class="info-banner">
+            <strong>📄 GenBank File Upload</strong>
+            <p>Upload a GenBank file (.gb or .genbank) containing your MoClo part. The tool will automatically:</p>
+            <ul>
+                <li>Detect BsaI restriction sites (GGTCTC/GAGACC)</li>
+                <li>Extract the part sequence between the sites</li>
+                <li>Identify the 4bp overhangs</li>
+                <li>Parse metadata and annotations</li>
+                <li>Suggest the part type based on features</li>
+            </ul>
+        </div>
+
+        <form id="genbankUploadForm" class="upload-form" enctype="multipart/form-data">
+            <!-- File Upload -->
+            <div class="form-group">
+                <label for="genbankFile">GenBank File <span class="required">*</span></label>
+                <div class="file-upload-area" id="fileUploadArea">
+                    <input 
+                        type="file" 
+                        id="genbankFile" 
+                        name="file"
+                        accept=".gb,.genbank"
+                        required
+                        style="display: none;"
+                    >
+                    <div class="file-upload-prompt">
+                        <div class="upload-icon">📁</div>
+                        <p>Click to select or drag and drop a GenBank file</p>
+                        <p class="file-types">.gb or .genbank files only</p>
+                    </div>
+                    <div class="file-selected" id="fileSelected" style="display: none;">
+                        <div class="file-icon">✓</div>
+                        <p id="fileName"></p>
+                        <button type="button" class="btn-remove-file" id="removeFileBtn">Remove</button>
+                    </div>
+                </div>
+                <div id="genbankFileError" class="error-message"></div>
+            </div>
+
+            <!-- Lab Source (Optional Override) -->
+            <div class="form-group">
+                <label for="genbankLabSource">Lab Source <span class="optional">(optional)</span></label>
+                <input 
+                    type="text" 
+                    id="genbankLabSource" 
+                    name="lab_source"
+                    class="form-control" 
+                    placeholder="Override auto-detected source"
+                >
+                <div class="form-help">
+                    Leave blank to use organism from GenBank file
+                </div>
+            </div>
+
+            <!-- Part Type Override -->
+            <div class="form-group">
+                <label for="genbankPartType">Part Type <span class="optional">(optional)</span></label>
+                <select 
+                    id="genbankPartType" 
+                    name="part_type"
+                    class="form-control"
+                >
+                    <option value="">Auto-detect from file</option>
+                    <option value="Coding">Coding</option>
+                    <option value="NonCodingPromoter">Non-Coding Promoter</option>
+                    <option value="NonCodingTerminator">Non-Coding Terminator</option>
+                    <option value="NonCodingIntron">Non-Coding Intron</option>
+                    <option value="NonCodingOther">Non-Coding Other</option>
+                </select>
+                <div class="form-help">
+                    Leave as "Auto-detect" to use type detected from file annotations
+                </div>
+            </div>
+
+            <!-- Form Actions -->
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary btn-block" id="genbankSubmitButton">
+                    Upload GenBank File
+                </button>
+                <button type="button" class="btn btn-secondary btn-block" id="genbankCancelButton">
+                    Cancel
+                </button>
+            </div>
+
+            <!-- Form-level error message -->
+            <div id="genbankFormError" class="error-message form-error"></div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .upload-container {
+        max-width: 800px;
+        margin: 0 auto;
+    }
+
+    .upload-card {
+        background-color: var(--card-bg);
+        border-radius: 0.5rem;
+        box-shadow: var(--shadow-lg);
+        padding: 2rem;
+    }
+
+    .upload-form {
+        max-width: 100%;
+    }
+
+    .required {
+        color: var(--error-color);
+    }
+
+    .optional {
+        color: var(--text-secondary);
+        font-weight: normal;
+        font-size: 0.875rem;
+    }
+
+    .sequence-input {
+        font-family: 'Courier New', monospace;
+        font-size: 0.875rem;
+        resize: vertical;
+    }
+
+    .overhang-input {
+        font-family: 'Courier New', monospace;
+        font-size: 1rem;
+        text-transform: uppercase;
+    }
+
+    .sequence-info {
+        margin-top: 0.5rem;
+        padding: 0.5rem;
+        background-color: var(--bg-color);
+        border-radius: 0.25rem;
+        font-size: 0.875rem;
+        color: var(--text-secondary);
+        display: none;
+    }
+
+    .sequence-info.show {
+        display: block;
+    }
+
+    .form-actions {
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+        margin-top: 2rem;
+    }
+
+    .form-error {
+        margin-top: 1rem;
+        padding: 1rem;
+        background-color: #fee2e2;
+        border: 1px solid var(--error-color);
+        border-radius: 0.375rem;
+        display: none;
+    }
+
+    .form-error.show {
+        display: block;
+    }
+
+    @media (min-width: 640px) {
+        .form-actions {
+            flex-direction: row;
+        }
+
+        .form-actions .btn {
+            flex: 1;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/upload.js') }}"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        initUploadForm();
+    });
+</script>
+{% endblock %}

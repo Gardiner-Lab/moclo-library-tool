@@ -1,0 +1,107 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 600">
+  <!-- Title -->
+  <text x="450" y="30" font-size="24" font-weight="bold" text-anchor="middle" fill="#1f2937">Level 2: Multi-Gene Assembly</text>
+  
+  <!-- Level 1 TUs (Input) -->
+  <g transform="translate(100, 60)">
+    <text x="350" y="0" font-size="14" font-weight="bold" fill="#6b7280">Level 1 Transcriptional Cassettes (Input)</text>
+    
+    <!-- TU 1 - Position A -->
+    <g transform="translate(0, 20)">
+      <rect x="0" y="0" width="200" height="60" fill="#f59e0b" rx="5"/>
+      <text x="100" y="25" font-size="14" font-weight="bold" text-anchor="middle" fill="white">TC 1: GFP Expression</text>
+      <text x="100" y="45" font-size="11" text-anchor="middle" fill="white">Position A (GGAG→TACT)</text>
+      <!-- BpiI sites -->
+      <rect x="-8" y="20" width="6" height="20" fill="#dc2626"/>
+      <rect x="202" y="20" width="6" height="20" fill="#dc2626"/>
+    </g>
+    
+    <!-- Plus -->
+    <text x="230" y="65" font-size="20" font-weight="bold" fill="#6b7280">+</text>
+    
+    <!-- TU 2 - Position B -->
+    <g transform="translate(260, 20)">
+      <rect x="0" y="0" width="200" height="60" fill="#f59e0b" rx="5"/>
+      <text x="100" y="25" font-size="14" font-weight="bold" text-anchor="middle" fill="white">TC 2: RFP Expression</text>
+      <text x="100" y="45" font-size="11" text-anchor="middle" fill="white">Position B (TACT→AATG)</text>
+      <!-- BpiI sites -->
+      <rect x="-8" y="20" width="6" height="20" fill="#dc2626"/>
+      <rect x="202" y="20" width="6" height="20" fill="#dc2626"/>
+    </g>
+    
+    <!-- Plus -->
+    <text x="490" y="65" font-size="20" font-weight="bold" fill="#6b7280">+</text>
+    
+    <!-- TU 3 - Position C -->
+    <g transform="translate(520, 20)">
+      <rect x="0" y="0" width="200" height="60" fill="#f59e0b" rx="5"/>
+      <text x="100" y="25" font-size="14" font-weight="bold" text-anchor="middle" fill="white">TC 3: Cas9 Expression</text>
+      <text x="100" y="45" font-size="11" text-anchor="middle" fill="white">Position C (AATG→AGGT)</text>
+      <!-- BpiI sites -->
+      <rect x="-8" y="20" width="6" height="20" fill="#dc2626"/>
+      <rect x="202" y="20" width="6" height="20" fill="#dc2626"/>
+    </g>
+  </g>
+  
+  <!-- Arrow down -->
+  <g transform="translate(450, 160)">
+    <line x1="0" y1="0" x2="0" y2="40" stroke="#6b7280" stroke-width="3"/>
+    <polygon points="0,40 -8,30 8,30" fill="#6b7280"/>
+    <text x="20" y="25" font-size="12" fill="#6b7280">BpiI digestion</text>
+    <text x="20" y="40" font-size="12" fill="#6b7280">+ ligation</text>
+  </g>
+  
+  <!-- Assembly Process -->
+  <g transform="translate(50, 220)">
+    <text x="400" y="0" font-size="14" font-weight="bold" fill="#6b7280">Assembly in Level 2 Vector</text>
+    
+    <!-- Level 2 Vector backbone (larger) -->
+    <rect x="0" y="20" width="800" height="120" fill="#e5e7eb" rx="5" stroke="#9ca3af" stroke-width="3"/>
+    
+    <!-- Assembled TUs inside -->
+    <g transform="translate(50, 40)">
+      <!-- TU 1 -->
+      <rect x="0" y="0" width="200" height="80" fill="#f59e0b" rx="3"/>
+      <text x="100" y="30" font-size="13" font-weight="bold" text-anchor="middle" fill="white">TC 1</text>
+      <text x="100" y="50" font-size="10" text-anchor="middle" fill="white">GFP Expression</text>
+      <text x="100" y="65" font-size="9" text-anchor="middle" fill="white">Promoter-UTR-GFP-Term</text>
+      
+      <!-- TU 2 -->
+      <rect x="220" y="0" width="200" height="80" fill="#f59e0b" rx="3"/>
+      <text x="320" y="30" font-size="13" font-weight="bold" text-anchor="middle" fill="white">TC 2</text>
+      <text x="320" y="50" font-size="10" text-anchor="middle" fill="white">RFP Expression</text>
+      <text x="320" y="65" font-size="9" text-anchor="middle" fill="white">Promoter-UTR-RFP-Term</text>
+      
+      <!-- TU 3 -->
+      <rect x="440" y="0" width="200" height="80" fill="#f59e0b" rx="3"/>
+      <text x="540" y="30" font-size="13" font-weight="bold" text-anchor="middle" fill="white">TC 3</text>
+      <text x="540" y="50" font-size="10" text-anchor="middle" fill="white">Cas9 Expression</text>
+      <text x="540" y="65" font-size="9" text-anchor="middle" fill="white">Promoter-UTR-Cas9-Term</text>
+    </g>
+    
+    <!-- Selection marker -->
+    <rect x="680" y="50" width="80" height="50" fill="#10b981" rx="3"/>
+    <text x="720" y="75" font-size="10" font-weight="bold" text-anchor="middle" fill="white">Selection</text>
+    <text x="720" y="90" font-size="9" text-anchor="middle" fill="white">Marker</text>
+    
+    <!-- Vector label -->
+    <text x="400" y="165" font-size="11" text-anchor="middle" fill="#6b7280">Level 2 Destination Vector</text>
+  </g>
+  
+  <!-- Arrow down -->
+  <g transform="translate(450, 420)">
+    <line x1="0" y1="0" x2="0" y2="30" stroke="#6b7280" stroke-width="3"/>
+    <polygon points="0,30 -8,20 8,20" fill="#6b7280"/>
+  </g>
+  
+  <!-- Result -->
+  <g transform="translate(150, 470)">
+    <rect x="0" y="0" width="600" height="80" fill="#667eea" rx="5"/>
+    <text x="300" y="30" font-size="18" font-weight="bold" text-anchor="middle" fill="white">Complete Multi-Gene Plasmid</text>
+    <text x="300" y="50" font-size="13" text-anchor="middle" fill="white">Three independent transcriptional cassettes in defined order</text>
+    <text x="300" y="68" font-size="11" text-anchor="middle" fill="white">Ready for transformation and functional testing</text>
+  </g>
+  
+  <!-- Note -->
+  <text x="450" y="575" font-size="11" text-anchor="middle" fill="#6b7280" font-style="italic">Can accommodate up to 7 TCs (positions A-G) in a single Level 2 construct</text>
+</svg>

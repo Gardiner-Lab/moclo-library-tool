@@ -1,0 +1,103 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual Environment
+venv/
+ENV/
+env/
+
+# Flask
+instance/
+.webassets-cache
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+.hypothesis/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# Data directory
+data/
+
+# Environment variables
+.env
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Development notes and task summaries
+*_SUMMARY.md
+*_COMPLETE.md
+*_FIX.md
+*_FEATURE.md
+*_SPEC.md
+*_TASKS.md
+*_PROGRESS.md
+*_GUIDE.md
+TASK_*.md
+PHASE_*.md
+PROJECT_STATUS.md
+START_HERE*.md
+QUICK_*.txt
+BUTTON_*.txt
+CSS_DEBUG.md
+INITIALIZATION.md
+
+# Dev/test helper scripts (root level)
+test_*.py
+verify_*.py
+diagnose_*.py
+check_*.py
+fix_*.py
+cleanup_*.py
+create_*.py
+import_*.py
+seed_*.py
+set_*.py
+remove_*.py
+manual_*.py
+restart_*.sh
+start_app.sh
+setup.sh
+setup.bat
+
+# Aider
+.aider*
+
+# Kiro specs
+.kiro/

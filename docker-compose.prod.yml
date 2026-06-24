@@ -1,0 +1,17 @@
+services:
+  web:
+    image: ghcr.io/gardiner-lab/moclo-library-tool:latest
+    container_name: moclo-library-tool
+    ports:
+      - "5000:5000"
+    volumes:
+      - moclo-data:/data
+    environment:
+      - FLASK_ENV=production
+      - DATABASE_PATH=/data/moclo.db
+      - PARTS_DATABASE_PATH=/data/parts.db
+      - BACKUP_DIR=/data/backups
+    restart: unless-stopped
+
+volumes:
+  moclo-data:

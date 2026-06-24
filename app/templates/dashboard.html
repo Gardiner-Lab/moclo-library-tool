@@ -1,0 +1,300 @@
+{% extends "base.html" %}
+{% block title %}My Dashboard — MoClo Library Tool{% endblock %}
+
+{% block extra_css %}
+<style>
+  .dash-tabs { display: flex; gap: 0.5rem; margin-bottom: 1.5rem; flex-wrap: wrap; }
+  .dash-tab {
+    padding: 0.5rem 1.25rem; border: 1px solid var(--border-color);
+    border-radius: 6px; cursor: pointer; background: var(--bg-color);
+    font-size: 0.9rem; transition: background 0.15s;
+  }
+  .dash-tab.active { background: var(--primary-color); color: #fff; border-color: var(--primary-color); }
+  .dash-section { display: none; }
+  .dash-section.active { display: block; }
+
+  .dash-table { width: 100%; border-collapse: collapse; font-size: 0.875rem; }
+  .dash-table th { background: var(--primary-color); color: #fff; padding: 0.6rem 0.75rem; text-align: left; }
+  .dash-table td { padding: 0.55rem 0.75rem; border-bottom: 1px solid var(--border-color); vertical-align: middle; }
+  .dash-table tr:hover td { background: var(--bg-color); }
+  .empty-msg { color: #888; font-style: italic; padding: 1rem 0; }
+
+  .btn-sm { padding: 0.25rem 0.65rem; font-size: 0.8rem; border-radius: 4px; border: none; cursor: pointer; margin-right: 0.25rem; }
+  .btn-danger  { background: #dc3545; color: #fff; }
+  .btn-warning { background: #fd7e14; color: #fff; }
+  .btn-primary { background: var(--primary-color); color: #fff; }
+
+  .account-card {
+    background: var(--bg-color); border: 1px solid var(--border-color);
+    border-radius: 8px; padding: 1.5rem; max-width: 480px;
+  }
+  .account-card .field { margin-bottom: 1rem; }
+  .account-card label { display: block; font-size: 0.85rem; font-weight: 500; margin-bottom: 0.3rem; }
+  .account-card input {
+    width: 100%; padding: 0.45rem 0.65rem; border: 1px solid var(--border-color);
+    border-radius: 4px; font-size: 0.9rem; box-sizing: border-box;
+  }
+  .account-card .hint { font-size: 0.78rem; color: #888; margin-top: 0.2rem; }
+  .save-row { display: flex; align-items: center; gap: 1rem; margin-top: 1.25rem; }
+  .save-msg { font-size: 0.85rem; color: #28a745; }
+  .save-err { font-size: 0.85rem; color: #dc3545; }
+
+  /* modal */
+  .dash-modal-overlay {
+    display: none; position: fixed; inset: 0;
+    background: rgba(0,0,0,0.55); z-index: 2000;
+    align-items: center; justify-content: center;
+  }
+  .dash-modal-overlay.open { display: flex; }
+  .dash-modal-box {
+    background: #fff; border-radius: 8px; padding: 1.75rem;
+    width: 100%; max-width: 500px; box-shadow: 0 8px 32px rgba(0,0,0,0.25);
+    position: relative; z-index: 2001;
+  }
+  .dash-modal-box h3 { margin: 0 0 1rem; }
+  .form-group { margin-bottom: 0.9rem; }
+  .form-group label { display: block; font-size: 0.85rem; margin-bottom: 0.3rem; font-weight: 500; }
+  .form-group input, .form-group select, .form-group textarea {
+    width: 100%; padding: 0.45rem 0.65rem; border: 1px solid var(--border-color);
+    border-radius: 4px; font-size: 0.9rem; box-sizing: border-box;
+  }
+  .modal-actions { display: flex; gap: 0.5rem; justify-content: flex-end; margin-top: 1.25rem; }
+  .count-badge {
+    background: var(--primary-color); color: #fff;
+    font-size: 0.75rem; padding: 0.15rem 0.5rem; border-radius: 10px; margin-left: 0.5rem;
+  }
+  .truncate { max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+</style>
+{% endblock %}
+
+{% block content %}
+<h1>My Dashboard</h1>
+
+<div class="dash-tabs">
+  <button class="dash-tab active" data-tab="account">👤 My Account</button>
+  <button class="dash-tab" data-tab="parts">🧩 My Parts</button>
+</div>
+
+<!-- ── ACCOUNT ── -->
+<div id="tab-account" class="dash-section active">
+  <div class="account-card">
+    <h2 style="margin-top:0">Account Settings</h2>
+    <div class="field">
+      <label>Username</label>
+      <input type="text" id="acc-username" placeholder="New username">
+      <div class="hint">Leave blank to keep current username.</div>
+    </div>
+    <div class="field">
+      <label>New Password</label>
+      <input type="password" id="acc-password" placeholder="New password">
+      <div class="hint">Leave blank to keep current password.</div>
+    </div>
+    <div class="field">
+      <label>Confirm New Password</label>
+      <input type="password" id="acc-password2" placeholder="Confirm new password">
+    </div>
+    <div class="save-row">
+      <button class="btn-sm btn-primary" id="acc-save">Save Changes</button>
+      <span id="acc-msg"></span>
+    </div>
+  </div>
+</div>
+
+<!-- ── MY PARTS ── -->
+<div id="tab-parts" class="dash-section">
+  <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:1rem;">
+    <h2 style="margin:0">My Parts <span class="count-badge" id="parts-count">0</span></h2>
+  </div>
+  <table class="dash-table">
+    <thead><tr><th>Name</th><th>Type</th><th>Lab Source</th><th>Uploaded</th><th>Actions</th></tr></thead>
+    <tbody id="parts-tbody">
+      <tr><td colspan="5" class="empty-msg">Loading…</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- ── Edit Part Modal ── -->
+<div class="dash-modal-overlay" id="part-modal">
+  <div class="dash-modal-box">
+    <h3>Edit Part</h3>
+    <input type="hidden" id="part-modal-id">
+    <div class="form-group"><label>Name</label><input type="text" id="part-modal-name"></div>
+    <div class="form-group">
+      <label>Type</label>
+      <select id="part-modal-type">
+        <option>Coding</option>
+        <option>NonCodingPromoter</option>
+        <option>NonCodingTerminator</option>
+        <option>NonCodingIntron</option>
+        <option>NonCodingOther</option>
+      </select>
+    </div>
+    <div class="form-group"><label>Lab Source</label><input type="text" id="part-modal-lab"></div>
+    <div class="form-group"><label>Description</label><input type="text" id="part-modal-desc"></div>
+    <div class="form-group"><label>Plasmid ID</label><input type="text" id="part-modal-plasmid-id"></div>
+    <div class="form-group"><label>Antibiotic Resistance</label><input type="text" id="part-modal-antibiotic"></div>
+    <div class="form-group"><label>Donor Organism</label><input type="text" id="part-modal-organism"></div>
+    <div class="form-group"><label>Comments</label><input type="text" id="part-modal-comments"></div>
+    <div class="modal-actions">
+      <button class="btn-sm" id="part-modal-cancel">Cancel</button>
+      <button class="btn-sm btn-primary" id="part-modal-save">Save</button>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const API = '/api/me';
+
+// ── Tabs ───────────────────────────────────────────────────────────────────
+document.querySelectorAll('.dash-tab').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const name = btn.dataset.tab;
+    document.querySelectorAll('.dash-section').forEach(s => s.classList.remove('active'));
+    document.querySelectorAll('.dash-tab').forEach(t => t.classList.remove('active'));
+    document.getElementById('tab-' + name).classList.add('active');
+    btn.classList.add('active');
+    if (name === 'parts') loadParts();
+  });
+});
+
+// ── Helpers ────────────────────────────────────────────────────────────────
+async function apiFetch(url, opts = {}) {
+  const res = await fetch(url, {
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+    ...opts
+  });
+  return res.json();
+}
+
+document.querySelectorAll('.dash-modal-overlay').forEach(el => {
+  el.addEventListener('click', e => { if (e.target === el) el.classList.remove('open'); });
+});
+
+// ── ACCOUNT ────────────────────────────────────────────────────────────────
+// Pre-fill current username
+apiFetch(`${API}/account`).then(data => {
+  if (data.user) document.getElementById('acc-username').placeholder = data.user.username;
+});
+
+document.getElementById('acc-save').addEventListener('click', async () => {
+  const username = document.getElementById('acc-username').value.trim();
+  const password = document.getElementById('acc-password').value;
+  const password2 = document.getElementById('acc-password2').value;
+  const msg = document.getElementById('acc-msg');
+
+  if (password && password !== password2) {
+    msg.className = 'save-err';
+    msg.textContent = 'Passwords do not match.';
+    return;
+  }
+  if (!username && !password) {
+    msg.className = 'save-err';
+    msg.textContent = 'Enter a new username or password to save.';
+    return;
+  }
+
+  const body = {};
+  if (username) body.username = username;
+  if (password) body.password = password;
+
+  const data = await apiFetch(`${API}/account`, { method: 'PUT', body: JSON.stringify(body) });
+  if (data.error) {
+    msg.className = 'save-err';
+    msg.textContent = data.error;
+  } else {
+    msg.className = 'save-msg';
+    msg.textContent = 'Saved!';
+    document.getElementById('acc-username').value = '';
+    document.getElementById('acc-password').value = '';
+    document.getElementById('acc-password2').value = '';
+    if (data.user) document.getElementById('acc-username').placeholder = data.user.username;
+    setTimeout(() => { msg.textContent = ''; }, 3000);
+  }
+});
+
+// ── MY PARTS ───────────────────────────────────────────────────────────────
+async function loadParts() {
+  const data = await apiFetch(`${API}/parts`);
+  document.getElementById('parts-count').textContent = data.count ?? 0;
+  const tbody = document.getElementById('parts-tbody');
+  tbody.innerHTML = '';
+
+  if (!data.parts || data.parts.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="5" class="empty-msg">You have not uploaded any parts yet.</td></tr>';
+    return;
+  }
+
+  data.parts.forEach(p => {
+    const tr = document.createElement('tr');
+
+    const editBtn = document.createElement('button');
+    editBtn.className = 'btn-sm btn-warning';
+    editBtn.textContent = 'Edit';
+    editBtn.addEventListener('click', () => openEditPart(p));
+
+    const delBtn = document.createElement('button');
+    delBtn.className = 'btn-sm btn-danger';
+    delBtn.textContent = 'Delete';
+    delBtn.addEventListener('click', () => {
+      if (confirm(`Delete part "${p.name}"? This cannot be undone.`)) deletePart(p.id);
+    });
+
+    tr.innerHTML = `
+      <td class="truncate" title="${p.name}">${p.name}</td>
+      <td>${p.part_type}</td>
+      <td>${p.lab_source || '—'}</td>
+      <td>${p.upload_date ? p.upload_date.slice(0,10) : '—'}</td>
+      <td></td>`;
+    const actionTd = tr.querySelector('td:last-child');
+    actionTd.appendChild(editBtn);
+    actionTd.appendChild(delBtn);
+    tbody.appendChild(tr);
+  });
+}
+
+function openEditPart(p) {
+  document.getElementById('part-modal-id').value = p.id;
+  document.getElementById('part-modal-name').value = p.name || '';
+  document.getElementById('part-modal-type').value = p.part_type || 'Coding';
+  document.getElementById('part-modal-lab').value = p.lab_source || '';
+  document.getElementById('part-modal-desc').value = p.description || '';
+  document.getElementById('part-modal-plasmid-id').value = p.plasmid_id || '';
+  document.getElementById('part-modal-antibiotic').value = p.antibiotic || '';
+  document.getElementById('part-modal-organism').value = p.donor_organism || '';
+  document.getElementById('part-modal-comments').value = p.comments || '';
+  document.getElementById('part-modal').classList.add('open');
+}
+
+document.getElementById('part-modal-cancel').addEventListener('click', () => {
+  document.getElementById('part-modal').classList.remove('open');
+});
+
+document.getElementById('part-modal-save').addEventListener('click', async () => {
+  const id = document.getElementById('part-modal-id').value;
+  const body = {
+    name:          document.getElementById('part-modal-name').value.trim(),
+    part_type:     document.getElementById('part-modal-type').value,
+    lab_source:    document.getElementById('part-modal-lab').value.trim(),
+    description:   document.getElementById('part-modal-desc').value.trim(),
+    plasmid_id:    document.getElementById('part-modal-plasmid-id').value.trim(),
+    antibiotic:    document.getElementById('part-modal-antibiotic').value.trim(),
+    donor_organism:document.getElementById('part-modal-organism').value.trim(),
+    comments:      document.getElementById('part-modal-comments').value.trim(),
+  };
+  const data = await apiFetch(`${API}/parts/${id}`, { method: 'PUT', body: JSON.stringify(body) });
+  if (data.error) { alert(data.error); return; }
+  document.getElementById('part-modal').classList.remove('open');
+  loadParts();
+});
+
+async function deletePart(id) {
+  const data = await apiFetch(`${API}/parts/${id}`, { method: 'DELETE' });
+  if (data.error) { alert(data.error); return; }
+  loadParts();
+}
+</script>
+{% endblock %}

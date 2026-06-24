@@ -1,0 +1,217 @@
+{% extends "base.html" %}
+
+{% block title %}Parts Browser - MoClo Library Tool{% endblock %}
+
+{% block extra_css %}
+<style>
+    .form-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 1rem;
+    }
+    
+    .form-group.full-width {
+        grid-column: 1 / -1;
+    }
+    
+    .modal-actions {
+        display: flex;
+        justify-content: flex-end;
+        gap: 0.5rem;
+        margin-top: 1.5rem;
+        padding-top: 1.5rem;
+        border-top: 1px solid var(--border-color);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="parts-browser">
+    <div class="page-header">
+        <h1>Parts Browser</h1>
+        <p class="page-subtitle">Browse and search MoClo genetic parts</p>
+    </div>
+
+    <!-- Filter and Search Controls -->
+    <div class="controls-panel">
+        <div class="search-box">
+            <input 
+                type="text" 
+                id="searchInput" 
+                class="form-control" 
+                placeholder="Search parts by name or identifier..."
+            >
+        </div>
+
+        <div class="filter-group">
+            <label for="typeFilter">Filter by Type:</label>
+            <select id="typeFilter" class="form-control">
+                <option value="">All Types</option>
+                <option value="Coding">Coding</option>
+                <option value="NonCodingPromoter">Non-coding Promoter</option>
+                <option value="NonCodingTerminator">Non-coding Terminator</option>
+                <option value="NonCodingIntron">Non-coding Intron</option>
+                <option value="NonCodingOther">Non-coding Other</option>
+            </select>
+        </div>
+
+        <div class="filter-group">
+            <label for="levelFilter">Filter by Level:</label>
+            <select id="levelFilter" class="form-control">
+                <option value="">All Levels</option>
+                <option value="Level 0">Level 0</option>
+                <option value="Level 1">Level 1</option>
+                <option value="Level 2">Level 2</option>
+                <option value="L0">L0</option>
+                <option value="L1">L1</option>
+                <option value="L2">L2</option>
+            </select>
+        </div>
+
+        <button id="clearFilters" class="btn btn-secondary">Clear Filters</button>
+    </div>
+
+    <!-- Loading State -->
+    <div id="loadingState" class="loading-state" style="display: none;">
+        <div class="spinner"></div>
+        <p>Loading parts...</p>
+    </div>
+
+    <!-- Error State -->
+    <div id="errorState" class="error-state" style="display: none;">
+        <p class="error-message"></p>
+        <button id="retryButton" class="btn btn-primary">Retry</button>
+    </div>
+
+    <!-- Parts List -->
+    <div id="partsContainer" class="parts-container">
+        <!-- Parts will be dynamically loaded here -->
+    </div>
+
+    <!-- Empty State -->
+    <div id="emptyState" class="empty-state" style="display: none;">
+        <p>No parts found matching your criteria.</p>
+    </div>
+</div>
+
+<!-- Part Detail Modal -->
+<div id="partModal" class="modal" style="display: none;">
+    <div class="modal-overlay"></div>
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 id="modalPartName">Part Details</h2>
+            <button class="modal-close" id="closeModal">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div id="partDetails">
+                <!-- Part details will be loaded here -->
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Part Modal -->
+<div id="editPartModal" class="modal" style="display: none;">
+    <div class="modal-overlay"></div>
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2>Edit Part Metadata</h2>
+            <button class="modal-close" onclick="closeEditPartModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <form id="editPartForm">
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="editDescription">Description</label>
+                        <textarea id="editDescription" class="form-control" rows="3"></textarea>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="editPlasmidId">Plasmid ID</label>
+                        <input type="text" id="editPlasmidId" class="form-control">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="editLevel">Level</label>
+                        <input type="text" id="editLevel" class="form-control">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="editUnit">Unit</label>
+                        <input type="text" id="editUnit" class="form-control">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="editAntibiotic">Antibiotic Resistance</label>
+                        <input type="text" id="editAntibiotic" class="form-control">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="editOriEcoli">Origin of Replication (E. coli)</label>
+                        <input type="text" id="editOriEcoli" class="form-control">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="editOriAgro">Origin of Replication (Agrobacterium)</label>
+                        <input type="text" id="editOriAgro" class="form-control">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="editDonorOrganism">Donor Organism</label>
+                        <input type="text" id="editDonorOrganism" class="form-control">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="editHostStrain">Host Strain</label>
+                        <input type="text" id="editHostStrain" class="form-control">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="editLocation80">Location (-80°C)</label>
+                        <input type="text" id="editLocation80" class="form-control">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="editLocation96">Location (96-well plate)</label>
+                        <input type="text" id="editLocation96" class="form-control">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="editReference">Reference</label>
+                        <input type="text" id="editReference" class="form-control">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="editPrimerForSeq">Primer for Sequencing</label>
+                        <input type="text" id="editPrimerForSeq" class="form-control">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="editSequenced">Sequenced</label>
+                        <input type="text" id="editSequenced" class="form-control" placeholder="e.g., 2024-03-08 or Yes">
+                    </div>
+                    
+                    <div class="form-group full-width">
+                        <label for="editComments">Comments</label>
+                        <textarea id="editComments" class="form-control" rows="3"></textarea>
+                    </div>
+                </div>
+                
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-secondary" onclick="closeEditPartModal()">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save Changes</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/parts.js') }}"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        initPartsBrowser();
+    });
+</script>
+{% endblock %}

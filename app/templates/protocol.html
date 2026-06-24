@@ -1,0 +1,1699 @@
+{% extends "base.html" %}
+
+{% block title %}MoClo Protocol - MoClo Library Tool{% endblock %}
+
+{% block content %}
+<div class="protocol-container">
+    <div class="protocol-hero">
+        <h1>MoClo Assembly Protocol</h1>
+        <p class="hero-subtitle">Modular Cloning: A hierarchical system for building complex genetic constructs</p>
+    </div>
+
+    <!-- Overview Section -->
+    <section class="protocol-section">
+        <h2>What is MoClo?</h2>
+        <p>
+            Modular Cloning (MoClo) is a standardized cloning system that enables rapid assembly of multiple DNA parts 
+            into complex genetic constructs. The system uses Type IIS restriction enzymes (like BsaI and BpiI) to create 
+            specific 4-base pair overhangs that ensure parts are assembled in the correct order and orientation.
+        </p>
+        <div class="info-box">
+            <strong>Key Advantage:</strong> MoClo allows you to build increasingly complex constructs through a hierarchical 
+            assembly process, from individual parts (Level 0) to multi-gene pathways (Level 2 and beyond).
+        </div>
+    </section>
+
+    <!-- Level 0 Section -->
+    <section class="protocol-section">
+        <h2>Level 0: Basic Parts</h2>
+        <div class="level-description">
+            <p>
+                Level 0 parts are the fundamental building blocks of MoClo. Each part is flanked by BsaI recognition sites 
+                that generate specific 4-bp overhangs defining the part's position in the final construct.
+            </p>
+        </div>
+
+        <div class="protocol-graphic">
+            <img src="{{ url_for('static', filename='images/level0_diagram.svg') }}" 
+                 alt="Level 0 Parts Diagram" 
+                 onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
+            <div class="graphic-placeholder" style="display: none;">
+                <div class="placeholder-content">
+                    <h3>Level 0 Parts</h3>
+                    <p>Basic genetic elements with defined overhangs</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="parts-table">
+            <h3>Standard Part Types and Overhangs</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Part Type</th>
+                        <th>Position</th>
+                        <th>5' Overhang</th>
+                        <th>3' Overhang</th>
+                        <th>Example</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><span class="part-badge promoter">Promoter</span></td>
+                        <td>1</td>
+                        <td><code>GGAG</code></td>
+                        <td><code>TACT</code></td>
+                        <td>pCaMV35S, pT7</td>
+                    </tr>
+                    <tr>
+                        <td><span class="part-badge utr">5'UTR</span></td>
+                        <td>2</td>
+                        <td><code>TACT</code></td>
+                        <td><code>AATG</code></td>
+                        <td>Omega leader, RBS</td>
+                    </tr>
+                    <tr>
+                        <td><span class="part-badge cds">CDS</span></td>
+                        <td>3</td>
+                        <td><code>AATG</code></td>
+                        <td><code>AGGT</code></td>
+                        <td>GFP, mCherry, Cas9</td>
+                    </tr>
+                    <tr>
+                        <td><span class="part-badge utr">3'UTR</span></td>
+                        <td>3b</td>
+                        <td><code>AGGT</code></td>
+                        <td><code>GCTT</code></td>
+                        <td>3' regulatory elements</td>
+                    </tr>
+                    <tr>
+                        <td><span class="part-badge terminator">Terminator</span></td>
+                        <td>4</td>
+                        <td><code>GCTT</code></td>
+                        <td><code>CGCT</code></td>
+                        <td>tNOS, t35S</td>
+                    </tr>
+                    <tr>
+                        <td><span class="part-badge other">Other</span></td>
+                        <td>Variable</td>
+                        <td>Various</td>
+                        <td>Various</td>
+                        <td>Linkers, tags, spacers</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="protocol-steps">
+            <h3>Creating Level 0 Parts</h3>
+            <ol>
+                <li>Design your genetic element (promoter, CDS, terminator, etc.)</li>
+                <li>Add appropriate BsaI sites with correct overhangs for the part type</li>
+                <li>Clone into a Level 0 entry vector</li>
+                <li>Verify by colony PCR or restriction digest and then whole plasmid sequencing</li>
+            </ol>
+        </div>
+    </section>
+
+    <!-- Level 1 Section -->
+    <section class="protocol-section">
+        <h2>Level 1: Transcriptional Cassettes</h2>
+        <div class="level-description">
+            <p>
+                Level 1 assembly combines multiple Level 0 parts into a single transcriptional cassette (TC). 
+                BsaI digestion removes the entry vector backbone and creates compatible overhangs that ensure 
+                parts assemble in the correct order. The assembled TC is cloned into a Level 1 vector with 
+                BpiI sites for further assembly.
+            </p>
+        </div>
+
+        <div class="protocol-graphic">
+            <img src="{{ url_for('static', filename='images/level1_diagram.svg') }}" 
+                 alt="Level 1 Assembly Diagram"
+                 onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
+            <div class="graphic-placeholder" style="display: none;">
+                <div class="placeholder-content">
+                    <h3>Level 1 Assembly</h3>
+                    <p>Combining parts into transcriptional units</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="assembly-example">
+            <h3>Example: Building a GFP Expression Cassette</h3>
+            <div class="example-parts">
+                <div class="example-part">
+                    <div class="part-icon promoter">P</div>
+                    <div class="part-name">35S Promoter</div>
+                    <div class="part-overhangs"><code>GGAG→TACT</code></div>
+                </div>
+                <div class="arrow">+</div>
+                <div class="example-part">
+                    <div class="part-icon utr">U</div>
+                    <div class="part-name">Omega 5'UTR</div>
+                    <div class="part-overhangs"><code>TACT→AATG</code></div>
+                </div>
+                <div class="arrow">+</div>
+                <div class="example-part">
+                    <div class="part-icon cds">C</div>
+                    <div class="part-name">GFP CDS</div>
+                    <div class="part-overhangs"><code>AATG→AGGT</code></div>
+                </div>
+                <div class="arrow">+</div>
+                <div class="example-part">
+                    <div class="part-icon terminator">T</div>
+                    <div class="part-name">NOS Terminator</div>
+                    <div class="part-overhangs"><code>AGGT→GCTT</code></div>
+                </div>
+                <div class="arrow">=</div>
+                <div class="example-result">
+                    <div class="result-icon">TC</div>
+                    <div class="result-name">GFP Expression Cassette</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="protocol-steps">
+            <h3>Level 1 Assembly Protocol</h3>
+            <ol>
+                <li>Select Level 0 parts with compatible overhangs (e.g., Promoter → 5'UTR → CDS → Terminator)</li>
+                <li>Mix parts with Level 1 destination vector, BsaI enzyme, and ligase</li>
+                <li>Run one-pot reaction: cycles of digestion (37°C) and ligation (16°C)</li>
+                <li>Transform into competent cells and select on appropriate antibiotic</li>
+                <li>Verify assembly by colony PCR or restriction digest and then whole plasmid sequencing</li>
+            </ol>
+        </div>
+
+        <div class="info-box warning">
+            <strong>Important:</strong> Level 1 vectors have different BpiI overhangs (positions A-G) that determine 
+            where the TC will be placed in Level 2 assembly. Choose the appropriate Level 1 vector for your desired 
+            final arrangement.
+        </div>
+    </section>
+
+    <!-- Level 2 Section -->
+    <section class="protocol-section">
+        <h2>Level 2: Multi-Gene Constructs</h2>
+        <div class="level-description">
+            <p>
+                Level 2 assembly combines multiple Level 1 transcriptional cassettes into a single plasmid. 
+                BpiI digestion creates position-specific overhangs (A-G) that ensure TCs are assembled in 
+                the correct order. This allows you to build complex multi-gene pathways or expression systems.
+            </p>
+        </div>
+
+        <div class="protocol-graphic">
+            <img src="{{ url_for('static', filename='images/level2_diagram.svg') }}" 
+                 alt="Level 2 Assembly Diagram"
+                 onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
+            <div class="graphic-placeholder" style="display: none;">
+                <div class="placeholder-content">
+                    <h3>Level 2 Assembly</h3>
+                    <p>Combining transcriptional units into multi-gene constructs</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="assembly-example">
+            <h3>Example: Three-Gene Metabolic Pathway</h3>
+            <div class="example-parts vertical">
+                <div class="example-part large">
+                    <div class="part-icon tu">TC1</div>
+                    <div class="part-name">Enzyme A Expression</div>
+                    <div class="part-overhangs"><code>Position A</code></div>
+                </div>
+                <div class="arrow down">+</div>
+                <div class="example-part large">
+                    <div class="part-icon tu">TC2</div>
+                    <div class="part-name">Enzyme B Expression</div>
+                    <div class="part-overhangs"><code>Position B</code></div>
+                </div>
+                <div class="arrow down">+</div>
+                <div class="example-part large">
+                    <div class="part-icon tu">TC3</div>
+                    <div class="part-name">Enzyme C Expression</div>
+                    <div class="part-overhangs"><code>Position C</code></div>
+                </div>
+                <div class="arrow down">=</div>
+                <div class="example-result large">
+                    <div class="result-icon">L2</div>
+                    <div class="result-name">Complete Pathway Plasmid</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="protocol-steps">
+            <h3>Level 2 Assembly Protocol</h3>
+            <ol>
+                <li>Select Level 1 TCs in appropriate position vectors (A, B, C, etc.)</li>
+                <li>Mix TCs with Level 2 destination vector, BpiI enzyme, and ligase</li>
+                <li>Run one-pot reaction: cycles of digestion (37°C) and ligation (16°C)</li>
+                <li>Transform into competent cells and select on appropriate antibiotic</li>
+                <li>Verify assembly by colony PCR or restriction digest and then whole plasmid sequencing</li>
+            </ol>
+        </div>
+
+        <div class="position-table">
+            <h3>Level 2 Position Overhangs</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Position</th>
+                        <th>5' Overhang</th>
+                        <th>3' Overhang</th>
+                        <th>Typical Use</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>A</strong></td>
+                        <td><code>GGAG</code></td>
+                        <td><code>TACT</code></td>
+                        <td>First gene</td>
+                    </tr>
+                    <tr>
+                        <td><strong>B</strong></td>
+                        <td><code>TACT</code></td>
+                        <td><code>AATG</code></td>
+                        <td>Second gene</td>
+                    </tr>
+                    <tr>
+                        <td><strong>C</strong></td>
+                        <td><code>AATG</code></td>
+                        <td><code>AGGT</code></td>
+                        <td>Third gene</td>
+                    </tr>
+                    <tr>
+                        <td><strong>D-G</strong></td>
+                        <td>Various</td>
+                        <td>Various</td>
+                        <td>Additional genes</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+    <!-- Lab Protocol Section -->
+    <section class="protocol-section">
+        <h2>Laboratory Protocol</h2>
+        <div class="level-description">
+            <p>
+                This section provides detailed laboratory procedures for performing GoldenGate-mediated MoClo assembly reactions.
+                The protocol uses a one-pot reaction combining restriction digestion and ligation for efficient DNA assembly.
+            </p>
+        </div>
+
+        <div class="protocol-subsection">
+            <h3>Materials Required</h3>
+            
+            <div class="materials-grid">
+                <div class="materials-card">
+                    <h4>🧪 Reagents</h4>
+                    <ul>
+                        <li>10x Buffer G (Thermo)</li>
+                        <li>100 mM ATP (Thermo)</li>
+                        <li>BsaI or BpiI restriction enzyme (Thermo)</li>
+                        <li>T4 DNA Ligase (Thermo)</li>
+                        <li>Molecular-grade water (MQ)</li>
+                        <li>DNA parts and vectors</li>
+                    </ul>
+                </div>
+
+                <div class="materials-card">
+                    <h4>🔬 Equipment</h4>
+                    <ul>
+                        <li>PCR machine/thermal cycler</li>
+                        <li>PCR tubes (0.2 mL)</li>
+                        <li>Ice bucket and ice</li>
+                        <li>Pipettes and sterile tips</li>
+                        <li>Centrifuge (optional)</li>
+                        <li>Vortex mixer (optional)</li>
+                    </ul>
+                </div>
+
+                <div class="materials-card">
+                    <h4>⚠️ Safety Equipment</h4>
+                    <ul>
+                        <li>Lab coat</li>
+                        <li>Gloves</li>
+                        <li>Safety glasses</li>
+                    </ul>
+                    <p class="safety-note">Handle restriction enzymes with care. Follow proper lab safety protocols.</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="protocol-subsection">
+            <h3>Reaction Setup</h3>
+            
+            <div class="reaction-table">
+                <h4>Standard 20 µL Reaction</h4>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Component</th>
+                            <th>Volume</th>
+                            <th>Final Concentration</th>
+                            <th>Notes</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>10x Buffer G</td>
+                            <td>2 µL</td>
+                            <td>1x</td>
+                            <td>Thermo Fisher</td>
+                        </tr>
+                        <tr>
+                            <td>100 mM ATP</td>
+                            <td>0.2 µL</td>
+                            <td>1 mM</td>
+                            <td>Thermo Fisher</td>
+                        </tr>
+                        <tr>
+                            <td>Acceptor Vector</td>
+                            <td>X µL</td>
+                            <td>~40 fmol</td>
+                            <td>Calculate based on size</td>
+                        </tr>
+                        <tr>
+                            <td>Insert DNA(s)</td>
+                            <td>Y µL</td>
+                            <td>~80 fmol each</td>
+                            <td>2:1 molar ratio (insert:vector)</td>
+                        </tr>
+                        <tr>
+                            <td>BsaI or BpiI</td>
+                            <td>1 µL</td>
+                            <td>10 units</td>
+                            <td>BsaI for Level 1, BpiI for Level 2</td>
+                        </tr>
+                        <tr>
+                            <td>T4 DNA Ligase</td>
+                            <td>0.4 µL</td>
+                            <td>2 units</td>
+                            <td>Thermo Fisher</td>
+                        </tr>
+                        <tr>
+                            <td>MQ Water</td>
+                            <td>to 20 µL</td>
+                            <td>-</td>
+                            <td>Molecular grade</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="info-box">
+                <strong>Molar Ratio Calculation:</strong> Use a 2:1 molar ratio of insert to vector (80 fmol insert : 40 fmol vector).
+                For multiple inserts, use 80 fmol of each insert. Calculate DNA amounts using the formula:
+                <code>ng = (fmol × bp × 660) / 1,000,000</code>
+            </div>
+        </div>
+
+        <div class="protocol-subsection">
+            <h3>Thermal Cycling Program</h3>
+            
+            <div class="cycling-table">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Step</th>
+                            <th>Temperature</th>
+                            <th>Time</th>
+                            <th>Cycles</th>
+                            <th>Purpose</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>1</td>
+                            <td>37°C</td>
+                            <td>10 min</td>
+                            <td rowspan="2">60 cycles</td>
+                            <td>Digestion (BsaI/BpiI)</td>
+                        </tr>
+                        <tr>
+                            <td>2</td>
+                            <td>22°C</td>
+                            <td>10 min</td>
+                            <td>Ligation (T4 Ligase)</td>
+                        </tr>
+                        <tr>
+                            <td>3</td>
+                            <td>37°C</td>
+                            <td>10 min</td>
+                            <td>1 cycle</td>
+                            <td>Final digestion</td>
+                        </tr>
+                        <tr>
+                            <td>4</td>
+                            <td>65°C</td>
+                            <td>20 min</td>
+                            <td>1 cycle</td>
+                            <td>Enzyme inactivation</td>
+                        </tr>
+                        <tr>
+                            <td>5</td>
+                            <td>12°C</td>
+                            <td>Hold</td>
+                            <td>-</td>
+                            <td>Storage until transformation</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="info-box warning">
+                <strong>Troubleshooting:</strong> For difficult assemblies with many inserts, increase the cycle number 
+                from 60 to 80-100 cycles to improve assembly efficiency.
+            </div>
+        </div>
+
+        <div class="protocol-subsection">
+            <h3>Step-by-Step Procedure</h3>
+            
+            <div class="detailed-steps">
+                <div class="step-card">
+                    <div class="step-number">1</div>
+                    <div class="step-content">
+                        <h4>Plan Your Assembly</h4>
+                        <ul>
+                            <li>Design your construct using this MoClo assembly tool</li>
+                            <li>Verify part compatibility and overhang sequences</li>
+                            <li>For plant transformation, include a selection marker (e.g., BASTA resistance)</li>
+                            <li>Place resistance cassette next to the Left T-DNA border</li>
+                            <li>Check vector suitability for Agrobacterium (ORI in Agro)</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="step-card">
+                    <div class="step-number">2</div>
+                    <div class="step-content">
+                        <h4>Prepare Reaction on Ice</h4>
+                        <ul>
+                            <li>Thaw all components on ice</li>
+                            <li>Label PCR tubes clearly</li>
+                            <li>Add components in order: buffer, ATP, DNA, enzyme, ligase, water</li>
+                            <li>Mix gently by pipetting or brief vortex</li>
+                            <li>Spin down briefly to collect liquid</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="step-card">
+                    <div class="step-number">3</div>
+                    <div class="step-content">
+                        <h4>Run Thermal Cycling</h4>
+                        <ul>
+                            <li>Place tubes in thermal cycler</li>
+                            <li>Start the MoClo program (60 cycles)</li>
+                            <li>Total run time: ~20 hours</li>
+                            <li>Can be run overnight</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="step-card">
+                    <div class="step-number">4</div>
+                    <div class="step-content">
+                        <h4>Transform E. coli</h4>
+                        <ul>
+                            <li>Use 5-10 µL of reaction for transformation</li>
+                            <li>Transform into competent E. coli cells</li>
+                            <li>Plate on selective media (appropriate antibiotic)</li>
+                            <li>Incubate overnight at 37°C</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="step-card">
+                    <div class="step-number">5</div>
+                    <div class="step-content">
+                        <h4>Screen and Verify</h4>
+                        <ul>
+                            <li>Pick 4-8 colonies for screening</li>
+                            <li>Perform colony PCR or miniprep + restriction digest for initial screening</li>
+                            <li>Verify correct assembly by whole plasmid sequencing (e.g., Nanopore, PacBio, or Illumina)</li>
+                            <li>Whole plasmid sequencing confirms complete construct integrity and detects any unexpected mutations</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="protocol-subsection">
+            <h3>Storage and Disposal</h3>
+            
+            <div class="storage-grid">
+                <div class="storage-card">
+                    <h4>📦 Storage</h4>
+                    <ul>
+                        <li><strong>Enzymes:</strong> Store at -20°C</li>
+                        <li><strong>Reaction mix:</strong> 4°C (short-term) or -20°C (long-term)</li>
+                        <li><strong>Transformed cells:</strong> Glycerol stocks at -80°C</li>
+                        <li><strong>Plasmids:</strong> -20°C in TE buffer or water</li>
+                    </ul>
+                </div>
+
+                <div class="storage-card">
+                    <h4>🗑️ Disposal</h4>
+                    <ul>
+                        <li>Inactivate enzymes by autoclaving before disposal</li>
+                        <li>Decontaminate bacterial cultures before discarding</li>
+                        <li>Follow institutional biohazardous waste guidelines</li>
+                        <li>Dispose of tips and tubes in biohazard containers</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <div class="protocol-subsection">
+            <h3>Important Notes for Plant Transformation</h3>
+            
+            <div class="info-box warning">
+                <ul>
+                    <li><strong>Binary Vector Design:</strong> For stable plant transformation, ensure your Level 2 construct is in a binary vector with T-DNA borders</li>
+                    <li><strong>Selection Marker:</strong> Include a plant resistance cassette (BASTA preferred for easy visual screening)</li>
+                    <li><strong>Marker Placement:</strong> Position the resistance cassette next to the Left T-DNA border to ensure only plants with complete insertions are resistant</li>
+                    <li><strong>Agrobacterium Compatibility:</strong> Verify the vector contains an appropriate origin of replication for Agrobacterium (ORI in Agro)</li>
+                </ul>
+            </div>
+        </div>
+    </section>
+
+    <!-- Quick Reference -->
+    <section class="protocol-section">
+        <h2>Quick Reference Guide</h2>
+        
+        <div class="reference-grid">
+            <div class="reference-card">
+                <h3>🧬 Level 0</h3>
+                <ul>
+                    <li><strong>Purpose:</strong> Individual genetic parts</li>
+                    <li><strong>Enzyme:</strong> BsaI</li>
+                    <li><strong>Result:</strong> Single part in entry vector</li>
+                    <li><strong>Examples:</strong> Promoters, CDS, terminators</li>
+                </ul>
+            </div>
+
+            <div class="reference-card">
+                <h3>🔗 Level 1</h3>
+                <ul>
+                    <li><strong>Purpose:</strong> Transcriptional cassettes</li>
+                    <li><strong>Enzyme:</strong> BsaI (assembly)</li>
+                    <li><strong>Result:</strong> Complete expression cassette</li>
+                    <li><strong>Examples:</strong> Promoter-CDS-Terminator</li>
+                </ul>
+            </div>
+
+            <div class="reference-card">
+                <h3>🏗️ Level 2</h3>
+                <ul>
+                    <li><strong>Purpose:</strong> Multi-gene constructs</li>
+                    <li><strong>Enzyme:</strong> BpiI (assembly)</li>
+                    <li><strong>Result:</strong> Multiple TCs in one plasmid</li>
+                    <li><strong>Examples:</strong> Metabolic pathways, CRISPR systems</li>
+                </ul>
+            </div>
+        </div>
+    </section>
+
+    <!-- Tips and Best Practices -->
+    <section class="protocol-section">
+        <h2>Tips & Best Practices</h2>
+        
+        <div class="tips-grid">
+            <div class="tip-card">
+                <div class="tip-icon">✓</div>
+                <h4>Plan Your Assembly</h4>
+                <p>Design your complete construct before starting. Map out which parts go into which Level 1 vectors and their final positions in Level 2.</p>
+            </div>
+
+            <div class="tip-card">
+                <div class="tip-icon">✓</div>
+                <h4>Check Overhangs</h4>
+                <p>Always verify that adjacent parts have compatible overhangs. Mismatched overhangs will prevent assembly.</p>
+            </div>
+
+            <div class="tip-card">
+                <div class="tip-icon">✓</div>
+                <h4>Avoid Internal Sites</h4>
+                <p>Ensure your parts don't contain internal BsaI or BpiI sites. These will interfere with assembly.</p>
+            </div>
+
+            <div class="tip-card">
+                <div class="tip-icon">✓</div>
+                <h4>Use Controls</h4>
+                <p>Include positive and negative controls in your assembly reactions to troubleshoot failed assemblies.</p>
+            </div>
+
+            <div class="tip-card">
+                <div class="tip-icon">✓</div>
+                <h4>Sequence Verification</h4>
+                <p>Always verify your final constructs with whole plasmid sequencing (Nanopore, PacBio, or Illumina) to confirm complete construct integrity and detect any unexpected mutations.</p>
+            </div>
+
+            <div class="tip-card">
+                <div class="tip-icon">✓</div>
+                <h4>Keep Records</h4>
+                <p>Document your assemblies thoroughly. This tool helps you track parts, cassettes, and final plasmids.</p>
+            </div>
+
+            <div class="tip-card">
+                <div class="tip-icon">⚠️</div>
+                <h4>Frameshift Considerations</h4>
+                <p>When designing parts that fuse to coding sequences, the 4bp overhang must be considered to avoid frameshifts. The last base pair of the overhang needs to be included in the last amino acid triplet of your coding sequence.</p>
+            </div>
+
+            <div class="tip-card">
+                <div class="tip-icon">📝</div>
+                <h4>Intron Annotation</h4>
+                <p>If your coding sequences contain introns, proper GenBank annotation is essential for accurate translation analysis. <a href="{{ url_for('annotation_guide') }}" style="color: var(--primary-color); text-decoration: underline;">Learn about annotation best practices →</a></p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Call to Action -->
+    <section class="protocol-cta">
+        <h2>Ready to Start Building?</h2>
+        <p>Use this tool to manage your MoClo parts library and design your assemblies</p>
+        <div class="cta-buttons">
+            <a href="{{ url_for('parts_page') }}" class="btn btn-primary btn-large">Browse Parts</a>
+            <a href="{{ url_for('cassettes_page') }}" class="btn btn-primary btn-large">View Cassettes</a>
+            <a href="{{ url_for('backbones_page') }}" class="btn btn-primary btn-large">Manage Backbones</a>
+        </div>
+        <div class="cta-buttons" style="margin-top: 1rem;">
+            <button id="openToolInfoBtn" class="btn btn-primary btn-large">More About This Tool</button>
+        </div>
+    </section>
+
+    <!-- Tool Information Modal -->
+    <div id="toolInfoModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>How This Digital Assembly Tool Works</h2>
+                <span class="modal-close">&times;</span>
+            </div>
+            <div class="modal-body">
+                <h3>What You Need to Input</h3>
+                <p>To use this tool effectively, you'll need to provide:</p>
+                <ul>
+                    <li><strong>GenBank Files:</strong> Upload your DNA parts, backbones, and cassettes in GenBank (.gb) format</li>
+                    <li><strong>Part Sequences:</strong> Each part must contain the DNA sequence with proper annotations</li>
+                    <li><strong>Overhang Information:</strong> Parts must have compatible 4-base overhangs (e.g., GGAG, AATG, GCTT) for proper assembly</li>
+                    <li><strong>Part Metadata:</strong> Optional information like part type, function, organism, and references</li>
+                </ul>
+
+                <h3>Digital Assembly Process</h3>
+                <p>When you assemble parts, the tool performs a complete <strong>in silico</strong> (digital) simulation of the MoClo assembly reaction:</p>
+                
+                <div class="assembly-process-steps">
+                    <div class="process-step">
+                        <div class="process-step-number">1</div>
+                        <div class="process-step-content">
+                            <h4>Restriction Enzyme Simulation</h4>
+                            <p>The tool digitally "cuts" your parts using Type IIS restriction enzymes (BsaI for Level 0→1, BpiI for Level 1→2). It identifies restriction sites in the sequence and simulates the cutting pattern, exposing the 4-base overhangs.</p>
+                        </div>
+                    </div>
+
+                    <div class="process-step">
+                        <div class="process-step-number">2</div>
+                        <div class="process-step-content">
+                            <h4>Overhang Compatibility Check</h4>
+                            <p>The tool validates that adjacent parts have matching overhangs. For example, if Part A has a 3' overhang of AATG, Part B must have a 5' overhang of AATG to ligate properly. This ensures correct part order and orientation.</p>
+                        </div>
+                    </div>
+
+                    <div class="process-step">
+                        <div class="process-step-number">3</div>
+                        <div class="process-step-content">
+                            <h4>DNA Sequence Assembly</h4>
+                            <p>Once validated, the tool concatenates the DNA sequences in the correct order. It removes the restriction sites and fusion sequences, joining parts at their overhangs to create a seamless final sequence—exactly as would happen in the lab.</p>
+                        </div>
+                    </div>
+
+                    <div class="process-step">
+                        <div class="process-step-number">4</div>
+                        <div class="process-step-content">
+                            <h4>Feature Merging & Position Calculation</h4>
+                            <p>The tool tracks all genetic features (promoters, CDSs, terminators, etc.) from the original parts and recalculates their positions in the final plasmid. Features are preserved with their annotations, colors, and metadata.</p>
+                        </div>
+                    </div>
+
+                    <div class="process-step">
+                        <div class="process-step-number">5</div>
+                        <div class="process-step-content">
+                            <h4>Backbone Integration</h4>
+                            <p>For Level 1 and Level 2 assemblies, the tool inserts your assembled cassette into the selected backbone vector at the designated insertion slots. The final plasmid includes both your custom parts and the backbone features (origin of replication, antibiotic resistance, etc.).</p>
+                        </div>
+                    </div>
+                </div>
+
+                <h3>Complete Workflow</h3>
+                <ol class="workflow-list">
+                    <li><strong>Upload Parts:</strong> Import GenBank files for your DNA parts via the Parts Browser</li>
+                    <li><strong>Create Cassettes:</strong> Assemble Level 0 parts into transcriptional cassettes (Level 1)</li>
+                    <li><strong>Select Backbone:</strong> Choose a compatible acceptor vector for your cassette</li>
+                    <li><strong>Simulate Assembly:</strong> Preview the final plasmid sequence and features</li>
+                    <li><strong>Validate:</strong> Check for restriction site conflicts and compatibility issues</li>
+                    <li><strong>Export:</strong> Download your final plasmid as GenBank, FASTA, or circular map (PNG/SVG)</li>
+                </ol>
+
+                <h3>Export Capabilities</h3>
+                <p>Once your plasmid is assembled, you can export it in multiple formats:</p>
+                <ul>
+                    <li><strong>GenBank (.gb):</strong> Complete sequence with all annotations, ready for ordering or further analysis</li>
+                    <li><strong>FASTA (.fasta):</strong> Plain sequence file for sequence alignment or primer design</li>
+                    <li><strong>Circular Map (PNG/SVG):</strong> Visual representation showing all features with color-coded annotations</li>
+                </ul>
+
+                <div class="info-box">
+                    <strong>💡 Key Advantage:</strong> This digital approach lets you design, validate, and optimize your constructs before spending time and resources in the lab. You can test multiple designs, catch errors early, and ensure compatibility—all in silico.
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .protocol-container {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 2rem 1rem;
+    }
+
+    .protocol-hero {
+        text-align: center;
+        padding: 3rem 0;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border-radius: 1rem;
+        margin-bottom: 3rem;
+    }
+
+    .protocol-hero h1 {
+        font-size: 2.5rem;
+        margin-bottom: 1rem;
+        font-weight: 700;
+    }
+
+    .hero-subtitle {
+        font-size: 1.25rem;
+        opacity: 0.95;
+    }
+
+    .protocol-section {
+        margin-bottom: 4rem;
+    }
+
+    .protocol-section h2 {
+        font-size: 2rem;
+        font-weight: 700;
+        margin-bottom: 1.5rem;
+        color: var(--text-color);
+        border-bottom: 3px solid var(--primary-color);
+        padding-bottom: 0.5rem;
+    }
+
+    .protocol-section h3 {
+        font-size: 1.5rem;
+        font-weight: 600;
+        margin: 2rem 0 1rem 0;
+        color: var(--text-color);
+    }
+
+    .level-description {
+        background-color: var(--bg-color);
+        padding: 1.5rem;
+        border-radius: 0.5rem;
+        margin-bottom: 2rem;
+        border-left: 4px solid var(--primary-color);
+    }
+
+    .info-box {
+        background-color: #dbeafe;
+        border: 1px solid #3b82f6;
+        border-radius: 0.5rem;
+        padding: 1rem 1.5rem;
+        margin: 1.5rem 0;
+    }
+
+    .info-box.warning {
+        background-color: #fef3c7;
+        border-color: #f59e0b;
+    }
+
+    .protocol-graphic {
+        margin: 2rem 0;
+        text-align: center;
+        background-color: white;
+        padding: 2rem;
+        border-radius: 0.5rem;
+        box-shadow: var(--shadow);
+    }
+
+    .protocol-graphic img {
+        max-width: 100%;
+        height: auto;
+    }
+
+    .graphic-placeholder {
+        min-height: 300px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+        border-radius: 0.5rem;
+    }
+
+    .placeholder-content {
+        text-align: center;
+        color: var(--text-secondary);
+    }
+
+    .parts-table table,
+    .position-table table {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 1rem 0;
+        background-color: white;
+        box-shadow: var(--shadow);
+        border-radius: 0.5rem;
+        overflow: hidden;
+    }
+
+    .parts-table th,
+    .position-table th {
+        background-color: var(--primary-color);
+        color: white;
+        padding: 1rem;
+        text-align: left;
+        font-weight: 600;
+    }
+
+    .parts-table td,
+    .position-table td {
+        padding: 0.75rem 1rem;
+        border-bottom: 1px solid var(--border-color);
+    }
+
+    .parts-table tr:last-child td,
+    .position-table tr:last-child td {
+        border-bottom: none;
+    }
+
+    .parts-table tbody tr:hover,
+    .position-table tbody tr:hover {
+        background-color: var(--bg-color);
+    }
+
+    .part-badge {
+        display: inline-block;
+        padding: 0.25rem 0.75rem;
+        border-radius: 0.25rem;
+        font-size: 0.875rem;
+        font-weight: 500;
+        color: white;
+    }
+
+    .part-badge.promoter {
+        background-color: #10b981;
+    }
+
+    .part-badge.utr {
+        background-color: #3b82f6;
+    }
+
+    .part-badge.cds {
+        background-color: #8b5cf6;
+    }
+
+    .part-badge.terminator {
+        background-color: #ef4444;
+    }
+
+    .part-badge.other {
+        background-color: #6b7280;
+    }
+
+    code {
+        background-color: var(--bg-color);
+        padding: 0.125rem 0.5rem;
+        border-radius: 0.25rem;
+        font-family: 'Courier New', monospace;
+        font-weight: 600;
+        color: #dc2626;
+    }
+
+    .protocol-steps ol {
+        background-color: white;
+        padding: 2rem 2rem 2rem 3rem;
+        border-radius: 0.5rem;
+        box-shadow: var(--shadow);
+    }
+
+    .protocol-steps li {
+        margin-bottom: 0.75rem;
+        line-height: 1.6;
+    }
+
+    .assembly-example {
+        background-color: white;
+        padding: 2rem;
+        border-radius: 0.5rem;
+        box-shadow: var(--shadow);
+        margin: 2rem 0;
+    }
+
+    .example-parts {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 1rem;
+        flex-wrap: wrap;
+        margin-top: 1.5rem;
+    }
+
+    .example-parts.vertical {
+        flex-direction: column;
+    }
+
+    .example-part {
+        background-color: var(--bg-color);
+        border: 2px solid var(--border-color);
+        border-radius: 0.5rem;
+        padding: 1rem;
+        text-align: center;
+        min-width: 120px;
+    }
+
+    .example-part.large {
+        min-width: 250px;
+    }
+
+    .part-icon {
+        width: 50px;
+        height: 50px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto 0.5rem;
+        font-weight: 700;
+        color: white;
+        font-size: 1.25rem;
+    }
+
+    .part-icon.promoter {
+        background-color: #10b981;
+    }
+
+    .part-icon.utr {
+        background-color: #3b82f6;
+    }
+
+    .part-icon.cds {
+        background-color: #8b5cf6;
+    }
+
+    .part-icon.terminator {
+        background-color: #ef4444;
+    }
+
+    .part-icon.tu {
+        background-color: #f59e0b;
+    }
+
+    .part-name {
+        font-weight: 600;
+        margin-bottom: 0.5rem;
+    }
+
+    .part-overhangs {
+        font-size: 0.875rem;
+        color: var(--text-secondary);
+    }
+
+    .arrow {
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: var(--primary-color);
+    }
+
+    .arrow.down {
+        transform: rotate(90deg);
+    }
+
+    .example-result {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border: none;
+        padding: 1.5rem;
+    }
+
+    .example-result.large {
+        min-width: 250px;
+    }
+
+    .result-icon {
+        width: 60px;
+        height: 60px;
+        border-radius: 50%;
+        background-color: rgba(255, 255, 255, 0.2);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto 0.5rem;
+        font-weight: 700;
+        font-size: 1.5rem;
+    }
+
+    .result-name {
+        font-weight: 600;
+        font-size: 1.125rem;
+    }
+
+    .reference-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 2rem;
+        margin: 2rem 0;
+    }
+
+    .reference-card {
+        background-color: white;
+        border-radius: 0.5rem;
+        padding: 2rem;
+        box-shadow: var(--shadow);
+        border-top: 4px solid var(--primary-color);
+    }
+
+    .reference-card h3 {
+        margin-top: 0;
+        margin-bottom: 1rem;
+        font-size: 1.5rem;
+    }
+
+    .reference-card ul {
+        list-style: none;
+        padding: 0;
+    }
+
+    .reference-card li {
+        padding: 0.5rem 0;
+        border-bottom: 1px solid var(--border-color);
+    }
+
+    .reference-card li:last-child {
+        border-bottom: none;
+    }
+
+    .tips-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        gap: 1.5rem;
+        margin: 2rem 0;
+    }
+
+    .tip-card {
+        background-color: white;
+        border-radius: 0.5rem;
+        padding: 1.5rem;
+        box-shadow: var(--shadow);
+        border-left: 4px solid var(--success-color);
+    }
+
+    .tip-icon {
+        font-size: 2rem;
+        color: var(--success-color);
+        margin-bottom: 0.5rem;
+    }
+
+    .tip-card h4 {
+        margin: 0.5rem 0;
+        font-size: 1.125rem;
+        font-weight: 600;
+    }
+
+    .tip-card p {
+        margin: 0.5rem 0 0 0;
+        color: var(--text-secondary);
+        line-height: 1.5;
+    }
+
+    .protocol-cta {
+        text-align: center;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 3rem 2rem;
+        border-radius: 1rem;
+        margin-top: 4rem;
+    }
+
+    .protocol-cta h2 {
+        color: white;
+        border: none;
+        margin-bottom: 1rem;
+    }
+
+    .protocol-cta p {
+        font-size: 1.125rem;
+        margin-bottom: 2rem;
+        opacity: 0.95;
+    }
+
+    .cta-buttons {
+        display: flex;
+        gap: 1rem;
+        justify-content: center;
+        flex-wrap: wrap;
+    }
+
+    .protocol-cta .btn-large {
+        padding: 0.875rem 2rem;
+        font-size: 1.125rem;
+        background-color: white !important;
+        color: var(--primary-color) !important;
+    }
+
+    .protocol-cta .btn-large:hover {
+        background-color: var(--bg-color) !important;
+        color: var(--primary-color) !important;
+        transform: translateY(-2px);
+        box-shadow: var(--shadow-lg);
+    }
+
+    @media (max-width: 768px) {
+        .protocol-hero h1 {
+            font-size: 1.75rem;
+        }
+
+        .hero-subtitle {
+            font-size: 1rem;
+        }
+
+        .protocol-section h2 {
+            font-size: 1.5rem;
+        }
+
+        .example-parts {
+            flex-direction: column;
+        }
+
+        .reference-grid,
+        .tips-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .cta-buttons {
+            flex-direction: column;
+        }
+
+        .btn-large {
+            width: 100%;
+        }
+    }
+
+    /* Lab Protocol Styles */
+    .protocol-subsection {
+        margin: 2rem 0;
+    }
+
+    .protocol-subsection h3 {
+        color: var(--primary-color);
+        border-bottom: 2px solid var(--border-color);
+        padding-bottom: 0.5rem;
+        margin-bottom: 1.5rem;
+    }
+
+    .protocol-subsection h4 {
+        font-size: 1.125rem;
+        margin-bottom: 1rem;
+    }
+
+    .materials-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        gap: 1.5rem;
+        margin: 1.5rem 0;
+    }
+
+    .materials-card {
+        background-color: white;
+        border-radius: 0.5rem;
+        padding: 1.5rem;
+        box-shadow: var(--shadow);
+        border-left: 4px solid var(--primary-color);
+    }
+
+    .materials-card h4 {
+        margin-top: 0;
+        margin-bottom: 1rem;
+        font-size: 1.125rem;
+        color: var(--text-color);
+    }
+
+    .materials-card ul {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+    }
+
+    .materials-card li {
+        padding: 0.5rem 0;
+        padding-left: 1.5rem;
+        position: relative;
+    }
+
+    .materials-card li:before {
+        content: "•";
+        position: absolute;
+        left: 0.5rem;
+        color: var(--primary-color);
+        font-weight: bold;
+    }
+
+    .safety-note {
+        margin-top: 1rem;
+        padding: 0.75rem;
+        background-color: #fef3c7;
+        border-radius: 0.375rem;
+        font-size: 0.875rem;
+        color: #92400e;
+    }
+
+    .reaction-table,
+    .cycling-table {
+        margin: 1.5rem 0;
+        overflow-x: auto;
+    }
+
+    .reaction-table table,
+    .cycling-table table {
+        width: 100%;
+        border-collapse: collapse;
+        background-color: white;
+        box-shadow: var(--shadow);
+        border-radius: 0.5rem;
+        overflow: hidden;
+    }
+
+    .reaction-table th,
+    .cycling-table th {
+        background-color: var(--primary-color);
+        color: white;
+        padding: 0.875rem;
+        text-align: left;
+        font-weight: 600;
+        font-size: 0.9375rem;
+    }
+
+    .reaction-table td,
+    .cycling-table td {
+        padding: 0.75rem 0.875rem;
+        border-bottom: 1px solid var(--border-color);
+        font-size: 0.9375rem;
+    }
+
+    .reaction-table tr:last-child td,
+    .cycling-table tr:last-child td {
+        border-bottom: none;
+    }
+
+    .reaction-table tbody tr:hover,
+    .cycling-table tbody tr:hover {
+        background-color: var(--bg-color);
+    }
+
+    .detailed-steps {
+        display: flex;
+        flex-direction: column;
+        gap: 1.5rem;
+        margin: 1.5rem 0;
+    }
+
+    .step-card {
+        display: flex;
+        gap: 1.5rem;
+        background-color: white;
+        border-radius: 0.5rem;
+        padding: 1.5rem;
+        box-shadow: var(--shadow);
+        transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+    .step-card:hover {
+        transform: translateX(4px);
+        box-shadow: var(--shadow-lg);
+    }
+
+    .step-number {
+        flex-shrink: 0;
+        width: 50px;
+        height: 50px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.5rem;
+        font-weight: 700;
+    }
+
+    .step-content {
+        flex: 1;
+    }
+
+    .step-content h4 {
+        margin-top: 0;
+        margin-bottom: 0.75rem;
+        color: var(--text-color);
+    }
+
+    .step-content ul {
+        margin: 0;
+        padding-left: 1.5rem;
+    }
+
+    .step-content li {
+        margin-bottom: 0.5rem;
+        line-height: 1.6;
+    }
+
+    .storage-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 1.5rem;
+        margin: 1.5rem 0;
+    }
+
+    .storage-card {
+        background-color: white;
+        border-radius: 0.5rem;
+        padding: 1.5rem;
+        box-shadow: var(--shadow);
+    }
+
+    .storage-card h4 {
+        margin-top: 0;
+        margin-bottom: 1rem;
+        color: var(--text-color);
+    }
+
+    .storage-card ul {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+    }
+
+    .storage-card li {
+        padding: 0.5rem 0;
+        padding-left: 1.5rem;
+        position: relative;
+        line-height: 1.6;
+    }
+
+    .storage-card li:before {
+        content: "→";
+        position: absolute;
+        left: 0;
+        color: var(--primary-color);
+        font-weight: bold;
+    }
+
+    @media (max-width: 768px) {
+        .materials-grid,
+        .storage-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .step-card {
+            flex-direction: column;
+        }
+
+        .step-number {
+            align-self: flex-start;
+        }
+
+        .reaction-table,
+        .cycling-table {
+            font-size: 0.875rem;
+        }
+
+        .reaction-table th,
+        .reaction-table td,
+        .cycling-table th,
+        .cycling-table td {
+            padding: 0.5rem;
+            font-size: 0.8125rem;
+        }
+    }
+
+    /* Modal Styles */
+    .modal {
+        display: none;
+        position: fixed;
+        z-index: 1000;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        overflow: auto;
+        background-color: rgba(0, 0, 0, 0.5);
+        animation: fadeIn 0.3s;
+    }
+
+    @keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+    }
+
+    .modal-content {
+        background-color: white;
+        margin: 2% auto;
+        width: 90%;
+        max-width: 900px;
+        border-radius: 1rem;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+        animation: slideDown 0.3s;
+        max-height: 90vh;
+        display: flex;
+        flex-direction: column;
+    }
+
+    @keyframes slideDown {
+        from {
+            transform: translateY(-50px);
+            opacity: 0;
+        }
+        to {
+            transform: translateY(0);
+            opacity: 1;
+        }
+    }
+
+    .modal-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 1.5rem 2rem;
+        border-bottom: 2px solid var(--border-color);
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border-radius: 1rem 1rem 0 0;
+    }
+
+    .modal-header h2 {
+        margin: 0;
+        color: white;
+        border: none;
+        font-size: 1.75rem;
+    }
+
+    .modal-close {
+        font-size: 2rem;
+        font-weight: 700;
+        color: white;
+        cursor: pointer;
+        transition: transform 0.2s;
+        line-height: 1;
+        padding: 0 0.5rem;
+    }
+
+    .modal-close:hover {
+        transform: scale(1.2);
+    }
+
+    .modal-body {
+        padding: 2rem;
+        overflow-y: auto;
+        flex: 1;
+    }
+
+    .modal-body h3 {
+        color: var(--primary-color);
+        margin-top: 2rem;
+        margin-bottom: 1rem;
+        font-size: 1.5rem;
+        border-bottom: 2px solid var(--border-color);
+        padding-bottom: 0.5rem;
+    }
+
+    .modal-body h3:first-child {
+        margin-top: 0;
+    }
+
+    .modal-body h4 {
+        color: var(--text-color);
+        margin-top: 0;
+        margin-bottom: 0.5rem;
+        font-size: 1.125rem;
+    }
+
+    .modal-body p {
+        line-height: 1.6;
+        color: var(--text-secondary);
+        margin-bottom: 1rem;
+    }
+
+    .modal-body ul,
+    .modal-body ol {
+        line-height: 1.8;
+        color: var(--text-secondary);
+        margin-bottom: 1.5rem;
+    }
+
+    .modal-body ul li,
+    .modal-body ol li {
+        margin-bottom: 0.5rem;
+    }
+
+    .assembly-process-steps {
+        margin: 1.5rem 0;
+    }
+
+    .process-step {
+        display: flex;
+        gap: 1.5rem;
+        margin-bottom: 2rem;
+        padding: 1.5rem;
+        background-color: var(--bg-color);
+        border-radius: 0.5rem;
+        border-left: 4px solid var(--primary-color);
+    }
+
+    .process-step-number {
+        flex-shrink: 0;
+        width: 50px;
+        height: 50px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.5rem;
+        font-weight: 700;
+    }
+
+    .process-step-content {
+        flex: 1;
+    }
+
+    .process-step-content h4 {
+        margin-top: 0;
+        margin-bottom: 0.75rem;
+        color: var(--text-color);
+    }
+
+    .process-step-content p {
+        margin: 0;
+        line-height: 1.6;
+    }
+
+    .workflow-list {
+        background-color: var(--bg-color);
+        padding: 1.5rem 1.5rem 1.5rem 3rem;
+        border-radius: 0.5rem;
+        margin: 1rem 0;
+    }
+
+    .workflow-list li {
+        margin-bottom: 0.75rem;
+    }
+
+    @media (max-width: 768px) {
+        .modal-content {
+            width: 95%;
+            margin: 5% auto;
+        }
+
+        .modal-header {
+            padding: 1rem 1.5rem;
+        }
+
+        .modal-header h2 {
+            font-size: 1.25rem;
+        }
+
+        .modal-body {
+            padding: 1.5rem;
+        }
+
+        .process-step {
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .process-step-number {
+            align-self: flex-start;
+        }
+    }
+
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Modal functionality
+    document.addEventListener('DOMContentLoaded', function() {
+        const modal = document.getElementById('toolInfoModal');
+        const btn = document.getElementById('openToolInfoBtn');
+        const closeBtn = document.querySelector('.modal-close');
+
+        // Open modal
+        btn.addEventListener('click', function() {
+            modal.style.display = 'block';
+            document.body.style.overflow = 'hidden'; // Prevent background scrolling
+        });
+
+        // Close modal when clicking X
+        closeBtn.addEventListener('click', function() {
+            modal.style.display = 'none';
+            document.body.style.overflow = 'auto';
+        });
+
+        // Close modal when clicking outside
+        window.addEventListener('click', function(event) {
+            if (event.target === modal) {
+                modal.style.display = 'none';
+                document.body.style.overflow = 'auto';
+            }
+        });
+
+        // Close modal with Escape key
+        document.addEventListener('keydown', function(event) {
+            if (event.key === 'Escape' && modal.style.display === 'block') {
+                modal.style.display = 'none';
+                document.body.style.overflow = 'auto';
+            }
+        });
+    });
+</script>
+{% endblock %}

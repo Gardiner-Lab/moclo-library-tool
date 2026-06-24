@@ -1,0 +1,315 @@
+{% extends "base.html" %}
+
+{% block title %}Backbones - MoClo Library Tool{% endblock %}
+
+{% block content %}
+<div class="backbones-container">
+    <div class="page-header-wrapper">
+        <div class="page-header">
+            <h1>MoClo Backbones</h1>
+            <p class="page-subtitle">Manage plasmid backbones for cassette assembly</p>
+        </div>
+        <div class="page-header-actions">
+            <button id="fixBackbonesBtn" class="btn btn-secondary" title="Fix backbone compatibility" onclick="fixBackbones()">
+                🔧 Fix Compatibility
+            </button>
+            <button id="refreshBtn" class="btn btn-secondary" title="Refresh backbones">
+                🔄 Refresh
+            </button>
+            <button id="showUploadBtn" class="btn btn-primary" onclick="showUploadForm()">
+                ➕ Upload Backbone
+            </button>
+        </div>
+    </div>
+
+    <!-- Upload Form (hidden by default) -->
+    <div id="uploadFormContainer" class="upload-form" style="display: none;">
+        <div class="card">
+            <div class="card-header">
+                <h2>Upload New Backbone</h2>
+            </div>
+            <div class="card-body">
+                <form id="uploadForm" enctype="multipart/form-data">
+                    <div class="form-group">
+                        <label for="backboneFile">GenBank File *</label>
+                        <div class="file-input-wrapper">
+                            <input type="file" id="backboneFile" name="file" accept=".gb,.gbk,.genbank" class="file-input" required>
+                            <label for="backboneFile" class="file-input-label" id="fileLabel">
+                                📁 Choose GenBank file or drag here
+                            </label>
+                        </div>
+                        <div class="form-help">Supported formats: .gb, .gbk, .genbank</div>
+                        <div id="backboneFileError" class="error-message"></div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="backboneName">Backbone Name *</label>
+                        <input type="text" id="backboneName" name="name" class="form-control" required placeholder="e.g., pYTK001">
+                        <div id="backboneNameError" class="error-message"></div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="backboneDescription">Description (optional)</label>
+                        <textarea id="backboneDescription" name="description" class="form-control" rows="3" placeholder="Describe this backbone..."></textarea>
+                    </div>
+
+                    <div style="display: flex; gap: 1rem;">
+                        <button type="submit" class="btn btn-primary" id="uploadBtn">
+                            📤 Upload Backbone
+                        </button>
+                        <button type="button" class="btn btn-secondary" onclick="hideUploadForm()">
+                            Cancel
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Search and Filter -->
+    <div class="controls-panel">
+        <div class="search-box">
+            <input type="text" id="searchInput" class="form-control" placeholder="Search backbones by name...">
+        </div>
+    </div>
+
+    <!-- Loading State -->
+    <div id="loadingState" class="loading-state" style="display: none;">
+        <div class="spinner"></div>
+        <p>Loading backbones...</p>
+    </div>
+
+    <!-- Error State -->
+    <div id="errorState" class="error-state" style="display: none;">
+        <p class="error-message"></p>
+        <button id="retryButton" class="btn btn-primary" onclick="loadBackbones()">Retry</button>
+    </div>
+
+    <!-- Backbones List -->
+    <div id="backbonesContainer" class="backbones-grid">
+        <!-- Backbones will be dynamically loaded here -->
+    </div>
+
+    <!-- Empty State -->
+    <div id="emptyState" class="empty-state" style="display: none;">
+        <p>No backbones found. Upload a GenBank file to get started.</p>
+    </div>
+</div>
+
+<!-- Backbone Detail Modal -->
+<div id="backboneDetailModal" class="modal" style="display: none;">
+    <div class="modal-overlay" onclick="closeBackboneDetail()"></div>
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 id="modalBackboneName">Backbone Details</h2>
+            <button class="modal-close" onclick="closeBackboneDetail()">&times;</button>
+        </div>
+        <div class="modal-body" id="backboneDetailContent">
+            <div class="loading-spinner">Loading details...</div>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Backbone Modal -->
+<div id="editBackboneModal" class="modal" style="display: none;">
+    <div class="modal-overlay" onclick="closeEditBackbone()"></div>
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2>Edit Backbone Metadata</h2>
+            <button class="modal-close" onclick="closeEditBackbone()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <form id="editBackboneForm">
+                <input type="hidden" id="editBackboneId">
+                
+                <div class="form-group">
+                    <label for="editName">Name</label>
+                    <input type="text" id="editName" class="form-control" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="editDescription">Description</label>
+                    <textarea id="editDescription" class="form-control" rows="3"></textarea>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="editPlasmidId">Plasmid ID</label>
+                        <input type="text" id="editPlasmidId" class="form-control" placeholder="e.g., pICH47732">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="editLevel">Level</label>
+                        <select id="editLevel" class="form-control">
+                            <option value="">-- Select --</option>
+                            <option value="-1">-1 (Subparts)</option>
+                            <option value="0">0 (Parts)</option>
+                            <option value="1">1 (Transcription Units)</option>
+                            <option value="2">2 (Multi-gene)</option>
+                            <option value="M">M (Module)</option>
+                            <option value="P">P (Pathway)</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="editUnit">Unit</label>
+                        <input type="text" id="editUnit" class="form-control" placeholder="e.g., Pro, CDS, Ter">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="editAntibiotic">Antibiotic Resistance</label>
+                        <select id="editAntibiotic" class="form-control">
+                            <option value="">-- Select --</option>
+                            <option value="Amp">Ampicillin</option>
+                            <option value="Carb">Carbenicillin</option>
+                            <option value="Kan">Kanamycin</option>
+                            <option value="Spec">Spectinomycin</option>
+                            <option value="Chlor">Chloramphenicol</option>
+                            <option value="Gent">Gentamicin</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="editOriEcoli">Origin (E. coli)</label>
+                        <input type="text" id="editOriEcoli" class="form-control" placeholder="e.g., pMB1, ColE1">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="editOriAgro">Origin (Agrobacterium)</label>
+                        <input type="text" id="editOriAgro" class="form-control" placeholder="e.g., RK2, pVS1, -">
+                    </div>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="editHostStrain">Host Strain</label>
+                        <input type="text" id="editHostStrain" class="form-control" placeholder="e.g., DH10B, DH5α">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="editContributor">Contributor</label>
+                        <input type="text" id="editContributor" class="form-control">
+                    </div>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="editDonorOrganism">Donor Organism</label>
+                        <input type="text" id="editDonorOrganism" class="form-control" placeholder="e.g., Escherichia coli">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="editLabSource">Lab Source</label>
+                        <input type="text" id="editLabSource" class="form-control" placeholder="e.g., MoClo Plant Kit">
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="editReference">Reference</label>
+                    <input type="text" id="editReference" class="form-control" placeholder="e.g., Weber et al. (2011) PLoS ONE">
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="editLocation80">Location (80-box)</label>
+                        <input type="text" id="editLocation80" class="form-control" placeholder="e.g., 1.18">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="editLocation96">Location (96-plate)</label>
+                        <input type="text" id="editLocation96" class="form-control" placeholder="e.g., 03B">
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="editComments">Comments</label>
+                    <textarea id="editComments" class="form-control" rows="2"></textarea>
+                </div>
+                
+                <div class="form-actions">
+                    <button type="button" class="btn btn-secondary" onclick="closeEditBackbone()">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save Changes</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Compatible Cassettes Modal -->
+<div id="compatibleCassettesModal" class="modal" style="display: none;">
+    <div class="modal-overlay" onclick="closeCompatibleCassettes()"></div>
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 id="modalCompatibleTitle">Compatible Cassettes</h2>
+            <button class="modal-close" onclick="closeCompatibleCassettes()">&times;</button>
+        </div>
+        <div class="modal-body" id="compatibleCassettesContent">
+            <div class="loading-spinner">Loading cassettes...</div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/backbones.js') }}"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        initBackbones();
+    });
+
+    function showUploadForm() {
+        document.getElementById('uploadFormContainer').style.display = 'block';
+        document.getElementById('showUploadBtn').style.display = 'none';
+    }
+
+    function hideUploadForm() {
+        document.getElementById('uploadFormContainer').style.display = 'none';
+        document.getElementById('showUploadBtn').style.display = 'inline-block';
+        document.getElementById('uploadForm').reset();
+        document.getElementById('fileLabel').textContent = '📁 Choose GenBank file or drag here';
+        document.getElementById('fileLabel').classList.remove('has-file');
+    }
+
+    async function fixBackbones() {
+        const btn = document.getElementById('fixBackbonesBtn');
+        const originalText = btn.innerHTML;
+        
+        if (!confirm('This will re-analyze all backbones to fix compatibility checking. Continue?')) {
+            return;
+        }
+        
+        try {
+            btn.disabled = true;
+            btn.innerHTML = '⏳ Fixing...';
+            
+            const response = await fetch('/api/admin/fix-backbones', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            });
+            
+            const data = await response.json();
+            
+            if (response.ok) {
+                alert(`✓ Fixed ${data.updated} of ${data.total} backbones\n\nUpdated: ${data.updated}\nFailed: ${data.failed}`);
+                // Refresh the backbones list
+                initBackbones();
+            } else {
+                alert(`Error: ${data.message || 'Failed to fix backbones'}`);
+            }
+        } catch (error) {
+            console.error('Error fixing backbones:', error);
+            alert('Error: Failed to fix backbones. Check console for details.');
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = originalText;
+        }
+    }
+
+</script>
+{% endblock %}

@@ -1,0 +1,55 @@
+{
+  "users": [
+    {
+      "username": "demo",
+      "password": "demo123"
+    },
+    {
+      "username": "admin",
+      "password": "admin123",
+      "is_admin": true
+    }
+  ],
+  "parts": [
+    {
+      "name": "Promoter_J23100",
+      "part_type": "NonCodingPromoter",
+      "sequence": "AAAGTTGACAGCTAGCTCAGTCCTAGGTATAATGCTAGC",
+      "overhang_5prime": "AAAG",
+      "overhang_3prime": "TAGC",
+      "lab_source": "iGEM Registry",
+      "contributor": "demo",
+      "description": "Strong constitutive promoter from Anderson collection"
+    },
+    {
+      "name": "RBS_B0034",
+      "part_type": "NonCodingOther",
+      "sequence": "TAGCAAAGAGGAGAAATACTAGATG",
+      "overhang_5prime": "TAGC",
+      "overhang_3prime": "ATGA",
+      "lab_source": "iGEM Registry",
+      "contributor": "demo",
+      "description": "Strong ribosome binding site"
+    },
+    {
+      "name": "GFP_Coding",
+      "part_type": "Coding",
+      "sequence": "ATGAGTAAAGGAGAAGAACTTTTCACTGGAGTTGTCCCAATTCTTGTTGAATTAGATGGTGATGTTAATGGGCACAAATTTTCTGTCAGTGGAGAGGGTGAAGGTGATGCAACATACGGAAAACTTACCCTTAAATTTATTTGCACTACTGGAAAACTACCTGTTCCATGGCCAACACTTGTCACTACTTTCGCGTATGGTCTTCAATGCTTTGCGAGATACCCAGATCATATGAAACAGCATGACTTTTTCAAGAGTGCCATGCCCGAAGGTTATGTACAGGAAAGAACTATATTTTTCAAAGATGACGGGAACTACAAGACACGTGCTGAAGTCAAGTTTGAAGGTGATACCCTTGTTAATAGAATCGAGTTAAAAGGTATTGATTTTAAAGAAGATGGAAACATTCTTGGACACAAATTGGAATACAACTATAACTCACACAATGTATACATCATGGCAGACAAACAAAAGAATGGAATCAAAGTTAACTTCAAAATTAGACACAACATTGAAGATGGAAGCGTTCAACTAGCAGACCATTATCAACAAAATACTCCAATTGGCGATGGCCCTGTCCTTTTACCAGACAACCATTACCTGTCCACACAATCTGCCCTTTCGAAAGATCCCAACGAAAAGAGAGACCACATGGTCCTTCTTGAGTTTGTAACAGCTGCTGGGATTACACATGGCATGGATGAACTATACAAATAAGCTA",
+      "overhang_5prime": "ATGA",
+      "overhang_3prime": "GCTA",
+      "lab_source": "iGEM Registry",
+      "contributor": "demo",
+      "description": "Green fluorescent protein coding sequence"
+    },
+    {
+      "name": "Terminator_B0015",
+      "part_type": "NonCodingTerminator",
+      "sequence": "GCTACCTAGGACTGAGCTAGCAGAATTCGCGGCCGCTTCTAGAG",
+      "overhang_5prime": "GCTA",
+      "overhang_3prime": "CTAG",
+      "lab_source": "iGEM Registry",
+      "contributor": "demo",
+      "description": "Double terminator (B0010-B0012)"
+    }
+  ]
+}

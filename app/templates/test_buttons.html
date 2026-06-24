@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Button Test</title>
+    <style>
+        .btn {
+            padding: 10px 20px;
+            margin: 5px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .btn-secondary {
+            background-color: #6b7280;
+            color: white;
+        }
+        .btn-primary {
+            background-color: #2563eb;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <h1>Button Visibility Test</h1>
+    
+    <h2>Test 1: Basic Buttons</h2>
+    <button class="btn btn-secondary">🔧 Fix Compatibility</button>
+    <button class="btn btn-secondary">🔄 Refresh</button>
+    <button class="btn btn-primary">➕ Upload Backbone</button>
+    
+    <h2>Test 2: With IDs and onclick</h2>
+    <button id="fixBackbonesBtn" class="btn btn-secondary" onclick="alert('Fix clicked')">
+        🔧 Fix Compatibility
+    </button>
+    <button id="refreshBtn" class="btn btn-secondary" onclick="alert('Refresh clicked')">
+        🔄 Refresh
+    </button>
+    
+    <h2>Test 3: Edit Button</h2>
+    <button class="btn btn-primary" onclick="alert('Edit clicked')">
+        ✏️ Edit Metadata
+    </button>
+    
+    <h2>Instructions:</h2>
+    <ol>
+        <li>If you see buttons above, HTML/CSS is working</li>
+        <li>If buttons are clickable, JavaScript is working</li>
+        <li>If you don't see buttons, there's a browser/cache issue</li>
+    </ol>
+    
+    <h2>Debug Info:</h2>
+    <p>Current URL: <span id="url"></span></p>
+    <p>User Agent: <span id="ua"></span></p>
+    
+    <script>
+        document.getElementById('url').textContent = window.location.href;
+        document.getElementById('ua').textContent = navigator.userAgent;
+        console.log('Test page loaded successfully');
+        console.log('Buttons found:', document.querySelectorAll('.btn').length);
+    </script>
+</body>
+</html>

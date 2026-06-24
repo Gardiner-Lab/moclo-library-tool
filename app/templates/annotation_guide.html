@@ -1,0 +1,272 @@
+{% extends "base.html" %}
+
+{% block title %}GenBank Annotation Guide - MoClo Library Tool{% endblock %}
+
+{% block content %}
+<div class="container" style="max-width: 900px; margin: 2rem auto;">
+    <div class="page-header">
+        <h1>GenBank Annotation Best Practices</h1>
+        <p class="page-subtitle">Guidelines for annotating parts with introns and other features</p>
+    </div>
+
+    <!-- Intron Annotation Section -->
+    <div class="card" style="margin-bottom: 2rem;">
+        <div class="card-header">
+            <h2>Annotating Introns in Coding Sequences</h2>
+        </div>
+        <div class="card-body">
+            <p>When your coding sequence contains introns, proper annotation is essential for accurate translation analysis. The tool will automatically detect and process introns to show both genomic and spliced sequences.</p>
+
+            <h3 style="margin-top: 1.5rem;">Intron Annotation Requirements</h3>
+            <div class="info-box" style="background-color: #e3f2fd; padding: 1rem; border-radius: 0.375rem; margin: 1rem 0;">
+                <strong>Important:</strong> Intron annotations must include the splice sites (GT at the 5' donor site and AG at the 3' acceptor site) as part of the annotated region.
+            </div>
+
+            <h4 style="margin-top: 1.5rem;">Visual Example: Gene with Intron</h4>
+            <div style="background-color: #f8f9fa; padding: 1.5rem; border-radius: 0.5rem; margin: 1rem 0; border: 2px solid #dee2e6;">
+                <div style="font-family: monospace; font-size: 0.9rem; line-height: 2;">
+                    <!-- Genomic DNA -->
+                    <div style="margin-bottom: 1.5rem;">
+                        <div style="font-weight: bold; margin-bottom: 0.5rem; color: #495057;">Genomic DNA Sequence:</div>
+                        <div style="background-color: white; padding: 0.75rem; border-radius: 0.25rem; border: 1px solid #ced4da;">
+                            <span style="color: #28a745; font-weight: bold;">ATG</span><span style="color: #007bff;">AAGCTG</span><span style="background-color: #fff3cd; padding: 2px 4px; border-radius: 3px; color: #856404;">GTAAGT...TTTCAG</span><span style="color: #007bff;">TACGGA</span><span style="color: #dc3545; font-weight: bold;">TAA</span>
+                        </div>
+                        <div style="font-size: 0.8rem; color: #6c757d; margin-top: 0.5rem;">
+                            <span style="color: #28a745;">●</span> Start codon (ATG) &nbsp;
+                            <span style="color: #007bff;">●</span> Exons &nbsp;
+                            <span style="background-color: #fff3cd; padding: 2px 6px; border-radius: 3px;">●</span> Intron &nbsp;
+                            <span style="color: #dc3545;">●</span> Stop codon (TAA)
+                        </div>
+                    </div>
+
+                    <!-- Annotation Structure -->
+                    <div style="margin-bottom: 1.5rem;">
+                        <div style="font-weight: bold; margin-bottom: 0.5rem; color: #495057;">Annotation Structure:</div>
+                        <div style="background-color: white; padding: 1rem; border-radius: 0.25rem; border: 1px solid #ced4da;">
+                            <div style="display: flex; align-items: center; margin-bottom: 0.75rem;">
+                                <div style="width: 120px; color: #6c757d;">Position 1-300:</div>
+                                <div style="flex: 1; height: 24px; background: linear-gradient(to right, #28a745 0%, #007bff 20%, #007bff 100%); border-radius: 4px; position: relative;">
+                                    <span style="position: absolute; left: 5px; color: white; font-size: 0.75rem; line-height: 24px;">CDS (Complete Gene)</span>
+                                </div>
+                            </div>
+                            <div style="display: flex; align-items: center;">
+                                <div style="width: 120px; color: #6c757d;">Position 50-150:</div>
+                                <div style="flex: 1; position: relative; height: 24px;">
+                                    <div style="position: absolute; left: 16.67%; width: 33.33%; height: 24px; background-color: #ffc107; border-radius: 4px; border: 2px solid #ff9800;">
+                                        <span style="color: #000; font-size: 0.75rem; line-height: 20px; padding-left: 5px;">Intron</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Splice Sites Detail -->
+                    <div style="margin-bottom: 1.5rem;">
+                        <div style="font-weight: bold; margin-bottom: 0.5rem; color: #495057;">Splice Site Detail:</div>
+                        <div style="background-color: white; padding: 1rem; border-radius: 0.25rem; border: 1px solid #ced4da;">
+                            <div style="margin-bottom: 0.75rem;">
+                                <div style="color: #6c757d; font-size: 0.85rem; margin-bottom: 0.25rem;">5' Donor Site (position 50):</div>
+                                <div style="letter-spacing: 2px;">
+                                    <span style="color: #007bff;">...AAGCTG</span><span style="color: #dc3545; font-weight: bold; background-color: #ffe6e6; padding: 2px 4px;">GT</span><span style="background-color: #fff3cd; padding: 2px 4px;">AAGT...</span>
+                                </div>
+                                <div style="font-size: 0.75rem; color: #6c757d; margin-top: 0.25rem;">
+                                    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;↑ Intron starts here (includes GT)
+                                </div>
+                            </div>
+                            <div>
+                                <div style="color: #6c757d; font-size: 0.85rem; margin-bottom: 0.25rem;">3' Acceptor Site (position 150):</div>
+                                <div style="letter-spacing: 2px;">
+                                    <span style="background-color: #fff3cd; padding: 2px 4px;">...TTTC</span><span style="color: #dc3545; font-weight: bold; background-color: #ffe6e6; padding: 2px 4px;">AG</span><span style="color: #007bff;">TACGGA...</span>
+                                </div>
+                                <div style="font-size: 0.75rem; color: #6c757d; margin-top: 0.25rem;">
+                                    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;↑ Intron ends here (includes AG)
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- After Splicing -->
+                    <div>
+                        <div style="font-weight: bold; margin-bottom: 0.5rem; color: #495057;">After Splicing (mRNA):</div>
+                        <div style="background-color: white; padding: 0.75rem; border-radius: 0.25rem; border: 1px solid #ced4da;">
+                            <span style="color: #28a745; font-weight: bold;">ATG</span><span style="color: #007bff;">AAGCTGTACGGA</span><span style="color: #dc3545; font-weight: bold;">TAA</span>
+                        </div>
+                        <div style="font-size: 0.8rem; color: #6c757d; margin-top: 0.5rem;">
+                            Intron removed, exons joined seamlessly
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <h4 style="margin-top: 1.5rem;">GenBank Format Example</h4>
+            <pre style="background-color: #f5f5f5; padding: 1rem; border-radius: 0.375rem; overflow-x: auto; font-size: 0.875rem;"><code>FEATURES             Location/Qualifiers
+     CDS             1..300
+                     /label="MyGene"
+                     /translation="MKKL..."
+     intron          50..150
+                     /label="intron1"
+                     /note="First intron - includes GT...AG"</code></pre>
+            
+            <div style="background-color: #e8f5e9; padding: 1rem; border-radius: 0.375rem; border-left: 4px solid #4caf50; margin-top: 1rem;">
+                <strong>✓ Correct:</strong> The intron annotation spans from position 50 to 150, which includes:
+                <ul style="margin: 0.5rem 0 0 1.5rem;">
+                    <li>The GT at positions 50-51 (donor site)</li>
+                    <li>The internal intron sequence</li>
+                    <li>The AG at positions 149-150 (acceptor site)</li>
+                </ul>
+            </div>
+            
+            <div style="background-color: #ffebee; padding: 1rem; border-radius: 0.375rem; border-left: 4px solid #f44336; margin-top: 1rem;">
+                <strong>✗ Incorrect:</strong> Do NOT annotate from position 52 to 148 (excluding splice sites). The tool expects the complete intron including GT and AG.
+            </div>
+
+            <h4 style="margin-top: 1.5rem;">Key Points</h4>
+            <ul style="line-height: 1.8;">
+                <li><strong>Feature Type:</strong> Use "intron" as the feature type</li>
+                <li><strong>Coordinates:</strong> Include the complete intron sequence including GT...AG splice sites</li>
+                <li><strong>Label:</strong> Provide a descriptive label (e.g., "intron1", "cdpk3_intron")</li>
+                <li><strong>Multiple Introns:</strong> Each intron should be a separate feature annotation</li>
+            </ul>
+
+            <h4 style="margin-top: 1.5rem;">Splice Site Context</h4>
+            <p>The tool will display splice site context for each intron:</p>
+            <ul style="line-height: 1.8;">
+                <li><strong>Donor Site:</strong> Shows 8bp context around the 5' GT splice site</li>
+                <li><strong>Acceptor Site:</strong> Shows 8bp context around the 3' AG splice site</li>
+                <li><strong>Consensus Sequences:</strong> Typical patterns are MAG|GTRAGT (donor) and YAG|R (acceptor)</li>
+            </ul>
+
+            <div class="tip-card" style="background-color: #fff3cd; border-left: 4px solid #ffc107; padding: 1rem; margin: 1.5rem 0;">
+                <strong>💡 Tip:</strong> The tool automatically extracts intron annotations from GenBank files. You don't need to manually specify intron positions when uploading properly annotated files.
+            </div>
+        </div>
+    </div>
+
+    <!-- Translation Analysis Section -->
+    <div class="card" style="margin-bottom: 2rem;">
+        <div class="card-header">
+            <h2>Translation Analysis with Introns</h2>
+        </div>
+        <div class="card-body">
+            <p>When a cassette contains coding sequences with introns, the tool provides comprehensive translation analysis:</p>
+
+            <h4 style="margin-top: 1rem;">What You'll See</h4>
+            <ol style="line-height: 1.8;">
+                <li><strong>Genomic Sequence:</strong> The complete DNA sequence including introns</li>
+                <li><strong>Spliced mRNA:</strong> The sequence after intron removal</li>
+                <li><strong>Protein Translation:</strong> Amino acid sequence from the spliced mRNA</li>
+                <li><strong>Splice Site Table:</strong> Context sequences for each donor and acceptor site</li>
+            </ol>
+
+            <h4 style="margin-top: 1.5rem;">Intron Detection Methods</h4>
+            <p>The tool detects introns through:</p>
+            <ul style="line-height: 1.8;">
+                <li><strong>GenBank Annotations:</strong> Intron features in uploaded GenBank files (recommended)</li>
+                <li><strong>Part Names:</strong> Parts with "intron" in the name (case-insensitive, word boundary match)</li>
+                <li><strong>Part Types:</strong> Parts classified as "NonCodingIntron"</li>
+            </ul>
+
+            <div class="warning-box" style="background-color: #ffebee; border-left: 4px solid #f44336; padding: 1rem; margin: 1.5rem 0;">
+                <strong>⚠️ Note:</strong> The tool does NOT automatically predict intron locations. All introns must be explicitly annotated in the GenBank file or specified through part classification.
+            </div>
+        </div>
+    </div>
+
+    <!-- Other Annotations Section -->
+    <div class="card" style="margin-bottom: 2rem;">
+        <div class="card-header">
+            <h2>Other Feature Annotations</h2>
+        </div>
+        <div class="card-body">
+            <h4>Recommended Feature Types</h4>
+            <table style="width: 100%; border-collapse: collapse; margin: 1rem 0;">
+                <thead>
+                    <tr style="background-color: #f5f5f5;">
+                        <th style="padding: 0.75rem; text-align: left; border-bottom: 2px solid #ddd;">Feature Type</th>
+                        <th style="padding: 0.75rem; text-align: left; border-bottom: 2px solid #ddd;">Description</th>
+                        <th style="padding: 0.75rem; text-align: left; border-bottom: 2px solid #ddd;">Example</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td style="padding: 0.75rem; border-bottom: 1px solid #ddd;"><code>CDS</code></td>
+                        <td style="padding: 0.75rem; border-bottom: 1px solid #ddd;">Coding sequence</td>
+                        <td style="padding: 0.75rem; border-bottom: 1px solid #ddd;">Gene, ORF</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 0.75rem; border-bottom: 1px solid #ddd;"><code>promoter</code></td>
+                        <td style="padding: 0.75rem; border-bottom: 1px solid #ddd;">Promoter region</td>
+                        <td style="padding: 0.75rem; border-bottom: 1px solid #ddd;">35S, T7</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 0.75rem; border-bottom: 1px solid #ddd;"><code>terminator</code></td>
+                        <td style="padding: 0.75rem; border-bottom: 1px solid #ddd;">Transcription terminator</td>
+                        <td style="padding: 0.75rem; border-bottom: 1px solid #ddd;">NOS, T7 terminator</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 0.75rem; border-bottom: 1px solid #ddd;"><code>intron</code></td>
+                        <td style="padding: 0.75rem; border-bottom: 1px solid #ddd;">Intron sequence</td>
+                        <td style="padding: 0.75rem; border-bottom: 1px solid #ddd;">Intron 1, splice region</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 0.75rem; border-bottom: 1px solid #ddd;"><code>RBS</code></td>
+                        <td style="padding: 0.75rem; border-bottom: 1px solid #ddd;">Ribosome binding site</td>
+                        <td style="padding: 0.75rem; border-bottom: 1px solid #ddd;">Shine-Dalgarno</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 0.75rem; border-bottom: 1px solid #ddd;"><code>misc_feature</code></td>
+                        <td style="padding: 0.75rem; border-bottom: 1px solid #ddd;">Other features</td>
+                        <td style="padding: 0.75rem; border-bottom: 1px solid #ddd;">Tags, linkers</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <h4 style="margin-top: 1.5rem;">Annotation Tools</h4>
+            <p>Popular tools for creating GenBank annotations:</p>
+            <ul style="line-height: 1.8;">
+                <li><strong>Benchling:</strong> Web-based molecular biology platform with annotation tools</li>
+                <li><strong>SnapGene:</strong> Desktop software for sequence annotation and visualization</li>
+                <li><strong>Geneious:</strong> Comprehensive bioinformatics software suite</li>
+                <li><strong>ApE (A plasmid Editor):</strong> Free plasmid editor for Windows and Mac</li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- Best Practices Section -->
+    <div class="card" style="margin-bottom: 2rem;">
+        <div class="card-header">
+            <h2>General Best Practices</h2>
+        </div>
+        <div class="card-body">
+            <h4>File Preparation</h4>
+            <ul style="line-height: 1.8;">
+                <li>Use standard GenBank format (.gb or .gbk files)</li>
+                <li>Include descriptive labels for all features</li>
+                <li>Verify sequence accuracy before upload</li>
+                <li>Check that coordinates are correct (1-indexed)</li>
+            </ul>
+
+            <h4 style="margin-top: 1.5rem;">Naming Conventions</h4>
+            <ul style="line-height: 1.8;">
+                <li>Use clear, descriptive names for parts and features</li>
+                <li>Include organism or source information when relevant</li>
+                <li>Avoid special characters that might cause parsing issues</li>
+                <li>Be consistent with naming across your library</li>
+            </ul>
+
+            <h4 style="margin-top: 1.5rem;">Quality Control</h4>
+            <ul style="line-height: 1.8;">
+                <li>Review translation analysis after upload to verify intron processing</li>
+                <li>Check splice site sequences match consensus patterns</li>
+                <li>Verify that spliced sequence produces expected protein</li>
+                <li>Test assembly compatibility before large-scale use</li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- Back Button -->
+    <div style="text-align: center; margin: 2rem 0;">
+        <a href="/protocol" class="btn btn-secondary">← Back to Protocol</a>
+    </div>
+</div>
+{% endblock %}

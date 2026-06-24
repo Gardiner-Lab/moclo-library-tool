@@ -1,0 +1,547 @@
+{% extends "base.html" %}
+{% block title %}Admin Dashboard — MoClo Library Tool{% endblock %}
+
+{% block extra_css %}
+<style>
+  .admin-tabs { display: flex; gap: 0.5rem; margin-bottom: 1.5rem; flex-wrap: wrap; }
+  .admin-tab {
+    padding: 0.5rem 1.25rem; border: 1px solid var(--border-color);
+    border-radius: 6px; cursor: pointer; background: var(--bg-color);
+    font-size: 0.9rem; transition: background 0.15s;
+  }
+  .admin-tab.active { background: var(--primary-color); color: #fff; border-color: var(--primary-color); }
+  .admin-section { display: none; }
+  .admin-section.active { display: block; }
+
+  .admin-table { width: 100%; border-collapse: collapse; font-size: 0.875rem; }
+  .admin-table th { background: var(--primary-color); color: #fff; padding: 0.6rem 0.75rem; text-align: left; }
+  .admin-table td { padding: 0.55rem 0.75rem; border-bottom: 1px solid var(--border-color); vertical-align: middle; }
+  .admin-table tr:hover td { background: var(--bg-color); }
+
+  .btn-sm { padding: 0.25rem 0.65rem; font-size: 0.8rem; border-radius: 4px; border: none; cursor: pointer; margin-right: 0.25rem; }
+  .btn-danger  { background: #dc3545; color: #fff; }
+  .btn-warning { background: #fd7e14; color: #fff; }
+  .btn-primary { background: var(--primary-color); color: #fff; }
+  .btn-success { background: #28a745; color: #fff; }
+
+  .admin-modal-overlay {
+    display: none; position: fixed; inset: 0;
+    background: rgba(0,0,0,0.55); z-index: 2000;
+    align-items: center; justify-content: center;
+  }
+  .admin-modal-overlay.open { display: flex; }
+  .admin-modal-box {
+    background: #fff; border-radius: 8px; padding: 1.75rem;
+    width: 100%; max-width: 480px; box-shadow: 0 8px 32px rgba(0,0,0,0.25);
+    position: relative; z-index: 2001;
+  }
+  .admin-modal-box h3 { margin: 0 0 1rem; }
+  .form-group { margin-bottom: 0.9rem; }
+  .form-group label { display: block; font-size: 0.85rem; margin-bottom: 0.3rem; font-weight: 500; }
+  .form-group input, .form-group select, .form-group textarea {
+    width: 100%; padding: 0.45rem 0.65rem; border: 1px solid var(--border-color);
+    border-radius: 4px; font-size: 0.9rem; box-sizing: border-box;
+  }
+  .modal-actions { display: flex; gap: 0.5rem; justify-content: flex-end; margin-top: 1.25rem; }
+  .badge-admin {
+    background: #6f42c1; color: #fff; font-size: 0.7rem;
+    padding: 0.15rem 0.45rem; border-radius: 10px; margin-left: 0.4rem;
+  }
+  .section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem; }
+  .count-badge {
+    background: var(--primary-color); color: #fff;
+    font-size: 0.75rem; padding: 0.15rem 0.5rem; border-radius: 10px; margin-left: 0.5rem;
+  }
+  .truncate { max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+</style>
+{% endblock %}
+
+{% block content %}
+<h1>⚙️ Admin Dashboard</h1>
+
+<div class="admin-tabs">
+  <button class="admin-tab active" data-tab="users">👥 Users</button>
+  <button class="admin-tab" data-tab="parts">🧩 Parts</button>
+  <button class="admin-tab" data-tab="cassettes">🔗 Cassettes</button>
+  <button class="admin-tab" data-tab="backbones">🦴 Backbones</button>
+  <button class="admin-tab" data-tab="plasmids">🧬 Plasmids</button>
+</div>
+
+<!-- ── USERS ── -->
+<div id="tab-users" class="admin-section active">
+  <div class="section-header">
+    <h2>Users <span class="count-badge" id="users-count">0</span></h2>
+    <button class="btn-sm btn-success" id="btn-new-user">+ New User</button>
+  </div>
+  <table class="admin-table">
+    <thead><tr><th>Username</th><th>Role</th><th>Created</th><th>Actions</th></tr></thead>
+    <tbody id="users-tbody"></tbody>
+  </table>
+</div>
+
+<!-- ── PARTS ── -->
+<div id="tab-parts" class="admin-section">
+  <div class="section-header">
+    <h2>Parts <span class="count-badge" id="parts-count">0</span></h2>
+  </div>
+  <table class="admin-table">
+    <thead><tr><th>Name</th><th>Type</th><th>Contributor</th><th>Lab Source</th><th>Actions</th></tr></thead>
+    <tbody id="parts-tbody"></tbody>
+  </table>
+</div>
+
+<!-- ── CASSETTES ── -->
+<div id="tab-cassettes" class="admin-section">
+  <div class="section-header">
+    <h2>Cassettes <span class="count-badge" id="cassettes-count">0</span></h2>
+  </div>
+  <table class="admin-table">
+    <thead><tr><th>Name</th><th>Owner ID</th><th>Parts</th><th>Created</th><th>Actions</th></tr></thead>
+    <tbody id="cassettes-tbody"></tbody>
+  </table>
+</div>
+
+<!-- ── BACKBONES ── -->
+<div id="tab-backbones" class="admin-section">
+  <div class="section-header">
+    <h2>Backbones <span class="count-badge" id="backbones-count">0</span></h2>
+  </div>
+  <table class="admin-table">
+    <thead><tr><th>Name</th><th>Owner ID</th><th>Description</th><th>Created</th><th>Actions</th></tr></thead>
+    <tbody id="backbones-tbody"></tbody>
+  </table>
+</div>
+
+<!-- ── PLASMIDS ── -->
+<div id="tab-plasmids" class="admin-section">
+  <div class="section-header">
+    <h2>Plasmids <span class="count-badge" id="plasmids-count">0</span></h2>
+  </div>
+  <table class="admin-table">
+    <thead><tr><th>Name</th><th>Owner ID</th><th>Size (bp)</th><th>Created</th><th>Actions</th></tr></thead>
+    <tbody id="plasmids-tbody"></tbody>
+  </table>
+</div>
+
+<!-- ── MODALS ── -->
+
+<!-- Create / Edit User -->
+<div class="admin-modal-overlay" id="user-modal">
+  <div class="admin-modal-box">
+    <h3 id="user-modal-title">Create User</h3>
+    <input type="hidden" id="user-modal-id">
+    <div class="form-group">
+      <label>Username</label>
+      <input type="text" id="user-modal-username" placeholder="username">
+    </div>
+    <div class="form-group">
+      <label id="user-modal-pw-label">Password</label>
+      <input type="password" id="user-modal-password" placeholder="password">
+    </div>
+    <div class="form-group">
+      <label>Role</label>
+      <select id="user-modal-role">
+        <option value="0">Regular user</option>
+        <option value="1">Admin</option>
+      </select>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-sm" id="user-modal-cancel">Cancel</button>
+      <button class="btn-sm btn-primary" id="user-modal-save">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- Edit Part -->
+<div class="admin-modal-overlay" id="part-modal">
+  <div class="admin-modal-box">
+    <h3>Edit Part</h3>
+    <input type="hidden" id="part-modal-id">
+    <div class="form-group"><label>Name</label><input type="text" id="part-modal-name"></div>
+    <div class="form-group">
+      <label>Type</label>
+      <select id="part-modal-type">
+        <option>Coding</option>
+        <option>NonCodingPromoter</option>
+        <option>NonCodingTerminator</option>
+        <option>NonCodingIntron</option>
+        <option>NonCodingOther</option>
+      </select>
+    </div>
+    <div class="form-group"><label>Lab Source</label><input type="text" id="part-modal-lab"></div>
+    <div class="form-group"><label>Description</label><input type="text" id="part-modal-desc"></div>
+    <div class="modal-actions">
+      <button class="btn-sm" id="part-modal-cancel">Cancel</button>
+      <button class="btn-sm btn-primary" id="part-modal-save">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- Edit Cassette -->
+<div class="admin-modal-overlay" id="cassette-modal">
+  <div class="admin-modal-box">
+    <h3>Edit Cassette</h3>
+    <input type="hidden" id="cassette-modal-id">
+    <div class="form-group"><label>Name</label><input type="text" id="cassette-modal-name"></div>
+    <div class="modal-actions">
+      <button class="btn-sm" id="cassette-modal-cancel">Cancel</button>
+      <button class="btn-sm btn-primary" id="cassette-modal-save">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- Edit Backbone -->
+<div class="admin-modal-overlay" id="backbone-modal">
+  <div class="admin-modal-box">
+    <h3>Edit Backbone</h3>
+    <input type="hidden" id="backbone-modal-id">
+    <div class="form-group"><label>Name</label><input type="text" id="backbone-modal-name"></div>
+    <div class="form-group"><label>Description</label><input type="text" id="backbone-modal-desc"></div>
+    <div class="form-group"><label>Contributor</label><input type="text" id="backbone-modal-contributor"></div>
+    <div class="form-group"><label>Lab Source</label><input type="text" id="backbone-modal-lab"></div>
+    <div class="modal-actions">
+      <button class="btn-sm" id="backbone-modal-cancel">Cancel</button>
+      <button class="btn-sm btn-primary" id="backbone-modal-save">Save</button>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const API = '/api/admin';
+
+// ── Helpers ────────────────────────────────────────────────────────────────
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+function openModal(id)  { document.getElementById(id).classList.add('open'); }
+
+async function apiFetch(url, opts = {}) {
+  const res = await fetch(url, {
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+    ...opts
+  });
+  return res.json();
+}
+
+// Close modal when clicking the overlay background
+document.querySelectorAll('.admin-modal-overlay').forEach(el => {
+  el.addEventListener('click', e => { if (e.target === el) el.classList.remove('open'); });
+});
+
+// ── Tab switching ──────────────────────────────────────────────────────────
+const loaders = {};
+
+document.querySelectorAll('.admin-tab').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const name = btn.dataset.tab;
+    document.querySelectorAll('.admin-section').forEach(s => s.classList.remove('active'));
+    document.querySelectorAll('.admin-tab').forEach(t => t.classList.remove('active'));
+    document.getElementById('tab-' + name).classList.add('active');
+    btn.classList.add('active');
+    loaders[name]();
+  });
+});
+
+// ── USERS ──────────────────────────────────────────────────────────────────
+loaders.users = async function() {
+  const data = await apiFetch(`${API}/users`);
+  document.getElementById('users-count').textContent = data.count ?? 0;
+  const tbody = document.getElementById('users-tbody');
+  tbody.innerHTML = '';
+  (data.users || []).forEach(u => {
+    const tr = document.createElement('tr');
+    const editBtn = document.createElement('button');
+    editBtn.className = 'btn-sm btn-warning';
+    editBtn.textContent = 'Edit';
+    editBtn.addEventListener('click', () => openEditUser(u));
+
+    const delBtn = document.createElement('button');
+    delBtn.className = 'btn-sm btn-danger';
+    delBtn.textContent = 'Delete';
+    delBtn.addEventListener('click', () => {
+      if (confirm(`Delete user "${u.username}"?`)) deleteUser(u.id);
+    });
+
+    tr.innerHTML = `
+      <td>${u.username}${u.is_admin ? '<span class="badge-admin">admin</span>' : ''}</td>
+      <td>${u.is_admin ? 'Admin' : 'User'}</td>
+      <td>${u.created_at ? u.created_at.slice(0,10) : '—'}</td>
+      <td></td>`;
+    const actionTd = tr.querySelector('td:last-child');
+    actionTd.appendChild(editBtn);
+    actionTd.appendChild(delBtn);
+    tbody.appendChild(tr);
+  });
+};
+
+document.getElementById('btn-new-user').addEventListener('click', () => {
+  document.getElementById('user-modal-title').textContent = 'Create User';
+  document.getElementById('user-modal-id').value = '';
+  document.getElementById('user-modal-username').value = '';
+  document.getElementById('user-modal-password').value = '';
+  document.getElementById('user-modal-role').value = '0';
+  document.getElementById('user-modal-pw-label').textContent = 'Password';
+  openModal('user-modal');
+});
+
+function openEditUser(u) {
+  document.getElementById('user-modal-title').textContent = 'Edit User';
+  document.getElementById('user-modal-id').value = u.id;
+  document.getElementById('user-modal-username').value = u.username;
+  document.getElementById('user-modal-password').value = '';
+  document.getElementById('user-modal-role').value = u.is_admin ? '1' : '0';
+  document.getElementById('user-modal-pw-label').textContent = 'New Password (leave blank to keep)';
+  openModal('user-modal');
+}
+
+document.getElementById('user-modal-cancel').addEventListener('click', () => closeModal('user-modal'));
+document.getElementById('user-modal-save').addEventListener('click', async () => {
+  const id = document.getElementById('user-modal-id').value;
+  const pw = document.getElementById('user-modal-password').value;
+  const body = {
+    username: document.getElementById('user-modal-username').value.trim(),
+    is_admin: document.getElementById('user-modal-role').value === '1'
+  };
+  if (pw) body.password = pw;
+
+  if (!id && !pw) { alert('Password is required for new users'); return; }
+  if (!id) body.password = pw;
+
+  const data = id
+    ? await apiFetch(`${API}/users/${id}`, { method: 'PUT', body: JSON.stringify(body) })
+    : await apiFetch(`${API}/users`, { method: 'POST', body: JSON.stringify(body) });
+
+  if (data.error) { alert(data.error); return; }
+  closeModal('user-modal');
+  loaders.users();
+});
+
+async function deleteUser(id) {
+  const data = await apiFetch(`${API}/users/${id}`, { method: 'DELETE' });
+  if (data.error) { alert(data.error); return; }
+  loaders.users();
+}
+
+// ── PARTS ──────────────────────────────────────────────────────────────────
+loaders.parts = async function() {
+  const data = await apiFetch(`${API}/parts`);
+  document.getElementById('parts-count').textContent = data.count ?? 0;
+  const tbody = document.getElementById('parts-tbody');
+  tbody.innerHTML = '';
+  (data.parts || []).forEach(p => {
+    const tr = document.createElement('tr');
+
+    const editBtn = document.createElement('button');
+    editBtn.className = 'btn-sm btn-warning';
+    editBtn.textContent = 'Edit';
+    editBtn.addEventListener('click', () => openEditPart(p));
+
+    const delBtn = document.createElement('button');
+    delBtn.className = 'btn-sm btn-danger';
+    delBtn.textContent = 'Delete';
+    delBtn.addEventListener('click', () => {
+      if (confirm(`Delete part "${p.name}"?`)) deletePart(p.id);
+    });
+
+    tr.innerHTML = `
+      <td class="truncate" title="${p.name}">${p.name}</td>
+      <td>${p.part_type}</td>
+      <td>${p.contributor}</td>
+      <td>${p.lab_source}</td>
+      <td></td>`;
+    const actionTd = tr.querySelector('td:last-child');
+    actionTd.appendChild(editBtn);
+    actionTd.appendChild(delBtn);
+    tbody.appendChild(tr);
+  });
+};
+
+function openEditPart(p) {
+  document.getElementById('part-modal-id').value = p.id;
+  document.getElementById('part-modal-name').value = p.name || '';
+  document.getElementById('part-modal-type').value = p.part_type || 'Coding';
+  document.getElementById('part-modal-lab').value = p.lab_source || '';
+  document.getElementById('part-modal-desc').value = p.description || '';
+  openModal('part-modal');
+}
+
+document.getElementById('part-modal-cancel').addEventListener('click', () => closeModal('part-modal'));
+document.getElementById('part-modal-save').addEventListener('click', async () => {
+  const id = document.getElementById('part-modal-id').value;
+  const body = {
+    name: document.getElementById('part-modal-name').value.trim(),
+    part_type: document.getElementById('part-modal-type').value,
+    lab_source: document.getElementById('part-modal-lab').value.trim(),
+    description: document.getElementById('part-modal-desc').value.trim(),
+  };
+  const data = await apiFetch(`${API}/parts/${id}`, { method: 'PUT', body: JSON.stringify(body) });
+  if (data.error) { alert(data.error); return; }
+  closeModal('part-modal');
+  loaders.parts();
+});
+
+async function deletePart(id) {
+  const data = await apiFetch(`${API}/parts/${id}`, { method: 'DELETE' });
+  if (data.error) { alert(data.error); return; }
+  loaders.parts();
+}
+
+// ── CASSETTES ──────────────────────────────────────────────────────────────
+loaders.cassettes = async function() {
+  const data = await apiFetch(`${API}/cassettes`);
+  document.getElementById('cassettes-count').textContent = data.count ?? 0;
+  const tbody = document.getElementById('cassettes-tbody');
+  tbody.innerHTML = '';
+  (data.cassettes || []).forEach(c => {
+    const tr = document.createElement('tr');
+
+    const editBtn = document.createElement('button');
+    editBtn.className = 'btn-sm btn-warning';
+    editBtn.textContent = 'Edit';
+    editBtn.addEventListener('click', () => openEditCassette(c));
+
+    const delBtn = document.createElement('button');
+    delBtn.className = 'btn-sm btn-danger';
+    delBtn.textContent = 'Delete';
+    delBtn.addEventListener('click', () => {
+      if (confirm(`Delete cassette "${c.name}"?`)) deleteCassette(c.id);
+    });
+
+    tr.innerHTML = `
+      <td>${c.name}</td>
+      <td class="truncate" title="${c.owner_id}">${c.owner_id}</td>
+      <td>${c.part_count}</td>
+      <td>${c.created_at ? c.created_at.slice(0,10) : '—'}</td>
+      <td></td>`;
+    const actionTd = tr.querySelector('td:last-child');
+    actionTd.appendChild(editBtn);
+    actionTd.appendChild(delBtn);
+    tbody.appendChild(tr);
+  });
+};
+
+function openEditCassette(c) {
+  document.getElementById('cassette-modal-id').value = c.id;
+  document.getElementById('cassette-modal-name').value = c.name || '';
+  openModal('cassette-modal');
+}
+
+document.getElementById('cassette-modal-cancel').addEventListener('click', () => closeModal('cassette-modal'));
+document.getElementById('cassette-modal-save').addEventListener('click', async () => {
+  const id = document.getElementById('cassette-modal-id').value;
+  const body = { name: document.getElementById('cassette-modal-name').value.trim() };
+  const data = await apiFetch(`${API}/cassettes/${id}`, { method: 'PUT', body: JSON.stringify(body) });
+  if (data.error) { alert(data.error); return; }
+  closeModal('cassette-modal');
+  loaders.cassettes();
+});
+
+async function deleteCassette(id) {
+  const data = await apiFetch(`${API}/cassettes/${id}`, { method: 'DELETE' });
+  if (data.error) { alert(data.error); return; }
+  loaders.cassettes();
+}
+
+// ── BACKBONES ──────────────────────────────────────────────────────────────
+loaders.backbones = async function() {
+  const data = await apiFetch(`${API}/backbones`);
+  document.getElementById('backbones-count').textContent = data.count ?? 0;
+  const tbody = document.getElementById('backbones-tbody');
+  tbody.innerHTML = '';
+  (data.backbones || []).forEach(b => {
+    const tr = document.createElement('tr');
+
+    const editBtn = document.createElement('button');
+    editBtn.className = 'btn-sm btn-warning';
+    editBtn.textContent = 'Edit';
+    editBtn.addEventListener('click', () => openEditBackbone(b));
+
+    const delBtn = document.createElement('button');
+    delBtn.className = 'btn-sm btn-danger';
+    delBtn.textContent = 'Delete';
+    delBtn.addEventListener('click', () => {
+      if (confirm(`Delete backbone "${b.name}"?`)) deleteBackbone(b.id);
+    });
+
+    tr.innerHTML = `
+      <td>${b.name}</td>
+      <td class="truncate" title="${b.owner_id}">${b.owner_id}</td>
+      <td class="truncate" title="${b.description || ''}">${b.description || '—'}</td>
+      <td>${b.created_at ? b.created_at.slice(0,10) : '—'}</td>
+      <td></td>`;
+    const actionTd = tr.querySelector('td:last-child');
+    actionTd.appendChild(editBtn);
+    actionTd.appendChild(delBtn);
+    tbody.appendChild(tr);
+  });
+};
+
+function openEditBackbone(b) {
+  document.getElementById('backbone-modal-id').value = b.id;
+  document.getElementById('backbone-modal-name').value = b.name || '';
+  document.getElementById('backbone-modal-desc').value = b.description || '';
+  document.getElementById('backbone-modal-contributor').value = b.contributor || '';
+  document.getElementById('backbone-modal-lab').value = b.lab_source || '';
+  openModal('backbone-modal');
+}
+
+document.getElementById('backbone-modal-cancel').addEventListener('click', () => closeModal('backbone-modal'));
+document.getElementById('backbone-modal-save').addEventListener('click', async () => {
+  const id = document.getElementById('backbone-modal-id').value;
+  const body = {
+    name: document.getElementById('backbone-modal-name').value.trim(),
+    description: document.getElementById('backbone-modal-desc').value.trim(),
+    contributor: document.getElementById('backbone-modal-contributor').value.trim(),
+    lab_source: document.getElementById('backbone-modal-lab').value.trim(),
+  };
+  const data = await apiFetch(`${API}/backbones/${id}`, { method: 'PUT', body: JSON.stringify(body) });
+  if (data.error) { alert(data.error); return; }
+  closeModal('backbone-modal');
+  loaders.backbones();
+});
+
+async function deleteBackbone(id) {
+  const data = await apiFetch(`${API}/backbones/${id}`, { method: 'DELETE' });
+  if (data.error) { alert(data.error); return; }
+  loaders.backbones();
+}
+
+// ── PLASMIDS ───────────────────────────────────────────────────────────────
+loaders.plasmids = async function() {
+  const data = await apiFetch(`${API}/plasmids`);
+  document.getElementById('plasmids-count').textContent = data.count ?? 0;
+  const tbody = document.getElementById('plasmids-tbody');
+  tbody.innerHTML = '';
+  (data.plasmids || []).forEach(p => {
+    const tr = document.createElement('tr');
+
+    const delBtn = document.createElement('button');
+    delBtn.className = 'btn-sm btn-danger';
+    delBtn.textContent = 'Delete';
+    delBtn.addEventListener('click', () => {
+      if (confirm(`Delete plasmid "${p.name}"?`)) deletePlasmid(p.id);
+    });
+
+    tr.innerHTML = `
+      <td>${p.name}</td>
+      <td class="truncate" title="${p.owner_id}">${p.owner_id}</td>
+      <td>${p.size}</td>
+      <td>${p.created_at ? p.created_at.slice(0,10) : '—'}</td>
+      <td></td>`;
+    tr.querySelector('td:last-child').appendChild(delBtn);
+    tbody.appendChild(tr);
+  });
+};
+
+async function deletePlasmid(id) {
+  const data = await apiFetch(`${API}/plasmids/${id}`, { method: 'DELETE' });
+  if (data.error) { alert(data.error); return; }
+  loaders.plasmids();
+}
+
+// Load users on page load
+loaders.users();
+</script>
+{% endblock %}
