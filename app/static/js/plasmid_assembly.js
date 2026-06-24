@@ -463,30 +463,123 @@ async function performAssembly() {
  */
 function renderAssemblyResult(result) {
     const content = document.getElementById('assemblyResultContent');
-    
+    const plasmid = result.plasmid || result;
+    const plasmidName = plasmid.name || result.name || 'Unnamed';
+    const plasmidSize = plasmid.size || result.length || 0;
+    const featureCount = (plasmid.features || []).length || result.feature_count || 0;
+
+    // Determine enzyme based on backbone
+    const enzyme = selectedBackbone && selectedBackbone.level === '2' ? 'BpiI' : 'BsaI';
+    const levelLabel = enzyme === 'BsaI' ? 'Level 0 → Level 1' : 'Level 1 → Level 2';
+
+    // Generate reaction mix
+    const vectorFmol = 40;
+    const insertFmol = 80;
+    const totalVolume = 20;
+    const bufferVol = 2;
+    const atpVol = 0.2;
+    const enzymeVol = 1;
+    const ligaseVol = 0.4;
+
+    // Calculate DNA volumes
+    const backboneSize = selectedBackbone ? selectedBackbone.length : 5000;
+    const backboneNg = (vectorFmol * backboneSize * 660) / 1000000;
+
+    let dnaRows = '';
+    let totalDnaVol = 0;
+
+    // Backbone row (assume 100 ng/µL if not known)
+    const bbConc = 100;
+    const bbVol = backboneNg / bbConc;
+    totalDnaVol += bbVol;
+    dnaRows += `<tr>
+        <td>${escapeHtml(selectedBackbone ? selectedBackbone.name : 'Backbone')} <em>(vector)</em></td>
+        <td>${bbVol.toFixed(2)}</td>
+        <td>${backboneNg.toFixed(1)} ng (${vectorFmol} fmol)</td>
+    </tr>`;
+
+    // Cassette rows
+    selectedCassettes.forEach(cassette => {
+        const cassetteSize = cassette.length || (cassette.assembled_sequence ? cassette.assembled_sequence.length : 3000);
+        const cassetteNg = (insertFmol * cassetteSize * 660) / 1000000;
+        const cassetteConc = 100; // assume 100 ng/µL
+        const cassetteVol = cassetteNg / cassetteConc;
+        totalDnaVol += cassetteVol;
+        dnaRows += `<tr>
+            <td>${escapeHtml(cassette.name)} <em>(insert)</em></td>
+            <td>${cassetteVol.toFixed(2)}</td>
+            <td>${cassetteNg.toFixed(1)} ng (${insertFmol} fmol)</td>
+        </tr>`;
+    });
+
+    const waterVol = totalVolume - bufferVol - atpVol - enzymeVol - ligaseVol - totalDnaVol;
+
     content.innerHTML = `
         <div class="alert alert-success">
             <h3 style="margin-bottom: 0.5rem;">✓ Plasmid Assembled Successfully!</h3>
-            <p style="margin: 0;">Your plasmid "${escapeHtml(result.name)}" has been created.</p>
+            <p style="margin: 0;">Your plasmid "${escapeHtml(plasmidName)}" has been created.</p>
         </div>
 
-        <div class="detail-info-grid" style="margin: 1.5rem 0;">
-            <div class="detail-info-item">
-                <div class="detail-info-label">Plasmid ID</div>
-                <div class="detail-info-value" style="font-size: 1rem;">${result.id}</div>
+        <div class="detail-info-grid" style="margin: 1.5rem 0; display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem;">
+            <div style="background: var(--bg-color); padding: 1rem; border-radius: 0.375rem; text-align: center;">
+                <div style="font-size: 0.875rem; color: var(--text-secondary);">Final Size</div>
+                <div style="font-size: 1.5rem; font-weight: 600;">${plasmidSize} bp</div>
             </div>
-            <div class="detail-info-item">
-                <div class="detail-info-label">Final Size</div>
-                <div class="detail-info-value">${result.length} bp</div>
+            <div style="background: var(--bg-color); padding: 1rem; border-radius: 0.375rem; text-align: center;">
+                <div style="font-size: 0.875rem; color: var(--text-secondary);">Features</div>
+                <div style="font-size: 1.5rem; font-weight: 600;">${featureCount}</div>
             </div>
-            <div class="detail-info-item">
-                <div class="detail-info-label">Features</div>
-                <div class="detail-info-value">${result.feature_count}</div>
+            <div style="background: var(--bg-color); padding: 1rem; border-radius: 0.375rem; text-align: center;">
+                <div style="font-size: 0.875rem; color: var(--text-secondary);">Enzyme</div>
+                <div style="font-size: 1.5rem; font-weight: 600;">${enzyme}</div>
             </div>
+        </div>
+
+        <h3 style="margin: 2rem 0 1rem; font-size: 1.25rem; border-bottom: 2px solid var(--border-color); padding-bottom: 0.5rem;">
+            🧪 Reaction Mix (${totalVolume} µL)
+        </h3>
+        <p style="font-size: 0.9rem; color: var(--text-secondary); margin-bottom: 1rem;">
+            ${levelLabel} assembly using ${enzyme}. Volumes assume DNA at 100 ng/µL — adjust if your concentrations differ.
+        </p>
+        <table style="width: 100%; border-collapse: collapse; font-size: 0.9rem;">
+            <thead>
+                <tr style="background: var(--primary-color); color: white;">
+                    <th style="padding: 0.6rem 1rem; text-align: left;">Component</th>
+                    <th style="padding: 0.6rem 1rem; text-align: left;">Volume (µL)</th>
+                    <th style="padding: 0.6rem 1rem; text-align: left;">Amount</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr><td style="padding: 0.5rem 1rem; border-bottom: 1px solid var(--border-color);">10x Buffer G</td>
+                    <td style="padding: 0.5rem 1rem; border-bottom: 1px solid var(--border-color);">${bufferVol.toFixed(1)}</td>
+                    <td style="padding: 0.5rem 1rem; border-bottom: 1px solid var(--border-color);">1x final</td></tr>
+                <tr><td style="padding: 0.5rem 1rem; border-bottom: 1px solid var(--border-color);">100 mM ATP</td>
+                    <td style="padding: 0.5rem 1rem; border-bottom: 1px solid var(--border-color);">${atpVol.toFixed(2)}</td>
+                    <td style="padding: 0.5rem 1rem; border-bottom: 1px solid var(--border-color);">1 mM final</td></tr>
+                ${dnaRows}
+                <tr><td style="padding: 0.5rem 1rem; border-bottom: 1px solid var(--border-color);">${enzyme}</td>
+                    <td style="padding: 0.5rem 1rem; border-bottom: 1px solid var(--border-color);">${enzymeVol.toFixed(1)}</td>
+                    <td style="padding: 0.5rem 1rem; border-bottom: 1px solid var(--border-color);">10 units</td></tr>
+                <tr><td style="padding: 0.5rem 1rem; border-bottom: 1px solid var(--border-color);">T4 DNA Ligase</td>
+                    <td style="padding: 0.5rem 1rem; border-bottom: 1px solid var(--border-color);">${ligaseVol.toFixed(2)}</td>
+                    <td style="padding: 0.5rem 1rem; border-bottom: 1px solid var(--border-color);">2 units</td></tr>
+                <tr><td style="padding: 0.5rem 1rem; border-bottom: 1px solid var(--border-color);">MQ Water</td>
+                    <td style="padding: 0.5rem 1rem; border-bottom: 1px solid var(--border-color);">${waterVol.toFixed(2)}</td>
+                    <td style="padding: 0.5rem 1rem; border-bottom: 1px solid var(--border-color);">—</td></tr>
+                <tr style="font-weight: 700; background: var(--bg-color);">
+                    <td style="padding: 0.6rem 1rem; border-top: 2px solid var(--primary-color);"><strong>Total</strong></td>
+                    <td style="padding: 0.6rem 1rem; border-top: 2px solid var(--primary-color);"><strong>${totalVolume.toFixed(1)}</strong></td>
+                    <td style="padding: 0.6rem 1rem; border-top: 2px solid var(--primary-color);"></td></tr>
+            </tbody>
+        </table>
+
+        <div style="background: #dbeafe; padding: 1rem; border-radius: 0.5rem; margin-top: 1rem; font-size: 0.875rem;">
+            <strong>Thermal cycling:</strong> 60 cycles of 37°C (10 min) / 22°C (10 min), then 37°C (10 min), 65°C (20 min), hold 12°C.
+            <br><strong>Tip:</strong> Adjust DNA volumes based on your actual concentrations using the calculator on the Protocol page.
         </div>
 
         <div style="display: flex; gap: 0.75rem; margin-top: 1.5rem;">
-            <a href="/plasmids" class="btn btn-primary" style="flex: 1;">View All Plasmids</a>
+            <a href="/plasmids" class="btn btn-primary" style="flex: 1; text-align: center;">View All Plasmids</a>
             <button class="btn btn-secondary" onclick="resetAndClose()" style="flex: 1;">Create Another</button>
         </div>
     `;
