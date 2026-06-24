@@ -160,8 +160,33 @@ def assemble_plasmid(
         'assembly_method': 'MoClo Golden Gate',
         'slots_used': slots,
         'orientations': orientations,
-        'cassette_positions': cassette_positions
+        'cassette_positions': cassette_positions,
+        'moclo_level': moclo_level
     }
+    
+    # Include per-cassette part details (type, translation, introns)
+    cassette_details = []
+    for cassette in cassettes:
+        detail = {
+            'cassette_id': cassette.id,
+            'cassette_name': cassette.name,
+            'cassette_level': cassette.level,
+        }
+        if cassette.parts_metadata:
+            detail['parts'] = cassette.parts_metadata
+        if cassette.translation_data:
+            detail['translation'] = cassette.translation_data
+        cassette_details.append(detail)
+    metadata['cassette_details'] = cassette_details
+    
+    # Analyze translation for the assembled plasmid (level-aware)
+    from app.services.translation import analyze_plasmid_translation
+    translation_result = analyze_plasmid_translation(
+        plasmid_sequence=assembled_sequence,
+        cassettes=cassettes,
+        plasmid_level=moclo_level
+    )
+    metadata['translation'] = translation_result
     
     # Create final plasmid
     plasmid = FinalPlasmid.create(
@@ -212,6 +237,7 @@ def assemble_plasmid(
                 overhang_3prime=overhang_3prime,
                 contributor=owner_id,
                 lab_source=f"Assembled from plasmid {name}",
+                level=str(moclo_level),
                 comments=f"MoClo Level {moclo_level} construct. Auto-generated from plasmid assembly."
             )
             
@@ -608,11 +634,12 @@ def _part_type_to_feature_type(part_type: str) -> str:
 
 def _determine_moclo_level(backbone: Backbone) -> int:
     """
-    Determine the MoClo level based on the backbone's restriction enzyme.
+    Determine the MoClo level based on the backbone's restriction enzyme
+    and/or the backbone's level metadata.
     
     In MoClo hierarchy:
     - Level 0 parts use BsaI → assembled into Level 1 cassettes
-    - Level 1 cassettes use BpiI → assembled into Level 2 cassettes
+    - Level 1 cassettes use BpiI → assembled into Level 2 plasmids
     - Level 2 cassettes use BsaI → assembled into Level 3 (if needed)
     
     Args:
@@ -621,6 +648,18 @@ def _determine_moclo_level(backbone: Backbone) -> int:
     Returns:
         MoClo level (1, 2, or 3)
     """
+    # First check the backbone's explicit level metadata
+    if hasattr(backbone, 'level') and backbone.level:
+        try:
+            bb_level = int(backbone.level)
+            # The assembled plasmid is at the backbone's level
+            # (a Level 1 backbone produces Level 1 plasmids from Level 0 parts,
+            #  a Level 2 backbone produces Level 2 plasmids from Level 1 cassettes)
+            if bb_level in (1, 2, 3):
+                return bb_level
+        except (ValueError, TypeError):
+            pass
+    
     if not backbone.restriction_sites:
         return 1  # Default to Level 1
     

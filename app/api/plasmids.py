@@ -685,3 +685,94 @@ def export_image(user, plasmid_id):
             'error': 'Failed to generate image export',
             'message': str(e)
         }), 500
+
+@plasmids_bp.route('/<plasmid_id>/translation', methods=['GET'])
+@require_auth
+def get_plasmid_translation(user, plasmid_id):
+    """
+    Get level-aware translation analysis for a plasmid.
+    
+    For Level 1 plasmids: returns single reading frame from the cassette.
+    For Level 2+ plasmids: returns per-cassette translation data, recognizing
+    that each cassette is an independent transcription unit with its own
+    reading frame.
+    
+    Translation data from Level 0 parts is preserved through the hierarchy.
+    
+    Path Parameters:
+        plasmid_id: Plasmid ID
+    
+    Response (200 OK):
+        {
+            "plasmid_id": "string",
+            "plasmid_name": "string",
+            "plasmid_level": number,
+            "total_reading_frames": number,
+            "transcription_units": [
+                {
+                    "cassette_id": "string",
+                    "cassette_name": "string",
+                    "cassette_level": "string",
+                    "translation": {
+                        "has_coding": bool,
+                        "protein_sequence": "string",
+                        "start_codon_pos": number,
+                        ...
+                    }
+                },
+                ...
+            ],
+            "warnings": [...]
+        }
+    
+    Error Responses:
+        401 Unauthorized: Authentication required
+        404 Not Found: Plasmid not found
+    """
+    try:
+        # Get plasmid
+        plasmid = FinalPlasmid.get_by_id(plasmid_id)
+        
+        if plasmid is None:
+            return jsonify({
+                'error': 'Not found',
+                'message': f'Plasmid {plasmid_id} not found'
+            }), 404
+        
+        # Check if translation data is already stored in metadata
+        if plasmid.metadata and plasmid.metadata.get('translation'):
+            translation = plasmid.metadata['translation']
+            translation['plasmid_id'] = plasmid.id
+            translation['plasmid_name'] = plasmid.name
+            return jsonify(translation), 200
+        
+        # Compute on demand if not stored
+        from app.services.translation import analyze_plasmid_translation
+        
+        # Get cassettes
+        cassettes = []
+        for cassette_id in plasmid.cassette_ids:
+            cassette = Cassette.get_by_id(cassette_id)
+            if cassette:
+                cassettes.append(cassette)
+        
+        # Determine level
+        moclo_level = plasmid.metadata.get('moclo_level', 1) if plasmid.metadata else 1
+        
+        # Analyze
+        translation = analyze_plasmid_translation(
+            plasmid_sequence=plasmid.assembled_sequence,
+            cassettes=cassettes,
+            plasmid_level=moclo_level
+        )
+        
+        translation['plasmid_id'] = plasmid.id
+        translation['plasmid_name'] = plasmid.name
+        
+        return jsonify(translation), 200
+        
+    except Exception as e:
+        return jsonify({
+            'error': 'Internal server error',
+            'message': str(e)
+        }), 500

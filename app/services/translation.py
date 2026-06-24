@@ -530,3 +530,107 @@ def get_part_boundaries_from_cassette(parts: List[Any], assembled_sequence: str)
         current_pos = part_end
     
     return boundaries
+
+
+def analyze_plasmid_translation(plasmid_sequence: str, cassettes: List[Any], 
+                                 plasmid_level: int = 2) -> Dict[str, Any]:
+    """
+    Analyze translation for a multi-level plasmid.
+    
+    For Level 2+ plasmids, each cassette may contain its own transcription unit
+    with an independent reading frame. This function returns per-cassette
+    translation data rather than trying to find a single ORF.
+    
+    For Level 1 cassettes built from Level 0 parts, the original translation
+    data computed at assembly time is preserved and returned directly.
+    
+    Args:
+        plasmid_sequence: Complete assembled plasmid sequence
+        cassettes: List of Cassette objects used in the assembly
+        plasmid_level: MoClo level of the plasmid (1, 2, 3)
+        
+    Returns:
+        Dictionary with multi-frame translation analysis:
+        {
+            'plasmid_level': int,
+            'total_reading_frames': int,
+            'transcription_units': [
+                {
+                    'cassette_id': str,
+                    'cassette_name': str,
+                    'cassette_level': str,
+                    'translation': {...}  # Full translation analysis dict
+                },
+                ...
+            ],
+            'warnings': list of str
+        }
+    """
+    result = {
+        'plasmid_level': plasmid_level,
+        'total_reading_frames': 0,
+        'transcription_units': [],
+        'warnings': []
+    }
+    
+    if plasmid_level == 1:
+        # Level 1 plasmid has a single transcription unit
+        # Use the cassette's stored translation data if available
+        if cassettes and len(cassettes) == 1:
+            cassette = cassettes[0]
+            if hasattr(cassette, 'translation_data') and cassette.translation_data:
+                result['transcription_units'].append({
+                    'cassette_id': cassette.id,
+                    'cassette_name': cassette.name,
+                    'cassette_level': cassette.level or '1',
+                    'translation': cassette.translation_data
+                })
+                if cassette.translation_data.get('has_coding'):
+                    result['total_reading_frames'] = 1
+        return result
+    
+    # Level 2+: each cassette is an independent transcription unit
+    for cassette in cassettes:
+        tu_entry = {
+            'cassette_id': cassette.id,
+            'cassette_name': cassette.name,
+            'cassette_level': cassette.level or 'unknown',
+            'translation': None
+        }
+        
+        # Use persisted translation data from when the cassette was built from Level 0 parts
+        if hasattr(cassette, 'translation_data') and cassette.translation_data:
+            tu_entry['translation'] = cassette.translation_data
+            if cassette.translation_data.get('has_coding'):
+                result['total_reading_frames'] += 1
+        else:
+            # Fallback: re-analyze the cassette sequence
+            # This handles older cassettes that don't have stored translation data
+            from app.models.part import Part
+            parts = []
+            for part_id in cassette.part_ids:
+                part = Part.get_by_id(part_id)
+                if part:
+                    parts.append(part)
+            
+            if parts:
+                boundaries = get_part_boundaries_from_cassette(parts, cassette.assembled_sequence)
+                translation = analyze_coding_sequence(cassette.assembled_sequence, boundaries)
+                tu_entry['translation'] = translation
+                if translation.get('has_coding'):
+                    result['total_reading_frames'] += 1
+        
+        result['transcription_units'].append(tu_entry)
+    
+    if result['total_reading_frames'] > 1:
+        result['warnings'].append(
+            f'This Level {plasmid_level} plasmid contains {result["total_reading_frames"]} '
+            f'independent reading frames from {len(cassettes)} cassettes. '
+            f'Each cassette represents a separate transcription unit.'
+        )
+    elif result['total_reading_frames'] == 0:
+        result['warnings'].append(
+            f'No coding sequences detected in this Level {plasmid_level} plasmid.'
+        )
+    
+    return result

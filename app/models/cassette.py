@@ -19,7 +19,10 @@ class Cassette:
         owner_id: str,
         part_ids: List[str],
         assembled_sequence: str,
-        created_at: Optional[str] = None
+        created_at: Optional[str] = None,
+        level: Optional[str] = None,
+        translation_data: Optional[Dict[str, Any]] = None,
+        parts_metadata: Optional[List[Dict[str, Any]]] = None
     ):
         """
         Initialize a Cassette instance.
@@ -31,6 +34,9 @@ class Cassette:
             part_ids: Ordered list of part IDs that make up this cassette
             assembled_sequence: Complete DNA sequence of the assembled cassette
             created_at: Timestamp of cassette creation (ISO format)
+            level: MoClo level of this cassette ('0', '1', '2')
+            translation_data: Persisted translation analysis from assembly
+            parts_metadata: Snapshot of part info at assembly time (type, name, overhangs, introns)
         """
         self.id = id
         self.name = name
@@ -38,6 +44,9 @@ class Cassette:
         self.part_ids = part_ids
         self.assembled_sequence = assembled_sequence
         self.created_at = created_at
+        self.level = level
+        self.translation_data = translation_data
+        self.parts_metadata = parts_metadata
     
     def to_dict(self) -> Dict[str, Any]:
         """
@@ -46,7 +55,7 @@ class Cassette:
         Returns:
             Dictionary with cassette data
         """
-        return {
+        data = {
             'id': self.id,
             'name': self.name,
             'owner_id': self.owner_id,
@@ -54,15 +63,24 @@ class Cassette:
             'assembled_sequence': self.assembled_sequence,
             'created_at': self.created_at,
             'length': len(self.assembled_sequence),
-            'part_count': len(self.part_ids)
+            'part_count': len(self.part_ids),
+            'level': self.level
         }
+        if self.translation_data:
+            data['translation_data'] = self.translation_data
+        if self.parts_metadata:
+            data['parts_metadata'] = self.parts_metadata
+        return data
     
     @staticmethod
     def create(
         name: str,
         owner_id: str,
         part_ids: List[str],
-        assembled_sequence: str
+        assembled_sequence: str,
+        level: Optional[str] = None,
+        translation_data: Optional[Dict[str, Any]] = None,
+        parts_metadata: Optional[List[Dict[str, Any]]] = None
     ) -> 'Cassette':
         """
         Create a new cassette in the database.
@@ -72,6 +90,9 @@ class Cassette:
             owner_id: ID of the user who owns this cassette
             part_ids: Ordered list of part IDs that make up this cassette
             assembled_sequence: Complete DNA sequence of the assembled cassette
+            level: MoClo level ('0', '1', etc.)
+            translation_data: Translation analysis to persist
+            parts_metadata: Snapshot of part info at assembly time
             
         Returns:
             Created Cassette instance
@@ -85,8 +106,10 @@ class Cassette:
         # Generate unique ID
         cassette_id = str(uuid.uuid4())
         
-        # Convert part_ids list to JSON string for storage
+        # Convert to JSON for storage
         part_ids_json = json.dumps(part_ids)
+        translation_data_json = json.dumps(translation_data) if translation_data else None
+        parts_metadata_json = json.dumps(parts_metadata) if parts_metadata else None
         
         # Insert into database
         db = get_database()
@@ -97,11 +120,13 @@ class Cassette:
             cursor.execute(
                 """
                 INSERT INTO cassettes (
-                    id, name, owner_id, part_ids, assembled_sequence
+                    id, name, owner_id, part_ids, assembled_sequence, 
+                    level, translation_data, parts_metadata
                 )
-                VALUES (?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
                 """,
-                (cassette_id, name, owner_id, part_ids_json, assembled_sequence)
+                (cassette_id, name, owner_id, part_ids_json, assembled_sequence, 
+                 level, translation_data_json, parts_metadata_json)
             )
             
             # Retrieve the created cassette
@@ -228,13 +253,37 @@ class Cassette:
         # Parse part_ids from JSON string
         part_ids = json.loads(row['part_ids'])
         
+        # Safely get optional columns (may not exist in older databases)
+        level = None
+        translation_data = None
+        parts_metadata = None
+        try:
+            level = row['level']
+        except (KeyError, IndexError):
+            pass
+        try:
+            td_raw = row['translation_data']
+            if td_raw:
+                translation_data = json.loads(td_raw)
+        except (KeyError, IndexError):
+            pass
+        try:
+            pm_raw = row['parts_metadata']
+            if pm_raw:
+                parts_metadata = json.loads(pm_raw)
+        except (KeyError, IndexError):
+            pass
+        
         return Cassette(
             id=row['id'],
             name=row['name'],
             owner_id=row['owner_id'],
             part_ids=part_ids,
             assembled_sequence=row['assembled_sequence'],
-            created_at=row['created_at']
+            created_at=row['created_at'],
+            level=level,
+            translation_data=translation_data,
+            parts_metadata=parts_metadata
         )
     
     @staticmethod

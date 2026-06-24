@@ -106,6 +106,9 @@ class Database:
                     owner_id TEXT NOT NULL,
                     part_ids TEXT NOT NULL,
                     assembled_sequence TEXT NOT NULL,
+                    level TEXT,
+                    translation_data TEXT,
+                    parts_metadata TEXT,
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     FOREIGN KEY (owner_id) REFERENCES users(id)
                 )
@@ -176,6 +179,24 @@ class Database:
         # Add is_admin column if it doesn't exist (migration for existing DBs)
         try:
             cursor.execute("ALTER TABLE users ADD COLUMN is_admin INTEGER NOT NULL DEFAULT 0")
+        except Exception:
+            pass  # Column already exists
+        
+        # Add level column to cassettes
+        try:
+            cursor.execute("ALTER TABLE cassettes ADD COLUMN level TEXT")
+        except Exception:
+            pass  # Column already exists
+        
+        # Add translation_data column to cassettes
+        try:
+            cursor.execute("ALTER TABLE cassettes ADD COLUMN translation_data TEXT")
+        except Exception:
+            pass  # Column already exists
+        
+        # Add parts_metadata column to cassettes
+        try:
+            cursor.execute("ALTER TABLE cassettes ADD COLUMN parts_metadata TEXT")
         except Exception:
             pass  # Column already exists
 

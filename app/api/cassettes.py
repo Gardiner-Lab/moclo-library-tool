@@ -556,3 +556,84 @@ def get_compatible_backbones(user, cassette, cassette_id):
             'error': 'Internal server error',
             'message': str(e)
         }), 500
+
+@cassettes_bp.route('/<cassette_id>/translation', methods=['GET'])
+@require_auth
+@require_cassette_ownership
+def get_cassette_translation(user, cassette, cassette_id):
+    """
+    Get translation analysis for a cassette.
+    
+    Returns the persisted translation data computed when the cassette was
+    assembled from Level 0 parts. If not available, computes it on demand.
+    
+    The translation includes reading frame analysis, protein sequence,
+    intron detection, and splice site information.
+    
+    Path Parameters:
+        cassette_id: Cassette ID
+    
+    Response (200 OK):
+        {
+            "cassette_id": "string",
+            "cassette_name": "string",
+            "level": "string",
+            "translation": {
+                "has_coding": bool,
+                "protein_sequence": "string",
+                "protein_sequence_spliced": "string" (if introns),
+                "start_codon_pos": number,
+                "stop_codons": [...],
+                "in_frame": bool,
+                "has_introns": bool,
+                "intron_positions": [...],
+                "warnings": [...]
+            }
+        }
+    
+    Error Responses:
+        401 Unauthorized: Authentication required
+        404 Not Found: Cassette not found
+    """
+    try:
+        # Return stored translation data if available
+        if cassette.translation_data:
+            return jsonify({
+                'cassette_id': cassette.id,
+                'cassette_name': cassette.name,
+                'level': cassette.level,
+                'translation': cassette.translation_data
+            }), 200
+        
+        # Compute on demand for older cassettes
+        from app.services.translation import analyze_coding_sequence, get_part_boundaries_from_cassette
+        
+        parts = []
+        for part_id in cassette.part_ids:
+            part = Part.get_by_id(part_id)
+            if part:
+                parts.append(part)
+        
+        if not parts:
+            return jsonify({
+                'cassette_id': cassette.id,
+                'cassette_name': cassette.name,
+                'level': cassette.level,
+                'translation': {'has_coding': False, 'warnings': ['No parts found for this cassette']}
+            }), 200
+        
+        boundaries = get_part_boundaries_from_cassette(parts, cassette.assembled_sequence)
+        translation = analyze_coding_sequence(cassette.assembled_sequence, boundaries)
+        
+        return jsonify({
+            'cassette_id': cassette.id,
+            'cassette_name': cassette.name,
+            'level': cassette.level,
+            'translation': translation
+        }), 200
+        
+    except Exception as e:
+        return jsonify({
+            'error': 'Internal server error',
+            'message': str(e)
+        }), 500

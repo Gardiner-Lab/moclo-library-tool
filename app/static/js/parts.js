@@ -134,11 +134,13 @@ function applyFilters() {
     
     // Apply level filter
     if (currentFilter.level) {
+        // Extract numeric level from filter value (e.g., "Level 0" -> "0", "L1" -> "1", "0" -> "0")
+        const filterNum = currentFilter.level.replace(/[^0-9]/g, '');
         filtered = filtered.filter(part => {
-            if (!part.level) return false;
-            const partLevel = part.level.toLowerCase();
-            const filterLevel = currentFilter.level.toLowerCase();
-            return partLevel === filterLevel || partLevel.includes(filterLevel);
+            // Parts with no level set are treated as Level 0
+            const partLevel = part.level || '0';
+            const partNum = String(partLevel).replace(/[^0-9]/g, '');
+            return partNum === filterNum;
         });
     }
 

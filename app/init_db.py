@@ -207,6 +207,9 @@ def initialize_with_seed_data(db_path: str, seed_file: Optional[str] = None):
     
     if db_exists:
         logger.info(f"Database already exists at {db_path}")
+        # Still run initialization to apply any pending migrations
+        initialize_database(db_path)
+        logger.info("Database migrations applied")
     else:
         logger.info(f"Creating new database at {db_path}")
         initialize_database(db_path)
