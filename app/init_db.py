@@ -264,7 +264,7 @@ def _ensure_demo_backbones():
             'sequence': 'GCTTGTCGACTCTAGAGGATCCCCGGGTACCGAGCTCGAATTCACTGGCCGTCGTTTTACAACGTCGTGACTGGGAAAACCCTGGCGTTACCCAACTTAATCGCCTTGCAGCACATCCCCCTTTCGCCAGCTGGCGTAATAGCGAAGAGGCCCGCACCGATCGCCCTTCCCAACAGTTGCGCAGCCTGAATGGCGAATGGCGCCTGATGCGGTATTTTCTCCTTACGCATCTGTGCGGTATTTCACACCGCATACAGGTGGCACTTTTCGGGGAAATGTGCGCGGAACCCCTATTTGTTTATTTTTCTAAATACATTCAAATATGTATCCGCTCATCGCT',
             'overhang_5prime': 'GCTT',
             'overhang_3prime': 'CGCT',
-            'description': 'DEMO Level 0 - 35S terminator. Pair with DEMO-L0-Promoter-UBQ10 and a CDS.',
+            'description': 'DEMO Level 0 - 35S terminator (Slot 2). Pair with DEMO-L0-Promoter-UBQ10 for second transcription unit.',
             'level': '0'
         }
     ]
@@ -355,7 +355,7 @@ def _ensure_demo_backbones():
         except Exception as e:
             logger.error(f"Error creating demo L1 backbone: {e}")
     
-    # Level 2 backbone (BpiI) - accepts Level 1 cassettes
+    # Level 2 backbone (BpiI) - accepts Level 1 cassettes (single slot, GGAG→CGCT)
     if 'DEMO-L2-Backbone-BpiI' not in demo_backbone_names:
         try:
             backbone_seq_l2 = (
@@ -377,15 +377,19 @@ def _ensure_demo_backbones():
                     'enzyme': 'BpiI',
                     'position': 125,
                     'strand': 'forward',
+                    'recognition_site': 'GAAGAC',
                     'overhang_5prime': 'GGAG',
-                    'overhang_3prime': 'GGAG'
+                    'overhang_3prime': 'GGAG',
+                    'slot_number': 1
                 },
                 {
                     'enzyme': 'BpiI',
                     'position': 167,
                     'strand': 'reverse',
+                    'recognition_site': 'GAAGAC',
                     'overhang_5prime': 'CGCT',
-                    'overhang_3prime': 'CGCT'
+                    'overhang_3prime': 'CGCT',
+                    'slot_number': 1
                 }
             ]
             
@@ -393,7 +397,7 @@ def _ensure_demo_backbones():
                 name='DEMO-L2-Backbone-BpiI',
                 owner_id=demo_user.id,
                 sequence=backbone_seq_l2,
-                description='DEMO Level 2 acceptor backbone (BpiI). Accepts Level 1 cassettes to create multi-gene constructs. Use after assembling Level 1 cassettes.',
+                description='DEMO Level 2 acceptor backbone (BpiI). Accepts a Level 1 cassette with GGAG→CGCT overhangs. To build a multi-gene construct: first assemble your L1 parts into a cassette on the Assembly page, then insert here.',
                 restriction_sites=bpii_sites,
                 overhang_5prime='GGAG',
                 overhang_3prime='CGCT',
