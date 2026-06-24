@@ -460,7 +460,10 @@ async function performAssembly() {
 }
 
 /**
- * Show form to collect DNA concentrations before displaying reaction mix
+ * Show form to collect DNA concentrations before displaying reaction mix.
+ * For plasmid assembly (Level 1→2), the cassettes are already assembled Level 1 plasmids,
+ * so each cassette IS a plasmid. We also list the individual parts within each cassette
+ * so the user knows what's in the reaction.
  */
 function showConcentrationForm(assemblyResult) {
     const content = document.getElementById('assemblyResultContent');
@@ -469,23 +472,31 @@ function showConcentrationForm(assemblyResult) {
 
     let fragmentRows = '';
 
-    // Backbone
+    // Backbone (Level 2 acceptor vector)
     const backboneSize = selectedBackbone ? selectedBackbone.size : 5000;
     fragmentRows += `
         <div class="conc-row">
-            <span class="conc-name">${escapeHtml(selectedBackbone ? selectedBackbone.name : 'Backbone')} <em>(vector, ${backboneSize} bp)</em></span>
+            <span class="conc-name">${escapeHtml(selectedBackbone ? selectedBackbone.name : 'Backbone')} <em>(Level 2 acceptor vector, ${backboneSize} bp)</em></span>
             <div class="conc-input-wrap">
                 <input type="number" class="conc-input" id="conc-backbone" value="" min="1" step="0.1" placeholder="ng/µL">
                 <span class="conc-unit">ng/µL</span>
             </div>
         </div>`;
 
-    // Cassettes
+    // Each cassette is a Level 1 plasmid containing multiple parts
     selectedCassettes.forEach((cassette, i) => {
         const size = cassette.length || (cassette.assembled_sequence ? cassette.assembled_sequence.length : 0);
+        // Show the parts inside this cassette if available
+        let partsInfo = '';
+        if (cassette.parts_metadata && cassette.parts_metadata.length > 0) {
+            const partNames = cassette.parts_metadata.map(p => p.part_name).join(', ');
+            partsInfo = ` — contains: ${partNames}`;
+        } else if (cassette.part_count) {
+            partsInfo = ` — ${cassette.part_count} parts`;
+        }
         fragmentRows += `
             <div class="conc-row">
-                <span class="conc-name">${escapeHtml(cassette.name)} <em>(insert, ${size} bp)</em></span>
+                <span class="conc-name">${escapeHtml(cassette.name)} <em>(Level 1 cassette plasmid, ${size} bp${partsInfo})</em></span>
                 <div class="conc-input-wrap">
                     <input type="number" class="conc-input" id="conc-cassette-${i}" value="" min="1" step="0.1" placeholder="ng/µL">
                     <span class="conc-unit">ng/µL</span>
@@ -501,7 +512,8 @@ function showConcentrationForm(assemblyResult) {
 
         <h3 style="margin: 1.5rem 0 0.75rem; font-size: 1.15rem;">Enter DNA Concentrations</h3>
         <p style="font-size: 0.9rem; color: var(--text-secondary); margin-bottom: 1rem;">
-            Measure your DNA concentrations (e.g. with NanoDrop) and enter them to calculate exact pipetting volumes.
+            Each cassette is a Level 1 plasmid. Enter the concentration of each plasmid as measured (e.g. NanoDrop).
+            The volume needed is calculated based on the full plasmid size to deliver the correct fmol.
         </p>
 
         <div class="conc-form" id="concForm">
@@ -591,7 +603,7 @@ function renderAssemblyResult(result, bbConc, cassetteConcs) {
         <td>${backboneSize} bp @ ${bbConc} ng/µL</td>
     </tr>`;
 
-    // Cassette rows
+    // Cassette rows — each cassette is a Level 1 plasmid
     selectedCassettes.forEach((cassette, i) => {
         const cassetteSize = cassette.length || (cassette.assembled_sequence ? cassette.assembled_sequence.length : 3000);
         const cassetteNg = (insertFmol * cassetteSize * 660) / 1000000;
@@ -599,7 +611,7 @@ function renderAssemblyResult(result, bbConc, cassetteConcs) {
         const cassetteVol = cassetteNg / conc;
         totalDnaVol += cassetteVol;
         dnaRows += `<tr>
-            <td>${escapeHtml(cassette.name)} <em>(insert)</em></td>
+            <td>${escapeHtml(cassette.name)} <em>(L1 cassette plasmid)</em></td>
             <td>${cassetteVol.toFixed(2)}</td>
             <td>${cassetteNg.toFixed(1)} ng (${insertFmol} fmol)</td>
             <td>${cassetteSize} bp @ ${conc} ng/µL</td>

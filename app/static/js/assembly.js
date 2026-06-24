@@ -508,12 +508,11 @@ async function createCassette() {
 
         showFlashMessage('Cassette created successfully!', 'success');
         
-        // Clear assembly
+        // Clear assembly and redirect to cassettes
         selectedParts = [];
         renderAssemblyPreview();
         renderPartsList();
 
-        // Redirect to cassettes page after a short delay
         setTimeout(() => {
             window.location.href = '/cassettes';
         }, 1500);
