@@ -407,6 +407,54 @@ def _ensure_demo_backbones():
             logger.info("Created DEMO Level 2 backbone (BpiI)")
         except Exception as e:
             logger.error(f"Error creating demo L2 backbone: {e}")
+    
+    # === Pre-create Demo Cassettes ===
+    # These show users the complete path: L0 parts → L1 cassettes → L2 backbone
+    from app.models.cassette import Cassette
+    existing_cassettes = Cassette.get_all()
+    existing_cassette_names = [c.name for c in existing_cassettes]
+    
+    # Re-fetch parts (may have just been created above)
+    all_parts = Part.get_all()
+    demo_part_map = {p.name: p for p in all_parts if p.name.startswith('DEMO-L0')}
+    
+    if ('DEMO-L1-GFP-Cassette' not in existing_cassette_names 
+        and 'DEMO-L0-Promoter-35S' in demo_part_map
+        and 'DEMO-L0-CDS-GFP' in demo_part_map
+        and 'DEMO-L0-Terminator-NOS' in demo_part_map):
+        try:
+            from app.services.assembly import create_cassette
+            cassette = create_cassette(
+                name='DEMO-L1-GFP-Cassette',
+                owner_id=demo_user.id,
+                parts=[
+                    demo_part_map['DEMO-L0-Promoter-35S'],
+                    demo_part_map['DEMO-L0-CDS-GFP'],
+                    demo_part_map['DEMO-L0-Terminator-NOS']
+                ]
+            )
+            logger.info(f"Created DEMO-L1-GFP-Cassette ({cassette.assembled_sequence[:4]}→{cassette.assembled_sequence[-4:]})")
+        except Exception as e:
+            logger.error(f"Error creating demo GFP cassette: {e}")
+    
+    if ('DEMO-L1-mCherry-Cassette' not in existing_cassette_names
+        and 'DEMO-L0-Promoter-UBQ10' in demo_part_map
+        and 'DEMO-L0-CDS-mCherry' in demo_part_map
+        and 'DEMO-L0-Terminator-35S' in demo_part_map):
+        try:
+            from app.services.assembly import create_cassette
+            cassette = create_cassette(
+                name='DEMO-L1-mCherry-Cassette',
+                owner_id=demo_user.id,
+                parts=[
+                    demo_part_map['DEMO-L0-Promoter-UBQ10'],
+                    demo_part_map['DEMO-L0-CDS-mCherry'],
+                    demo_part_map['DEMO-L0-Terminator-35S']
+                ]
+            )
+            logger.info(f"Created DEMO-L1-mCherry-Cassette ({cassette.assembled_sequence[:4]}→{cassette.assembled_sequence[-4:]})")
+        except Exception as e:
+            logger.error(f"Error creating demo mCherry cassette: {e}")
 
 
 def _ensure_default_admin():
