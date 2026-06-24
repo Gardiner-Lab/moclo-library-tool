@@ -280,6 +280,9 @@ def _handle_json_upload():
     # Get contributor from session
     contributor = session.get('username')
     
+    # Get optional level field
+    level = data.get('level')
+    
     # Validate part data
     validate_part_for_upload(
         name=name,
@@ -290,7 +293,8 @@ def _handle_json_upload():
         lab_source=lab_source,
         contributor=contributor,
         valid_part_types=Part.VALID_PART_TYPES,
-        check_duplicates=True
+        check_duplicates=True,
+        level=level
     )
     
     # Create part
@@ -366,6 +370,14 @@ def _handle_genbank_upload():
         else:
             comments_text = f"INTRON_ANNOTATIONS: {intron_json}"
     
+    # Detect level: check form data or auto-detect from BpiI sites in sequence
+    upload_level = request.form.get('level')
+    if not upload_level:
+        # Auto-detect: if sequence has BpiI sites, it's likely Level 1
+        seq_upper = part_data['sequence'].upper()
+        if 'GAAGAC' in seq_upper or 'GTCTTC' in seq_upper:
+            upload_level = '1'
+    
     # Validate part data
     validate_part_for_upload(
         name=part_data['name'],
@@ -376,7 +388,8 @@ def _handle_genbank_upload():
         lab_source=lab_source,
         contributor=contributor,
         valid_part_types=Part.VALID_PART_TYPES,
-        check_duplicates=True
+        check_duplicates=True,
+        level=upload_level
     )
     
     # Create part with additional metadata from plasmid

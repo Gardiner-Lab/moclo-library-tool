@@ -286,7 +286,8 @@ def validate_part_for_upload(
     lab_source: str,
     contributor: str,
     valid_part_types: List[str],
-    check_duplicates: bool = True
+    check_duplicates: bool = True,
+    level: Optional[str] = None
 ) -> None:
     """
     Comprehensive validation for part upload.
@@ -296,7 +297,7 @@ def validate_part_for_upload(
     - DNA sequence validation
     - Overhang format validation
     - Part type validation
-    - Internal restriction site check (BsaI, BpiI)
+    - Internal restriction site check (level-aware)
     - Duplicate part check
     
     Args:
@@ -309,11 +310,12 @@ def validate_part_for_upload(
         contributor: Contributor username
         valid_part_types: List of valid part types
         check_duplicates: Whether to check for duplicate parts (default: True)
+        level: MoClo level of the part ('0', '1', '2'). Level 1+ parts skip
+               restriction site checks since they are expected to contain sites
+               for the next level assembly.
         
     Raises:
         ValidationError: If any validation fails
-        
-    Requirements: 10.2, 10.4, 10.7
     """
     # Validate required fields
     validate_required_fields(
@@ -337,7 +339,17 @@ def validate_part_for_upload(
     validate_overhang_format(overhang_3prime, "3' overhang")
     
     # Check for internal restriction sites (BsaI, BpiI)
-    check_internal_restriction_sites(sequence)
+    # Skip for Level 1+ parts — they are expected to contain BpiI sites for Level 2 assembly
+    # Only Level 0 basic parts should be checked for unwanted internal sites
+    part_level = None
+    if level:
+        try:
+            part_level = int(level)
+        except (ValueError, TypeError):
+            pass
+    
+    if part_level is None or part_level == 0:
+        check_internal_restriction_sites(sequence)
     
     # Check for duplicates
     if check_duplicates:
