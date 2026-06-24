@@ -379,35 +379,15 @@ def _ensure_demo_backbones():
                     'strand': 'reverse',
                     'recognition_site': 'GAAGAC',
                     'overhang_5prime': 'GGAG',
-                    'overhang_3prime': 'GGAG',
-                    'slot_number': 1
+                    'overhang_3prime': 'GGAG'
                 },
                 {
                     'enzyme': 'BpiI',
-                    'position': 145,
-                    'strand': 'forward',
-                    'recognition_site': 'GAAGAC',
-                    'overhang_5prime': 'AATG',
-                    'overhang_3prime': 'AATG',
-                    'slot_number': 1
-                },
-                {
-                    'enzyme': 'BpiI',
-                    'position': 155,
-                    'strand': 'reverse',
-                    'recognition_site': 'GAAGAC',
-                    'overhang_5prime': 'AATG',
-                    'overhang_3prime': 'AATG',
-                    'slot_number': 2
-                },
-                {
-                    'enzyme': 'BpiI',
-                    'position': 175,
+                    'position': 167,
                     'strand': 'forward',
                     'recognition_site': 'GAAGAC',
                     'overhang_5prime': 'CGCT',
-                    'overhang_3prime': 'CGCT',
-                    'slot_number': 2
+                    'overhang_3prime': 'CGCT'
                 }
             ]
             
@@ -473,6 +453,29 @@ def _ensure_demo_backbones():
             logger.info(f"Created DEMO-L1-mCherry-Cassette ({cassette.assembled_sequence[:4]}→{cassette.assembled_sequence[-4:]})")
         except Exception as e:
             logger.error(f"Error creating demo mCherry cassette: {e}")
+    
+    # === Create L1 cassettes as Parts (so they appear on Assembly page for L2 assembly) ===
+    all_cassettes = Cassette.get_all()
+    all_parts_now = Part.get_all()
+    existing_part_names = [p.name for p in all_parts_now]
+    
+    for cs in all_cassettes:
+        if cs.name.startswith('DEMO-L1') and cs.name not in existing_part_names:
+            try:
+                Part.create(
+                    name=cs.name,
+                    part_type='NonCodingOther',
+                    sequence=cs.assembled_sequence,
+                    overhang_5prime=cs.assembled_sequence[:4],
+                    overhang_3prime=cs.assembled_sequence[-4:],
+                    lab_source='Demo Library',
+                    contributor=demo_user.username,
+                    description=f'Level 1 cassette (assembled). Use on Assembly page to combine with other L1 cassettes for Level 2.',
+                    level='1'
+                )
+                logger.info(f"Created L1 part from cassette: {cs.name}")
+            except Exception as e:
+                logger.error(f"Error creating L1 part from {cs.name}: {e}")
     
 
 
