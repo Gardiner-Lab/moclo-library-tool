@@ -233,8 +233,7 @@ async function checkForUpdate() {
   instructions.style.display = 'none';
   
   try {
-    const res = await fetch(`${API}/check-update`, { credentials: 'include' });
-    const data = await res.json();
+    const data = await apiFetch(`${API}/check-update`);
     
     document.getElementById('currentVersion').textContent = 'v' + data.current_version;
     
@@ -260,11 +259,7 @@ docker-compose -f docker-compose.prod.yml up -d</pre>
   }
 }
 
-// Load version on page load
-fetch(`${API}/version`, { credentials: 'include' })
-  .then(r => r.json())
-  .then(d => { document.getElementById('currentVersion').textContent = 'v' + d.version; })
-  .catch(() => {});
+// checkForUpdate defined above, version loaded at bottom of script
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 function closeModal(id) { document.getElementById(id).classList.remove('open'); }
@@ -594,6 +589,11 @@ async function deletePlasmid(id) {
   if (data.error) { alert(data.error); return; }
   loaders.plasmids();
 }
+
+// Load version on page load
+apiFetch(`${API}/version`)
+  .then(d => { document.getElementById('currentVersion').textContent = 'v' + d.version; })
+  .catch(() => { document.getElementById('currentVersion').textContent = 'unknown'; });
 
 // Load users on page load
 loaders.users();
