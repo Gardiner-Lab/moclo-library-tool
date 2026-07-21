@@ -117,8 +117,20 @@ def upload_backbone(user):
         # Get description
         description = request.form.get('description', parsed_data.get('description', ''))
         
-        # Get enzyme (default to BsaI)
-        enzyme = request.form.get('enzyme', 'BsaI')
+        # Get enzyme - auto-detect if not specified
+        enzyme = request.form.get('enzyme')
+        if not enzyme:
+            # Auto-detect: try BsaI first, then BpiI
+            sequence = parsed_data['sequence']
+            bsai_sites = find_moclo_sites(sequence, 'BsaI')
+            bpii_sites = find_moclo_sites(sequence, 'BpiI')
+            
+            if len(bsai_sites) >= 2:
+                enzyme = 'BsaI'
+            elif len(bpii_sites) >= 2:
+                enzyme = 'BpiI'
+            else:
+                enzyme = 'BsaI'  # Default fallback
         
         # Find restriction sites
         sequence = parsed_data['sequence']

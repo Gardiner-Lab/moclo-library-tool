@@ -279,9 +279,16 @@ def fix_backbones(user):
 
     for backbone in backbones:
         try:
+            # Determine enzyme: use stored value, or auto-detect
             enzyme = 'BsaI'
             if backbone.restriction_sites and len(backbone.restriction_sites) > 0:
                 enzyme = backbone.restriction_sites[0].get('enzyme', 'BsaI')
+            else:
+                # Auto-detect from sequence
+                bsai_sites = find_moclo_sites(backbone.sequence, 'BsaI')
+                bpii_sites = find_moclo_sites(backbone.sequence, 'BpiI')
+                if len(bpii_sites) >= 2 and len(bsai_sites) < 2:
+                    enzyme = 'BpiI'
 
             sites = find_moclo_sites(backbone.sequence, enzyme)
             if not sites:

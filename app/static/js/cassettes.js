@@ -190,10 +190,7 @@ function renderCassetteDetail(cassette) {
     html += `
         <div class="detail-section">
             <h3>Visualization</h3>
-            <div class="detail-visualization">
-                <img src="/api/visualize/cassette/${cassette.id}" 
-                     alt="Cassette visualization"
-                     onerror="this.parentElement.innerHTML='<p style=\\'color: var(--text-secondary)\\'>Visualization unavailable</p>'">
+            <div class="detail-visualization" id="cassetteVisualization">
             </div>
         </div>
     `;
@@ -500,6 +497,12 @@ function renderCassetteDetail(cassette) {
     `;
 
     content.innerHTML = html;
+
+    // Animate the cassette SVG
+    const vizContainer = document.getElementById('cassetteVisualization');
+    if (vizContainer) {
+        loadAndAnimateSVG(`/api/visualize/cassette/${cassette.id}`, vizContainer, { type: 'cassette' });
+    }
 
     // Load compatible backbones
     loadCompatibleBackbones(cassette.id);

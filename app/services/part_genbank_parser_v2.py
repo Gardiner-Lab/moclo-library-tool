@@ -23,8 +23,10 @@ def parse_part_genbank(file_content: str) -> Dict[str, Any]:
     """
     Parse a GenBank file for a MoClo part using overhang-based extraction.
     
-    Extracts both the part sequence and plasmid metadata (antibiotic resistance,
-    origin of replication, etc.) from the full GenBank file.
+    Supports both Level 0 parts (BsaI flanked) and Level 1 parts (BpiI flanked).
+    Auto-detects the enzyme and sets the level accordingly:
+    - BsaI (GGTCTC/GAGACC) → Level 0
+    - BpiI (GAAGAC/GTCTTC) → Level 1
     
     Args:
         file_content: String content of the GenBank file
@@ -40,17 +42,40 @@ def parse_part_genbank(file_content: str) -> Dict[str, Any]:
         # Extract full sequence
         full_sequence = str(record.seq).upper()
         
-        # Find BsaI sites
-        bsai_forward = 'GGTCTC'
-        bsai_reverse = 'GAGACC'
+        # Try BsaI first (Level 0), then BpiI (Level 1)
+        enzyme = None
+        level = '0'
+        forward_sites = []
+        reverse_sites = []
         
-        forward_sites = [m.start() for m in re.finditer(bsai_forward, full_sequence)]
-        reverse_sites = [m.start() for m in re.finditer(bsai_reverse, full_sequence)]
+        # BsaI: GGTCTC / GAGACC
+        bsai_fwd = [m.start() for m in re.finditer('GGTCTC', full_sequence)]
+        bsai_rev = [m.start() for m in re.finditer('GAGACC', full_sequence)]
         
-        if not forward_sites or not reverse_sites:
+        # BpiI: GAAGAC / GTCTTC
+        bpii_fwd = [m.start() for m in re.finditer('GAAGAC', full_sequence)]
+        bpii_rev = [m.start() for m in re.finditer('GTCTTC', full_sequence)]
+        
+        if bsai_fwd and bsai_rev:
+            enzyme = 'BsaI'
+            level = '0'
+            forward_sites = bsai_fwd
+            reverse_sites = bsai_rev
+            recognition_len = 6  # GGTCTC
+            spacer = 1  # BsaI cuts 1bp after recognition
+        elif bpii_fwd and bpii_rev:
+            enzyme = 'BpiI'
+            level = '1'
+            forward_sites = bpii_fwd
+            reverse_sites = bpii_rev
+            recognition_len = 6  # GAAGAC
+            spacer = 2  # BpiI cuts 2bp after recognition
+        else:
             raise PartGenBankError(
-                f"Need both GGTCTC and GAGACC sites. "
-                f"Found {len(forward_sites)} GGTCTC and {len(reverse_sites)} GAGACC."
+                f"No MoClo restriction sites found. "
+                f"Need BsaI (GGTCTC/GAGACC) for Level 0 or BpiI (GAAGAC/GTCTTC) for Level 1. "
+                f"Found: {len(bsai_fwd)} GGTCTC, {len(bsai_rev)} GAGACC, "
+                f"{len(bpii_fwd)} GAAGAC, {len(bpii_rev)} GTCTTC."
             )
         
         # Use first forward and first reverse site
@@ -58,40 +83,34 @@ def parse_part_genbank(file_content: str) -> Dict[str, Any]:
         rev_pos = reverse_sites[0]
         
         # Extract overhangs
-        # 5' overhang: 4bp after GGTCTC (position + 6 for GGTCTC + 1 for spacer)
-        overhang_5_start = fwd_pos + 7
+        # 5' overhang: 4bp after recognition site + spacer
+        overhang_5_start = fwd_pos + recognition_len + spacer
         if overhang_5_start + 4 > len(full_sequence):
-            raise PartGenBankError("Sequence too short after GGTCTC site")
+            raise PartGenBankError(f"Sequence too short after {enzyme} forward site")
         overhang_5prime = full_sequence[overhang_5_start:overhang_5_start + 4]
         
-        # 3' overhang: 4bp before GAGACC (1bp further toward 5' end)
-        if rev_pos < 5:
-            # Wraps around
-            overhang_3prime = full_sequence[len(full_sequence) - (5 - rev_pos):] + full_sequence[:rev_pos]
-            overhang_3prime = overhang_3prime[:4]  # Take only first 4bp
+        # 3' overhang: 4bp before reverse site (accounting for spacer)
+        overhang_3_end = rev_pos - spacer
+        if overhang_3_end < 4:
+            # Wraps around circular sequence
+            overhang_3prime = full_sequence[len(full_sequence) - (4 - overhang_3_end):] + full_sequence[:overhang_3_end]
         else:
-            overhang_3prime = full_sequence[rev_pos - 5:rev_pos - 1]
+            overhang_3prime = full_sequence[overhang_3_end - 4:overhang_3_end]
         
-        # Now find these overhangs in the sequence to determine part boundaries
-        # The part starts right after the 5' overhang and ends right before the 3' overhang
+        # Determine part boundaries
+        part_start = overhang_5_start + 4  # After the 5' overhang
+        part_end = overhang_3_end - 4  # Before the 3' overhang
         
-        # Find 5' overhang (should be right after GGTCTC site)
-        part_start = overhang_5_start + 4  # After the 4bp overhang
+        # Extract part sequence (including overhangs as the part's flanking bases)
+        # Actually keep the full region between the enzyme sites including overhangs
+        part_start_with_oh = overhang_5_start  # Start at 5' overhang
+        part_end_with_oh = overhang_3_end  # End at 3' overhang end
         
-        # Find 3' overhang (1bp further toward 5' end)
-        if rev_pos < 5:
-            # 3' overhang wraps, so part ends at the position where overhang starts wrapping
-            part_end_linear = len(full_sequence) - (5 - rev_pos)
-        else:
-            part_end_linear = rev_pos - 5
-        
-        # Extract part sequence
-        if part_start < part_end_linear:
-            # Linear extraction
-            part_sequence = full_sequence[part_start:part_end_linear]
+        if part_start_with_oh < part_end_with_oh:
+            part_sequence = full_sequence[part_start_with_oh:part_end_with_oh]
         else:
             # Circular - wraps around
-            part_sequence = full_sequence[part_start:] + full_sequence[:part_end_linear]
+            part_sequence = full_sequence[part_start_with_oh:] + full_sequence[:part_end_with_oh]
         
         # Extract metadata from GenBank record
         name = record.id or record.name or 'Unknown'
@@ -102,7 +121,7 @@ def parse_part_genbank(file_content: str) -> Dict[str, Any]:
         plasmid_metadata = extract_plasmid_metadata(record)
         
         # Extract intron annotations
-        intron_annotations = extract_intron_annotations(record, part_start, part_end_linear)
+        intron_annotations = extract_intron_annotations(record, part_start, part_end)
         
         # Detect part type
         part_type = detect_part_type(record, description)
@@ -120,7 +139,9 @@ def parse_part_genbank(file_content: str) -> Dict[str, Any]:
             'metadata': plasmid_metadata,
             'intron_annotations': intron_annotations,
             'bsai_sites_found': len(forward_sites) + len(reverse_sites),
-            'is_circular': part_start >= part_end_linear,
+            'enzyme_detected': enzyme,
+            'level': level,
+            'is_circular': part_start_with_oh >= part_end_with_oh,
             # Plasmid-specific fields
             'antibiotic': plasmid_metadata.get('antibiotic'),
             'plasmid_size': len(full_sequence),
@@ -134,6 +155,8 @@ def parse_part_genbank(file_content: str) -> Dict[str, Any]:
     except ValueError as e:
         raise PartGenBankError(f"Invalid GenBank format: {str(e)}")
     except Exception as e:
+        if isinstance(e, PartGenBankError):
+            raise
         raise PartGenBankError(f"Failed to parse GenBank file: {str(e)}")
 
 

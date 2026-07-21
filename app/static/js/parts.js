@@ -352,11 +352,7 @@ function renderPartDetails(part) {
     
     const html = `
         <div class="part-detail-section">
-            <div class="detail-visualization">
-                ${hasFeatures 
-                    ? `<img src="/api/visualize/part/${part.id}/features" alt="${part.name} features" style="max-width: 100%; height: auto;">`
-                    : `<img src="/api/visualize/part/${part.id}" alt="${part.name} visualization" style="max-width: 100%; height: auto;">`
-                }
+            <div class="detail-visualization" id="partVisualization">
             </div>
         </div>
 
@@ -529,6 +525,16 @@ function renderPartDetails(part) {
     `;
 
     detailsContainer.innerHTML = html;
+
+    // Animate the SVG visualization
+    const vizContainer = document.getElementById('partVisualization');
+    if (vizContainer) {
+        const svgUrl = hasFeatures 
+            ? `/api/visualize/part/${part.id}/features`
+            : `/api/visualize/part/${part.id}`;
+        const animType = hasFeatures ? 'features' : 'part';
+        loadAndAnimateSVG(svgUrl, vizContainer, { type: animType });
+    }
 
     // Load compatible parts
     loadCompatibleParts(part.id);

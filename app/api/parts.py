@@ -370,13 +370,8 @@ def _handle_genbank_upload():
         else:
             comments_text = f"INTRON_ANNOTATIONS: {intron_json}"
     
-    # Detect level: check form data or auto-detect from BpiI sites in sequence
-    upload_level = request.form.get('level')
-    if not upload_level:
-        # Auto-detect: if sequence has BpiI sites, it's likely Level 1
-        seq_upper = part_data['sequence'].upper()
-        if 'GAAGAC' in seq_upper or 'GTCTTC' in seq_upper:
-            upload_level = '1'
+    # Detect level: use parser-detected level, form data override, or auto-detect
+    upload_level = request.form.get('level') or part_data.get('level')
     
     # Validate part data
     validate_part_for_upload(
@@ -409,14 +404,17 @@ def _handle_genbank_upload():
         ori_agro=part_data.get('ori_agro'),
         host_strain=part_data.get('host_strain'),
         reference=part_data.get('reference'),
-        comments=comments_text
+        comments=comments_text,
+        level=upload_level
     )
     
     return jsonify({
         'part': part.to_dict(),
-        'message': 'Part uploaded successfully from GenBank file',
+        'message': f'Part uploaded successfully from GenBank file (Level {upload_level or "0"}, {part_data.get("enzyme_detected", "BsaI")} detected)',
         'source': 'genbank',
         'detected_type': part_data['part_type'],
+        'enzyme_detected': part_data.get('enzyme_detected', 'BsaI'),
+        'level': upload_level,
         'bsai_sites_found': part_data['bsai_sites_found'],
         'intron_annotations': part_data.get('intron_annotations', [])
     }), 201
