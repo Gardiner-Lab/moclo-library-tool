@@ -101,3 +101,6 @@ setup.bat
 
 # Kiro specs
 .kiro/
+
+# Database backups (local only)
+backups/

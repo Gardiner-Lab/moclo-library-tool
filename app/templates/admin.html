@@ -59,6 +59,15 @@
 {% block content %}
 <h1>⚙️ Admin Dashboard</h1>
 
+<!-- Version & Update Check -->
+<div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 1.5rem; padding: 0.75rem 1rem; background: var(--bg-color); border-radius: 0.5rem;">
+  <span style="font-size: 0.9rem; color: var(--text-secondary);">Version: <strong id="currentVersion">...</strong></span>
+  <button class="btn-sm btn-primary" id="checkUpdateBtn" onclick="checkForUpdate()">Check for Updates</button>
+  <span id="updateStatus" style="font-size: 0.875rem;"></span>
+</div>
+<div id="updateInstructions" style="display: none; margin-bottom: 1.5rem; padding: 1rem; background: #dbeafe; border: 1px solid #3b82f6; border-radius: 0.5rem; font-size: 0.875rem;">
+</div>
+
 <div class="admin-tabs">
   <button class="admin-tab active" data-tab="users">👥 Users</button>
   <button class="admin-tab" data-tab="parts">🧩 Parts</button>
@@ -211,6 +220,51 @@
 {% block extra_js %}
 <script>
 const API = '/api/admin';
+
+// ── Version Check ──────────────────────────────────────────────────────────
+async function checkForUpdate() {
+  const btn = document.getElementById('checkUpdateBtn');
+  const status = document.getElementById('updateStatus');
+  const instructions = document.getElementById('updateInstructions');
+  
+  btn.disabled = true;
+  btn.textContent = 'Checking...';
+  status.textContent = '';
+  instructions.style.display = 'none';
+  
+  try {
+    const res = await fetch(`${API}/check-update`, { credentials: 'include' });
+    const data = await res.json();
+    
+    document.getElementById('currentVersion').textContent = 'v' + data.current_version;
+    
+    if (data.update_available) {
+      status.innerHTML = `<span style="color: #2563eb; font-weight: 600;">⬆️ Update available: v${data.latest_version}</span>`;
+      instructions.style.display = 'block';
+      instructions.innerHTML = `
+        <strong>To update, run on the host machine:</strong>
+        <pre style="margin: 0.5rem 0; padding: 0.5rem; background: #1e293b; color: #e2e8f0; border-radius: 0.25rem; overflow-x: auto;">./update-prod.sh</pre>
+        <p style="margin: 0.5rem 0 0; color: var(--text-secondary);">Or manually:</p>
+        <pre style="margin: 0.25rem 0; padding: 0.5rem; background: #1e293b; color: #e2e8f0; border-radius: 0.25rem; overflow-x: auto; font-size: 0.8rem;">docker-compose -f docker-compose.prod.yml pull
+docker-compose -f docker-compose.prod.yml up -d</pre>
+        <p style="margin: 0.5rem 0 0; font-size: 0.8rem; color: var(--text-secondary);">Your data (parts, cassettes, plasmids) will be preserved.</p>
+      `;
+    } else {
+      status.innerHTML = `<span style="color: #16a34a;">✓ Up to date (v${data.current_version})</span>`;
+    }
+  } catch (e) {
+    status.innerHTML = `<span style="color: #dc2626;">Could not check: ${e.message}</span>`;
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Check for Updates';
+  }
+}
+
+// Load version on page load
+fetch(`${API}/version`, { credentials: 'include' })
+  .then(r => r.json())
+  .then(d => { document.getElementById('currentVersion').textContent = 'v' + d.version; })
+  .catch(() => {});
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 function closeModal(id) { document.getElementById(id).classList.remove('open'); }

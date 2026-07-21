@@ -327,3 +327,71 @@ def fix_backbones(user):
         'failed': failed_count,
         'details': details
     }), 200
+
+
+@admin_bp.route('/version', methods=['GET'])
+@require_auth
+def get_version(user):
+    """Get current app version."""
+    from app.main import APP_VERSION
+    return jsonify({'version': APP_VERSION}), 200
+
+
+@admin_bp.route('/check-update', methods=['GET'])
+@require_auth
+def check_update(user):
+    """
+    Check if a newer version is available on GitHub Container Registry.
+    Compares current APP_VERSION against latest GitHub release tag.
+    """
+    import urllib.request
+    import json as _json
+    from app.main import APP_VERSION
+    
+    try:
+        # Query GitHub API for latest release
+        url = 'https://api.github.com/repos/Gardiner-Lab/moclo-library-tool/tags?per_page=5'
+        req = urllib.request.Request(url, headers={'User-Agent': 'MoClo-Library-Tool'})
+        
+        with urllib.request.urlopen(req, timeout=10) as response:
+            tags = _json.loads(response.read().decode())
+        
+        if not tags:
+            return jsonify({
+                'current_version': APP_VERSION,
+                'latest_version': None,
+                'update_available': False,
+                'message': 'Could not determine latest version'
+            }), 200
+        
+        # Get latest tag (sorted by name, tags come newest first from API)
+        latest_tag = tags[0]['name'].lstrip('v')
+        
+        # Compare versions
+        def parse_version(v):
+            return tuple(int(x) for x in v.split('.'))
+        
+        current = parse_version(APP_VERSION)
+        latest = parse_version(latest_tag)
+        update_available = latest > current
+        
+        return jsonify({
+            'current_version': APP_VERSION,
+            'latest_version': latest_tag,
+            'update_available': update_available,
+            'message': f'Update available: v{latest_tag}' if update_available else 'You are up to date',
+            'update_instructions': (
+                'Run on the host machine:\n'
+                'docker-compose -f docker-compose.prod.yml pull\n'
+                'docker-compose -f docker-compose.prod.yml up -d\n\n'
+                'Or use: ./update-prod.sh'
+            ) if update_available else None
+        }), 200
+        
+    except Exception as e:
+        return jsonify({
+            'current_version': APP_VERSION,
+            'latest_version': None,
+            'update_available': False,
+            'message': f'Could not check for updates: {str(e)}'
+        }), 200
