@@ -530,33 +530,35 @@ def initialize_with_seed_data(db_path: str, seed_file: Optional[str] = None):
     initialize_parts_database(parts_db_path)
     logger.info("Parts database schema ready")
     
-    # Load and apply seed data if provided
-    if seed_file:
-        seed_data = load_seed_data(seed_file)
-        if seed_data:
-            logger.info("Loading seed data...")
-            
-            # Create users first (parts reference users)
-            if 'users' in seed_data:
-                logger.info(f"Creating {len(seed_data['users'])} users...")
-                create_seed_users(seed_data['users'], db_path)
-            
-            # Create parts (goes into the separate parts database)
-            if 'parts' in seed_data:
-                logger.info(f"Creating {len(seed_data['parts'])} parts...")
-                create_seed_parts(seed_data['parts'], db_path)
-            
-            logger.info("Seed data loaded successfully")
-        else:
-            logger.info("No seed data to load")
+    # Only load seed data and demo content on FIRST RUN (fresh database)
+    # This prevents modifying user data on container updates
+    if not db_exists:
+        # Load and apply seed data if provided
+        if seed_file:
+            seed_data = load_seed_data(seed_file)
+            if seed_data:
+                logger.info("Loading seed data (first run)...")
+                
+                # Create users first (parts reference users)
+                if 'users' in seed_data:
+                    logger.info(f"Creating {len(seed_data['users'])} users...")
+                    create_seed_users(seed_data['users'], db_path)
+                
+                # Create parts (goes into the separate parts database)
+                if 'parts' in seed_data:
+                    logger.info(f"Creating {len(seed_data['parts'])} parts...")
+                    create_seed_parts(seed_data['parts'], db_path)
+                
+                logger.info("Seed data loaded successfully")
+        
+        # Create demo data on first run
+        _ensure_demo_backbones()
+        logger.info("Demo data created")
     else:
-        logger.info("No seed file specified, skipping seed data")
+        logger.info("Existing database - skipping seed/demo data (preserving user data)")
     
-    # Always ensure a default admin user exists
+    # Always ensure a default admin user exists (even on updates)
     _ensure_default_admin()
-    
-    # Ensure demo backbones exist
-    _ensure_demo_backbones()
     
     logger.info("Database initialization complete")
 
