@@ -721,6 +721,41 @@
                 <div class="info-box">
                     <strong>Formula:</strong> ng = (fmol × bp × 660) / 1,000,000
                 </div>
+
+                <details style="margin-bottom: 1rem; background: #f8f9fa; border: 1px solid #e2e8f0; border-radius: 0.5rem; padding: 0.75rem 1rem;">
+                    <summary style="cursor: pointer; font-weight: 600; font-size: 0.9rem;">📐 Formula Explanation — What Each Part Means</summary>
+                    <div style="margin-top: 0.75rem; font-size: 0.85rem; line-height: 1.7; color: #4a5568;">
+                        <p style="margin: 0 0 0.75rem;"><strong>Step 1 — Calculate mass of DNA needed (ng):</strong></p>
+                        <code style="display: block; background: #fff; padding: 0.5rem 0.75rem; border-radius: 0.25rem; border: 1px solid #e2e8f0; margin-bottom: 0.5rem;">
+                            ng = (fmol × size in bp × 660) ÷ 1,000,000
+                        </code>
+                        <ul style="margin: 0.25rem 0 1rem 1.25rem; padding: 0;">
+                            <li><strong>fmol</strong> — femtomoles of DNA you want in the reaction (e.g. 40 fmol for vector, 80 fmol for inserts at 2:1 ratio)</li>
+                            <li><strong>size in bp</strong> — total size of the plasmid in base pairs (not just the insert — see below)</li>
+                            <li><strong>660</strong> — average molecular weight of one base pair of double-stranded DNA, in daltons (g/mol)</li>
+                            <li><strong>÷ 1,000,000</strong> — unit conversion factor: fmol × Da = 10⁻¹⁵ mol × g/mol = 10⁻¹⁵ g = 10⁻⁶ ng, hence divide by 10⁶ to get nanograms</li>
+                        </ul>
+
+                        <p style="margin: 0 0 0.75rem;"><strong>Step 2 — Calculate volume to pipette (µL):</strong></p>
+                        <code style="display: block; background: #fff; padding: 0.5rem 0.75rem; border-radius: 0.25rem; border: 1px solid #e2e8f0; margin-bottom: 0.5rem;">
+                            µL = ng ÷ concentration (ng/µL)
+                        </code>
+                        <ul style="margin: 0.25rem 0 1rem 1.25rem; padding: 0;">
+                            <li><strong>ng</strong> — mass of DNA from Step 1</li>
+                            <li><strong>concentration (ng/µL)</strong> — your measured DNA concentration (e.g. from Nanodrop or Qubit)</li>
+                        </ul>
+
+                        <p style="margin: 0 0 0.5rem;"><strong>Why use total plasmid size, not just the insert?</strong></p>
+                        <p style="margin: 0;">
+                            Each insert part sits inside a Level 0 plasmid vector. When you pipette the DNA, you're pipetting the
+                            <em>entire</em> plasmid — not just the insert fragment. One molecule of plasmid contains exactly one copy
+                            of the insert, so delivering 80 fmol of plasmid = 80 fmol of insert. But the <em>mass</em> you pipette
+                            reflects the whole plasmid. For example, a 500 bp insert in a 3000 bp plasmid means only ~17% of the DNA
+                            mass is your actual insert — the rest is backbone that gets cut away by the restriction enzyme (BsaI/BpiI)
+                            during the reaction.
+                        </p>
+                    </div>
+                </details>
                 <div id="dnaFragments">
                     <div class="dna-fragment-row">
                         <div class="frag-field">

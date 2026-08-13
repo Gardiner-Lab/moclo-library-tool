@@ -564,7 +564,8 @@ function showConcentrationForm(assemblyResult) {
         <h3 style="margin: 1.5rem 0 0.75rem; font-size: 1.15rem;">Enter DNA Concentrations</h3>
         <p style="font-size: 0.9rem; color: var(--text-secondary); margin-bottom: 1rem;">
             Each Level 0 part is in its own plasmid vector. Enter the total plasmid size and your measured concentration.
-            The volume is calculated for the whole plasmid to deliver the correct fmol of insert to the ${enzyme} reaction.
+            The volume accounts for the insert-to-plasmid size ratio — since the insert is only a small fraction of
+            the total plasmid DNA, more volume is needed to deliver the desired fmol of insert to the ${enzyme} reaction.
         </p>
 
         <div class="conc-form" id="concForm">
@@ -672,34 +673,48 @@ function renderAssemblyResult(result, bbConc, partData) {
     </tr>`;
 
     // Individual parts from all cassettes
+    // The insert is only a fraction of the total plasmid DNA.
+    // To deliver the desired fmol of insert, we calculate based on the
+    // total plasmid size (since 1 mol plasmid = 1 mol insert), and show
+    // the insert fraction so users understand how much is actually insert.
     let partIdx = 0;
     selectedCassettes.forEach((cassette) => {
         const parts = cassette.parts_metadata || [];
         if (parts.length > 0) {
             parts.forEach((part) => {
                 const pd = partData[partIdx];
+                const insertSize = part.sequence_length || part.length || 0;
+                // ng of total plasmid needed to deliver insertFmol of insert
+                // (1 plasmid molecule contains 1 insert molecule)
                 const plasmidNg = (insertFmol * pd.size * 660) / 1000000;
                 const vol = plasmidNg / pd.conc;
                 totalDnaVol += vol;
-                const insertSize = part.sequence_length || 0;
+                // Calculate how much of that mass is actually the insert
+                const insertFraction = insertSize > 0 ? (insertSize / pd.size) : 0;
+                const insertNg = plasmidNg * insertFraction;
+                const insertPct = (insertFraction * 100).toFixed(1);
                 dnaRows += `<tr>
                     <td>${escapeHtml(part.part_name || 'Part')} <em>(${formatPartTypeLabel(part.part_type || '')}, insert ${insertSize} bp)</em></td>
                     <td>${vol.toFixed(2)}</td>
-                    <td>${plasmidNg.toFixed(1)} ng (${insertFmol} fmol)</td>
-                    <td>plasmid ${pd.size} bp @ ${pd.conc} ng/µL</td>
+                    <td>${plasmidNg.toFixed(1)} ng total<br><small style="color: var(--text-secondary);">${insertNg.toFixed(1)} ng insert (${insertPct}%) = ${insertFmol} fmol</small></td>
+                    <td>plasmid ${pd.size} bp @ ${pd.conc} ng/µL<br><small style="color: var(--text-secondary);">insert is ${insertPct}% of plasmid</small></td>
                 </tr>`;
                 partIdx++;
             });
         } else {
             const pd = partData[partIdx];
+            const cassetteInsertSize = cassette.length || (cassette.assembled_sequence ? cassette.assembled_sequence.length : 0);
             const plasmidNg = (insertFmol * pd.size * 660) / 1000000;
             const vol = plasmidNg / pd.conc;
             totalDnaVol += vol;
+            const insertFraction = cassetteInsertSize > 0 ? (cassetteInsertSize / pd.size) : 0;
+            const insertNg = plasmidNg * insertFraction;
+            const insertPct = (insertFraction * 100).toFixed(1);
             dnaRows += `<tr>
                 <td>${escapeHtml(cassette.name)} <em>(cassette plasmid)</em></td>
                 <td>${vol.toFixed(2)}</td>
-                <td>${plasmidNg.toFixed(1)} ng (${insertFmol} fmol)</td>
-                <td>plasmid ${pd.size} bp @ ${pd.conc} ng/µL</td>
+                <td>${plasmidNg.toFixed(1)} ng total<br><small style="color: var(--text-secondary);">${insertNg.toFixed(1)} ng insert (${insertPct}%) = ${insertFmol} fmol</small></td>
+                <td>plasmid ${pd.size} bp @ ${pd.conc} ng/µL<br><small style="color: var(--text-secondary);">insert is ${insertPct}% of plasmid</small></td>
             </tr>`;
             partIdx++;
         }
@@ -733,7 +748,40 @@ function renderAssemblyResult(result, bbConc, partData) {
         </h3>
         <p style="font-size: 0.9rem; color: var(--text-secondary); margin-bottom: 1rem;">
             ${levelLabel} assembly using ${enzyme}. 2:1 molar ratio (${insertFmol} fmol insert : ${vectorFmol} fmol vector).
+            Volume is calculated from total plasmid size since the insert is only a fraction of each plasmid's mass.
         </p>
+
+        <details style="margin-bottom: 1.5rem; background: var(--bg-color); border: 1px solid var(--border-color); border-radius: 0.5rem; padding: 0.75rem 1rem;">
+            <summary style="cursor: pointer; font-weight: 600; font-size: 0.9rem; color: var(--text-primary);">📐 Formula Explanation</summary>
+            <div style="margin-top: 0.75rem; font-size: 0.85rem; line-height: 1.6; color: var(--text-secondary);">
+                <p style="margin: 0 0 0.5rem;"><strong>Step 1 — Mass needed (ng):</strong></p>
+                <code style="display: block; background: var(--surface-color, #f8f9fa); padding: 0.5rem 0.75rem; border-radius: 0.25rem; margin-bottom: 0.5rem; font-size: 0.85rem;">
+                    ng = (fmol × size in bp × 660) ÷ 1,000,000
+                </code>
+                <ul style="margin: 0.25rem 0 0.75rem 1.25rem; padding: 0;">
+                    <li><strong>fmol</strong> — desired moles of DNA (${vectorFmol} fmol for vector, ${insertFmol} fmol for each insert)</li>
+                    <li><strong>size in bp</strong> — total plasmid size (not just the insert), because you pipette the whole plasmid</li>
+                    <li><strong>660</strong> — average molecular weight of one base pair in daltons (g/mol)</li>
+                    <li><strong>÷ 1,000,000</strong> — converts from femtomoles × daltons to nanograms (fmol × Da = 10⁻¹⁵ mol × g/mol = 10⁻¹⁵ g = 10⁻⁶ ng, so ÷10⁶)</li>
+                </ul>
+                <p style="margin: 0 0 0.5rem;"><strong>Step 2 — Volume to pipette (µL):</strong></p>
+                <code style="display: block; background: var(--surface-color, #f8f9fa); padding: 0.5rem 0.75rem; border-radius: 0.25rem; margin-bottom: 0.5rem; font-size: 0.85rem;">
+                    µL = ng ÷ concentration (ng/µL)
+                </code>
+                <ul style="margin: 0.25rem 0 0.75rem 1.25rem; padding: 0;">
+                    <li><strong>ng</strong> — mass calculated in Step 1</li>
+                    <li><strong>concentration</strong> — your measured DNA concentration (e.g. from Nanodrop)</li>
+                </ul>
+                <p style="margin: 0 0 0.5rem;"><strong>Why use total plasmid size?</strong></p>
+                <p style="margin: 0;">
+                    The insert is a small fraction of the total plasmid DNA. One molecule of plasmid contains exactly one
+                    copy of the insert, so delivering ${insertFmol} fmol of plasmid = ${insertFmol} fmol of insert. But the mass you
+                    pipette is based on the <em>whole</em> plasmid — most of it is vector backbone that gets cut away by ${enzyme}.
+                    The insert percentage shown in each row tells you what fraction of the DNA mass is your actual insert.
+                </p>
+            </div>
+        </details>
+
         <table style="width: 100%; border-collapse: collapse; font-size: 0.9rem;">
             <thead>
                 <tr style="background: var(--primary-color); color: white;">
