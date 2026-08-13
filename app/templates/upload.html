@@ -13,6 +13,7 @@
     <div class="upload-method-toggle">
         <button type="button" class="toggle-btn active" id="manualToggle">Manual Entry</button>
         <button type="button" class="toggle-btn" id="genbankToggle">GenBank File</button>
+        <button type="button" class="toggle-btn" id="bulkToggle">Bulk Upload</button>
     </div>
 
     <!-- Manual Upload Form -->
@@ -241,6 +242,74 @@
 
             <!-- Form-level error message -->
             <div id="genbankFormError" class="error-message form-error"></div>
+        </form>
+    </div>
+
+    <!-- Bulk Upload Card -->
+    <div class="upload-card" id="bulkUploadCard" style="display: none;">
+        <div class="info-banner">
+            <strong>📦 Bulk GenBank Upload</strong>
+            <p>Upload multiple GenBank files (.gb or .genbank) at once. Each file will be parsed and added as a separate part.</p>
+        </div>
+
+        <form id="bulkUploadForm" class="upload-form" enctype="multipart/form-data">
+            <!-- Multiple File Upload -->
+            <div class="form-group">
+                <label for="bulkFiles">GenBank Files <span class="required">*</span></label>
+                <div class="file-upload-area" id="bulkFileUploadArea">
+                    <input 
+                        type="file" 
+                        id="bulkFiles" 
+                        name="files"
+                        accept=".gb,.genbank"
+                        multiple
+                        required
+                        style="display: none;"
+                    >
+                    <div class="file-upload-prompt" id="bulkFilePrompt">
+                        <div class="upload-icon">📁</div>
+                        <p>Click to select or drag and drop multiple GenBank files</p>
+                        <p class="file-types">.gb or .genbank files — select multiple</p>
+                    </div>
+                    <div id="bulkFileList" style="display: none;">
+                        <div class="file-icon">✓</div>
+                        <p id="bulkFileCount"></p>
+                        <button type="button" class="btn-remove-file" id="bulkClearBtn">Clear all</button>
+                    </div>
+                </div>
+                <div id="bulkFileError" class="error-message"></div>
+            </div>
+
+            <!-- Lab Source (Optional Override) -->
+            <div class="form-group">
+                <label for="bulkLabSource">Lab Source <span class="optional">(optional, applies to all)</span></label>
+                <input 
+                    type="text" 
+                    id="bulkLabSource" 
+                    name="lab_source"
+                    class="form-control" 
+                    placeholder="Override auto-detected source for all files"
+                >
+            </div>
+
+            <!-- Form Actions -->
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary btn-block" id="bulkSubmitButton">
+                    Upload All Parts
+                </button>
+            </div>
+
+            <!-- Progress Area -->
+            <div id="bulkProgress" style="display: none; margin-top: 1rem;">
+                <div style="background: var(--border-color); border-radius: 4px; overflow: hidden; height: 24px; position: relative;">
+                    <div id="bulkProgressBar" style="background: var(--primary-color); height: 100%; width: 0%; transition: width 0.3s;"></div>
+                    <span id="bulkProgressText" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 0.8rem; font-weight: 600; color: #fff;">0 / 0</span>
+                </div>
+                <div id="bulkResults" style="margin-top: 0.75rem; max-height: 300px; overflow-y: auto; font-size: 0.85rem;"></div>
+            </div>
+
+            <!-- Form-level error message -->
+            <div id="bulkFormError" class="error-message form-error"></div>
         </form>
     </div>
 </div>

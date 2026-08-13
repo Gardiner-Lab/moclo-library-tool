@@ -15,6 +15,9 @@ function initUploadForm() {
     
     // Initialize GenBank upload form
     initGenbankUploadForm();
+
+    // Initialize Bulk upload form
+    initBulkUploadForm();
 }
 
 /**
@@ -23,21 +26,36 @@ function initUploadForm() {
 function initToggleButtons() {
     const manualToggle = document.getElementById('manualToggle');
     const genbankToggle = document.getElementById('genbankToggle');
+    const bulkToggle = document.getElementById('bulkToggle');
     const manualCard = document.getElementById('manualUploadCard');
     const genbankCard = document.getElementById('genbankUploadCard');
+    const bulkCard = document.getElementById('bulkUploadCard');
     
     manualToggle.addEventListener('click', () => {
         manualToggle.classList.add('active');
         genbankToggle.classList.remove('active');
+        bulkToggle.classList.remove('active');
         manualCard.style.display = 'block';
         genbankCard.style.display = 'none';
+        bulkCard.style.display = 'none';
     });
     
     genbankToggle.addEventListener('click', () => {
         genbankToggle.classList.add('active');
         manualToggle.classList.remove('active');
+        bulkToggle.classList.remove('active');
         genbankCard.style.display = 'block';
         manualCard.style.display = 'none';
+        bulkCard.style.display = 'none';
+    });
+
+    bulkToggle.addEventListener('click', () => {
+        bulkToggle.classList.add('active');
+        manualToggle.classList.remove('active');
+        genbankToggle.classList.remove('active');
+        bulkCard.style.display = 'block';
+        manualCard.style.display = 'none';
+        genbankCard.style.display = 'none';
     });
 }
 
@@ -543,3 +561,205 @@ function clearError(elementId) {
 
 // Export for use in other modules
 window.initUploadForm = initUploadForm;
+
+
+/**
+ * Initialize Bulk Upload form
+ */
+function initBulkUploadForm() {
+    const form = document.getElementById('bulkUploadForm');
+    const fileInput = document.getElementById('bulkFiles');
+    const fileUploadArea = document.getElementById('bulkFileUploadArea');
+    const filePrompt = document.getElementById('bulkFilePrompt');
+    const fileList = document.getElementById('bulkFileList');
+    const fileCount = document.getElementById('bulkFileCount');
+    const clearBtn = document.getElementById('bulkClearBtn');
+
+    // Click to select files
+    fileUploadArea.addEventListener('click', () => {
+        if (fileList.style.display === 'none' || !fileList.style.display) {
+            fileInput.click();
+        }
+    });
+
+    // File input change
+    fileInput.addEventListener('change', () => {
+        updateBulkFileDisplay();
+    });
+
+    // Drag and drop
+    fileUploadArea.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        fileUploadArea.classList.add('drag-over');
+    });
+
+    fileUploadArea.addEventListener('dragleave', () => {
+        fileUploadArea.classList.remove('drag-over');
+    });
+
+    fileUploadArea.addEventListener('drop', (e) => {
+        e.preventDefault();
+        fileUploadArea.classList.remove('drag-over');
+        if (e.dataTransfer.files.length > 0) {
+            fileInput.files = e.dataTransfer.files;
+            updateBulkFileDisplay();
+        }
+    });
+
+    // Clear button
+    clearBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        fileInput.value = '';
+        fileList.style.display = 'none';
+        filePrompt.style.display = 'block';
+    });
+
+    // Form submission
+    form.addEventListener('submit', handleBulkSubmit);
+}
+
+/**
+ * Update the file count display for bulk upload
+ */
+function updateBulkFileDisplay() {
+    const fileInput = document.getElementById('bulkFiles');
+    const filePrompt = document.getElementById('bulkFilePrompt');
+    const fileList = document.getElementById('bulkFileList');
+    const fileCount = document.getElementById('bulkFileCount');
+
+    if (fileInput.files.length > 0) {
+        // Validate all files
+        const validFiles = [];
+        for (let i = 0; i < fileInput.files.length; i++) {
+            const name = fileInput.files[i].name.toLowerCase();
+            if (name.endsWith('.gb') || name.endsWith('.genbank')) {
+                validFiles.push(fileInput.files[i].name);
+            }
+        }
+
+        if (validFiles.length === 0) {
+            showError('bulkFileError', 'No valid GenBank files selected (.gb or .genbank)');
+            return;
+        }
+
+        fileCount.textContent = `${validFiles.length} file${validFiles.length !== 1 ? 's' : ''} selected`;
+        filePrompt.style.display = 'none';
+        fileList.style.display = 'flex';
+        clearError('bulkFileError');
+    }
+}
+
+/**
+ * Handle bulk upload form submission
+ */
+async function handleBulkSubmit(event) {
+    event.preventDefault();
+
+    const fileInput = document.getElementById('bulkFiles');
+    const submitBtn = document.getElementById('bulkSubmitButton');
+    const progressDiv = document.getElementById('bulkProgress');
+    const progressBar = document.getElementById('bulkProgressBar');
+    const progressText = document.getElementById('bulkProgressText');
+    const resultsDiv = document.getElementById('bulkResults');
+
+    // Validate files
+    if (!fileInput.files || fileInput.files.length === 0) {
+        showError('bulkFileError', 'Please select at least one GenBank file');
+        return;
+    }
+
+    // Filter valid files
+    const files = [];
+    for (let i = 0; i < fileInput.files.length; i++) {
+        const name = fileInput.files[i].name.toLowerCase();
+        if (name.endsWith('.gb') || name.endsWith('.genbank')) {
+            files.push(fileInput.files[i]);
+        }
+    }
+
+    if (files.length === 0) {
+        showError('bulkFileError', 'No valid GenBank files found (.gb or .genbank)');
+        return;
+    }
+
+    // Get optional lab source
+    const labSource = document.getElementById('bulkLabSource').value.trim();
+
+    // Show progress
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Uploading...';
+    progressDiv.style.display = 'block';
+    resultsDiv.innerHTML = '';
+
+    let successCount = 0;
+    let failCount = 0;
+    let duplicateCount = 0;
+
+    for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        const pct = Math.round(((i + 1) / files.length) * 100);
+        progressBar.style.width = pct + '%';
+        progressText.textContent = `${i + 1} / ${files.length}`;
+
+        // Build form data for this file
+        const formData = new FormData();
+        formData.append('file', file);
+        if (labSource) {
+            formData.append('lab_source', labSource);
+        }
+
+        try {
+            const response = await fetch('/api/parts', {
+                method: 'POST',
+                body: formData,
+                credentials: 'same-origin'
+            });
+
+            const data = await response.json();
+
+            if (response.ok) {
+                successCount++;
+                const partName = data.part ? data.part.name : file.name;
+                resultsDiv.innerHTML += `<div style="color: #16a34a;">✓ ${escapeHtml(partName)} — uploaded successfully</div>`;
+            } else if (response.status === 409) {
+                duplicateCount++;
+                resultsDiv.innerHTML += `<div style="color: #d97706;">⚠ ${escapeHtml(file.name)} — ${data.error || 'duplicate'}</div>`;
+            } else {
+                failCount++;
+                resultsDiv.innerHTML += `<div style="color: #dc2626;">✗ ${escapeHtml(file.name)} — ${data.error || 'failed'}</div>`;
+            }
+        } catch (error) {
+            failCount++;
+            resultsDiv.innerHTML += `<div style="color: #dc2626;">✗ ${escapeHtml(file.name)} — ${error.message}</div>`;
+        }
+
+        // Scroll results to bottom
+        resultsDiv.scrollTop = resultsDiv.scrollHeight;
+    }
+
+    // Done
+    submitBtn.disabled = false;
+    submitBtn.textContent = 'Upload All Parts';
+    progressBar.style.width = '100%';
+
+    // Summary
+    let summary = `<div style="margin-top: 0.75rem; padding: 0.5rem; background: var(--bg-color); border-radius: 4px; font-weight: 600;">`;
+    summary += `Done! ${successCount} uploaded`;
+    if (duplicateCount > 0) summary += `, ${duplicateCount} duplicates skipped`;
+    if (failCount > 0) summary += `, ${failCount} failed`;
+    summary += `</div>`;
+    resultsDiv.innerHTML += summary;
+
+    if (successCount > 0) {
+        showFlashMessage(`${successCount} part${successCount !== 1 ? 's' : ''} uploaded successfully!`, 'success');
+    }
+}
+
+/**
+ * Escape HTML for safe display
+ */
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
