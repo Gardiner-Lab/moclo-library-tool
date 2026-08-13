@@ -92,7 +92,9 @@
 <div id="tab-parts" class="admin-section">
   <div class="section-header">
     <h2>Parts <span class="count-badge" id="parts-count">0</span></h2>
+    <button class="btn-sm btn-primary" onclick="runAddgeneLookup()" id="addgeneLookupBtn">🔍 Fetch Names from Addgene</button>
   </div>
+  <div id="addgene-status" style="display: none; margin-bottom: 1rem; padding: 0.75rem 1rem; border-radius: 0.5rem; font-size: 0.875rem;"></div>
   <table class="admin-table">
     <thead><tr><th>Name</th><th>Type</th><th>Contributor</th><th>Lab Source</th><th>Actions</th></tr></thead>
     <tbody id="parts-tbody"></tbody>
@@ -597,5 +599,41 @@ apiFetch(`${API}/version`)
 
 // Load users on page load
 loaders.users();
+
+// ── Addgene Lookup ──────────────────────────────────────────────────────────
+async function runAddgeneLookup() {
+  const btn = document.getElementById('addgeneLookupBtn');
+  const statusDiv = document.getElementById('addgene-status');
+  
+  btn.disabled = true;
+  btn.textContent = '⏳ Looking up names...';
+  statusDiv.style.display = 'block';
+  statusDiv.style.background = '#dbeafe';
+  statusDiv.style.border = '1px solid #3b82f6';
+  statusDiv.innerHTML = 'Fetching Gene/Insert names from Addgene... This may take a minute for many parts.';
+  
+  try {
+    const data = await apiFetch(`${API}/addgene-lookup`, { method: 'POST' });
+    
+    if (data.updated > 0) {
+      statusDiv.style.background = '#d1fae5';
+      statusDiv.style.border = '1px solid #10b981';
+      statusDiv.innerHTML = `<strong>✓ Done!</strong> Updated ${data.updated} part(s) with Addgene names. ` +
+        `${data.skipped} skipped, ${data.failed} failed. ` +
+        `<a href="javascript:location.reload()">Reload page</a> to see changes.`;
+    } else {
+      statusDiv.style.background = '#fef3c7';
+      statusDiv.style.border = '1px solid #f59e0b';
+      statusDiv.innerHTML = `No parts were updated. ${data.skipped} already have descriptions or weren't found on Addgene.`;
+    }
+  } catch (e) {
+    statusDiv.style.background = '#fee2e2';
+    statusDiv.style.border = '1px solid #ef4444';
+    statusDiv.innerHTML = `<strong>Error:</strong> ${e.message}`;
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '🔍 Fetch Names from Addgene';
+  }
+}
 </script>
 {% endblock %}
