@@ -169,8 +169,8 @@ function handleFileSelect() {
         const file = fileInput.files[0];
         
         // Validate file extension
-        if (!file.name.toLowerCase().endsWith('.gb') && !file.name.toLowerCase().endsWith('.genbank')) {
-            showError('genbankFileError', 'Please select a GenBank file (.gb or .genbank)');
+        if (!file.name.toLowerCase().endsWith('.gb') && !file.name.toLowerCase().endsWith('.gbk') && !file.name.toLowerCase().endsWith('.genbank')) {
+            showError('genbankFileError', 'Please select a GenBank file (.gb, .gbk, or .genbank)');
             fileInput.value = '';
             return;
         }
@@ -632,13 +632,13 @@ function updateBulkFileDisplay() {
         const validFiles = [];
         for (let i = 0; i < fileInput.files.length; i++) {
             const name = fileInput.files[i].name.toLowerCase();
-            if (name.endsWith('.gb') || name.endsWith('.genbank')) {
+            if (name.endsWith('.gb') || name.endsWith('.gbk') || name.endsWith('.genbank')) {
                 validFiles.push(fileInput.files[i].name);
             }
         }
 
         if (validFiles.length === 0) {
-            showError('bulkFileError', 'No valid GenBank files selected (.gb or .genbank)');
+            showError('bulkFileError', 'No valid GenBank files selected (.gb, .gbk, or .genbank)');
             return;
         }
 
@@ -672,13 +672,13 @@ async function handleBulkSubmit(event) {
     const files = [];
     for (let i = 0; i < fileInput.files.length; i++) {
         const name = fileInput.files[i].name.toLowerCase();
-        if (name.endsWith('.gb') || name.endsWith('.genbank')) {
+        if (name.endsWith('.gb') || name.endsWith('.gbk') || name.endsWith('.genbank')) {
             files.push(fileInput.files[i]);
         }
     }
 
     if (files.length === 0) {
-        showError('bulkFileError', 'No valid GenBank files found (.gb or .genbank)');
+        showError('bulkFileError', 'No valid GenBank files found (.gb, .gbk, or .genbank)');
         return;
     }
 

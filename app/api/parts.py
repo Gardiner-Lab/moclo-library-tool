@@ -329,9 +329,9 @@ def _handle_genbank_upload():
         }), 400
     
     # Check file extension
-    if not file.filename.lower().endswith(('.gb', '.genbank')):
+    if not file.filename.lower().endswith(('.gb', '.gbk', '.genbank')):
         return jsonify({
-            'error': 'File must be a GenBank file (.gb or .genbank)'
+            'error': 'File must be a GenBank file (.gb, .gbk, or .genbank)'
         }), 400
     
     # Read file content

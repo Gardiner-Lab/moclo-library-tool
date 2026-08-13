@@ -158,7 +158,7 @@
     <div class="upload-card" id="genbankUploadCard" style="display: none;">
         <div class="info-banner">
             <strong>📄 GenBank File Upload</strong>
-            <p>Upload a GenBank file (.gb or .genbank) containing your MoClo part. The tool will automatically:</p>
+            <p>Upload a GenBank file (.gb, .gbk, or .genbank) containing your MoClo part. The tool will automatically:</p>
             <ul>
                 <li>Detect BsaI restriction sites (GGTCTC/GAGACC)</li>
                 <li>Extract the part sequence between the sites</li>
@@ -177,14 +177,14 @@
                         type="file" 
                         id="genbankFile" 
                         name="file"
-                        accept=".gb,.genbank"
+                        accept=".gb,.gbk,.genbank"
                         required
                         style="display: none;"
                     >
                     <div class="file-upload-prompt">
                         <div class="upload-icon">📁</div>
                         <p>Click to select or drag and drop a GenBank file</p>
-                        <p class="file-types">.gb or .genbank files only</p>
+                        <p class="file-types">.gb, .gbk, or .genbank files</p>
                     </div>
                     <div class="file-selected" id="fileSelected" style="display: none;">
                         <div class="file-icon">✓</div>
@@ -249,7 +249,7 @@
     <div class="upload-card" id="bulkUploadCard" style="display: none;">
         <div class="info-banner">
             <strong>📦 Bulk GenBank Upload</strong>
-            <p>Upload multiple GenBank files (.gb or .genbank) at once. Each file will be parsed and added as a separate part.</p>
+            <p>Upload multiple GenBank files (.gb, .gbk, or .genbank) at once. Each file will be parsed and added as a separate part.</p>
         </div>
 
         <form id="bulkUploadForm" class="upload-form" enctype="multipart/form-data">
@@ -261,7 +261,7 @@
                         type="file" 
                         id="bulkFiles" 
                         name="files"
-                        accept=".gb,.genbank"
+                        accept=".gb,.gbk,.genbank"
                         multiple
                         required
                         style="display: none;"
@@ -269,7 +269,7 @@
                     <div class="file-upload-prompt" id="bulkFilePrompt">
                         <div class="upload-icon">📁</div>
                         <p>Click to select or drag and drop multiple GenBank files</p>
-                        <p class="file-types">.gb or .genbank files — select multiple</p>
+                        <p class="file-types">.gb, .gbk, or .genbank files — select multiple</p>
                     </div>
                     <div id="bulkFileList" style="display: none;">
                         <div class="file-icon">✓</div>
