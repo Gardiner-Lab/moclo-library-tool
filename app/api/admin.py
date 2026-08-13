@@ -395,3 +395,87 @@ def check_update(user):
             'update_available': False,
             'message': f'Could not check for updates: {str(e)}'
         }), 200
+
+# ── Addgene Lookup ─────────────────────────────────────────────────────────
+
+@admin_bp.route('/addgene-lookup', methods=['POST'])
+@require_admin
+def batch_addgene_lookup(user):
+    """
+    Batch lookup Addgene Gene/Insert names for all parts with generic descriptions.
+    
+    Updates parts whose description is empty or "synthetic circular DNA" with
+    the Gene/Insert name fetched from the Addgene website.
+    
+    Response:
+        {
+            "updated": number,
+            "failed": number,
+            "skipped": number,
+            "details": [...]
+        }
+    """
+    from app.services.addgene import lookup_addgene_name
+    from app.models.parts_database import get_parts_database
+    
+    parts = Part.get_all()
+    updated = 0
+    failed = 0
+    skipped = 0
+    details = []
+    
+    # Generic descriptions that should be replaced
+    generic_descriptions = {
+        '', 'synthetic circular dna', 'synthetic circular dna.',
+        'synthetic dna construct', 'synthetic dna construct.',
+        'none', 'n/a'
+    }
+    
+    for part in parts:
+        current_desc = (part.description or '').strip().lower()
+        
+        # Skip if already has a meaningful description
+        if current_desc and current_desc not in generic_descriptions:
+            skipped += 1
+            continue
+        
+        # Try Addgene lookup
+        try:
+            gene_name = lookup_addgene_name(part.name)
+            if gene_name:
+                # Update the part's description in the database
+                db = get_parts_database()
+                with db.get_connection() as conn:
+                    cursor = conn.cursor()
+                    cursor.execute(
+                        "UPDATE parts SET description = ? WHERE id = ?",
+                        (gene_name, part.id)
+                    )
+                    conn.commit()
+                updated += 1
+                details.append({
+                    'name': part.name,
+                    'description': gene_name,
+                    'status': 'updated'
+                })
+            else:
+                skipped += 1
+                details.append({
+                    'name': part.name,
+                    'status': 'not_found_on_addgene'
+                })
+        except Exception as e:
+            failed += 1
+            details.append({
+                'name': part.name,
+                'status': 'error',
+                'reason': str(e)
+            })
+    
+    return jsonify({
+        'updated': updated,
+        'failed': failed,
+        'skipped': skipped,
+        'total_parts': len(parts),
+        'details': details
+    }), 200

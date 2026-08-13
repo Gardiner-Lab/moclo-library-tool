@@ -92,7 +92,7 @@ function renderBackbones() {
         }
 
         item.innerHTML = `
-            <div class="item-name">${escapeHtml(backbone.name)}</div>
+            <div class="item-name">${escapeHtml(backbone.description && !backbone.description.toLowerCase().includes('synthetic') ? `${backbone.description} (${backbone.name})` : backbone.name)}</div>
             <div class="item-meta">
                 <span>${backbone.size || backbone.length || 0} bp</span>
                 <span>${backbone.slot_count || backbone.cassette_slots || 0} slot${(backbone.slot_count || backbone.cassette_slots || 0) !== 1 ? 's' : ''}</span>
@@ -511,7 +511,7 @@ function showConcentrationForm(assemblyResult) {
                 fragmentRows += `
                     <div class="conc-row">
                         <div class="conc-name-col">
-                            <strong>${escapeHtml(part.part_name || 'Part ' + (pi+1))}</strong>
+                            <strong>${escapeHtml(part.description && !part.description.toLowerCase().includes('synthetic') ? `${part.description} (${part.part_name})` : (part.part_name || 'Part ' + (pi+1)))}</strong>
                             <span class="conc-meta">${escapeHtml(formatPartTypeLabel(partType))} · insert: ${insertSize} bp</span>
                         </div>
                         <div class="conc-input-col">
@@ -694,7 +694,7 @@ function renderAssemblyResult(result, bbConc, partData) {
                 const insertNg = plasmidNg * insertFraction;
                 const insertPct = (insertFraction * 100).toFixed(1);
                 dnaRows += `<tr>
-                    <td>${escapeHtml(part.part_name || 'Part')} <em>(${formatPartTypeLabel(part.part_type || '')}, insert ${insertSize} bp)</em></td>
+                    <td>${escapeHtml(part.description && !part.description.toLowerCase().includes('synthetic') ? `${part.description} (${part.part_name})` : (part.part_name || 'Part'))} <em>(${formatPartTypeLabel(part.part_type || '')}, insert ${insertSize} bp)</em></td>
                     <td>${vol.toFixed(2)}</td>
                     <td>${plasmidNg.toFixed(1)} ng total<br><small style="color: var(--text-secondary);">${insertNg.toFixed(1)} ng insert (${insertPct}%) = ${insertFmol} fmol</small></td>
                     <td>plasmid ${pd.size} bp @ ${pd.conc} ng/µL<br><small style="color: var(--text-secondary);">insert is ${insertPct}% of plasmid</small></td>

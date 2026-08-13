@@ -219,7 +219,7 @@ function createPartCard(part) {
 
     const name = document.createElement('h3');
     name.className = 'part-name';
-    name.textContent = part.name;
+    name.textContent = getPartDisplayName(part.name, part.description);
 
     const type = document.createElement('div');
     type.className = 'part-type';
@@ -263,6 +263,21 @@ function formatPartType(type) {
 }
 
 /**
+ * Get a useful display name for a part.
+ * Shows "Description (plasmid_name)" if description is meaningful,
+ * otherwise just the plasmid name.
+ */
+function getPartDisplayName(name, description) {
+    if (!description) return name;
+    const lower = description.toLowerCase().trim();
+    // Filter out generic/useless descriptions
+    if (lower.includes('synthetic') || lower === '' || lower === 'none' || lower === 'n/a') {
+        return name;
+    }
+    return `${description} (${name})`;
+}
+
+/**
  * Show part details in modal
  */
 async function showPartDetails(partId) {
@@ -285,7 +300,7 @@ async function showPartDetails(partId) {
  */
 function renderPartDetails(part) {
     const detailsContainer = document.getElementById('partDetails');
-    document.getElementById('modalPartName').textContent = part.name;
+    document.getElementById('modalPartName').textContent = getPartDisplayName(part.name, part.description);
     
     // Add delete button if user is the contributor (not system parts)
     const modalHeader = document.querySelector('.modal-header');
@@ -561,8 +576,9 @@ async function loadCompatibleParts(partId) {
             html += '<h4>Can be placed before this part:</h4>';
             html += '<div class="compatible-parts-list">';
             before.forEach(part => {
+                const displayName = getPartDisplayName(part.name, part.description);
                 html += `<div class="compatible-part-item" onclick="showPartDetails('${part.id}')">
-                    <span class="part-name">${part.name}</span>
+                    <span class="part-name">${displayName}</span>
                     <span class="type-badge type-${part.part_type.toLowerCase()}">${formatPartType(part.part_type)}</span>
                 </div>`;
             });
@@ -573,8 +589,9 @@ async function loadCompatibleParts(partId) {
             html += '<h4>Can be placed after this part:</h4>';
             html += '<div class="compatible-parts-list">';
             after.forEach(part => {
+                const displayName = getPartDisplayName(part.name, part.description);
                 html += `<div class="compatible-part-item" onclick="showPartDetails('${part.id}')">
-                    <span class="part-name">${part.name}</span>
+                    <span class="part-name">${displayName}</span>
                     <span class="type-badge type-${part.part_type.toLowerCase()}">${formatPartType(part.part_type)}</span>
                 </div>`;
             });
