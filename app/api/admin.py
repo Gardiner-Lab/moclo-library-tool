@@ -441,7 +441,8 @@ def _run_addgene_lookup_background():
                 _addgene_job['progress'] = i + 1
             
             # Skip if already has a meaningful description
-            if current_desc and current_desc not in generic_descriptions:
+            # (not empty, not generic like "synthetic circular DNA")
+            if current_desc and 'synthetic' not in current_desc and current_desc not in generic_descriptions:
                 with _addgene_lock:
                     _addgene_job['skipped'] += 1
                 continue
@@ -468,6 +469,10 @@ def _run_addgene_lookup_background():
                 else:
                     with _addgene_lock:
                         _addgene_job['skipped'] += 1
+                        _addgene_job['details'].append({
+                            'name': part.name,
+                            'status': 'not_found_on_addgene'
+                        })
             except Exception as e:
                 with _addgene_lock:
                     _addgene_job['failed'] += 1
