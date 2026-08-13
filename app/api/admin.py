@@ -396,86 +396,152 @@ def check_update(user):
             'message': f'Could not check for updates: {str(e)}'
         }), 200
 
-# ── Addgene Lookup ─────────────────────────────────────────────────────────
+# ── Addgene Lookup (Background Job) ────────────────────────────────────────
+
+import threading
+
+# Global state for the background Addgene lookup job
+_addgene_job = {
+    'running': False,
+    'progress': 0,
+    'total': 0,
+    'updated': 0,
+    'failed': 0,
+    'skipped': 0,
+    'details': [],
+    'finished': False,
+    'error': None
+}
+_addgene_lock = threading.Lock()
+
+
+def _run_addgene_lookup_background():
+    """Background thread function to perform Addgene lookups."""
+    global _addgene_job
+    from app.services.addgene import lookup_addgene_name
+    from app.models.parts_database import get_parts_database
+    
+    try:
+        parts = Part.get_all()
+        
+        generic_descriptions = {
+            '', 'synthetic circular dna', 'synthetic circular dna.',
+            'synthetic dna construct', 'synthetic dna construct.',
+            'none', 'n/a'
+        }
+        
+        with _addgene_lock:
+            _addgene_job['total'] = len(parts)
+            _addgene_job['progress'] = 0
+        
+        for i, part in enumerate(parts):
+            current_desc = (part.description or '').strip().lower()
+            
+            with _addgene_lock:
+                _addgene_job['progress'] = i + 1
+            
+            # Skip if already has a meaningful description
+            if current_desc and current_desc not in generic_descriptions:
+                with _addgene_lock:
+                    _addgene_job['skipped'] += 1
+                continue
+            
+            # Try Addgene lookup
+            try:
+                gene_name = lookup_addgene_name(part.name)
+                if gene_name:
+                    db = get_parts_database()
+                    with db.get_connection() as conn:
+                        cursor = conn.cursor()
+                        cursor.execute(
+                            "UPDATE parts SET description = ? WHERE id = ?",
+                            (gene_name, part.id)
+                        )
+                        conn.commit()
+                    with _addgene_lock:
+                        _addgene_job['updated'] += 1
+                        _addgene_job['details'].append({
+                            'name': part.name,
+                            'description': gene_name,
+                            'status': 'updated'
+                        })
+                else:
+                    with _addgene_lock:
+                        _addgene_job['skipped'] += 1
+            except Exception as e:
+                with _addgene_lock:
+                    _addgene_job['failed'] += 1
+                    _addgene_job['details'].append({
+                        'name': part.name,
+                        'status': 'error',
+                        'reason': str(e)
+                    })
+    except Exception as e:
+        with _addgene_lock:
+            _addgene_job['error'] = str(e)
+    finally:
+        with _addgene_lock:
+            _addgene_job['running'] = False
+            _addgene_job['finished'] = True
+
 
 @admin_bp.route('/addgene-lookup', methods=['POST'])
 @require_admin
 def batch_addgene_lookup(user):
     """
-    Batch lookup Addgene Gene/Insert names for all parts with generic descriptions.
+    Start a background Addgene lookup job.
     
-    Updates parts whose description is empty or "synthetic circular DNA" with
-    the Gene/Insert name fetched from the Addgene website.
-    
-    Response:
-        {
-            "updated": number,
-            "failed": number,
-            "skipped": number,
-            "details": [...]
-        }
+    Returns immediately. Use GET /api/admin/addgene-lookup/status to poll progress.
     """
-    from app.services.addgene import lookup_addgene_name
-    from app.models.parts_database import get_parts_database
+    global _addgene_job
     
-    parts = Part.get_all()
-    updated = 0
-    failed = 0
-    skipped = 0
-    details = []
-    
-    # Generic descriptions that should be replaced
-    generic_descriptions = {
-        '', 'synthetic circular dna', 'synthetic circular dna.',
-        'synthetic dna construct', 'synthetic dna construct.',
-        'none', 'n/a'
-    }
-    
-    for part in parts:
-        current_desc = (part.description or '').strip().lower()
+    with _addgene_lock:
+        if _addgene_job['running']:
+            return jsonify({
+                'status': 'already_running',
+                'message': 'An Addgene lookup is already in progress.',
+                'progress': _addgene_job['progress'],
+                'total': _addgene_job['total']
+            }), 409
         
-        # Skip if already has a meaningful description
-        if current_desc and current_desc not in generic_descriptions:
-            skipped += 1
-            continue
-        
-        # Try Addgene lookup
-        try:
-            gene_name = lookup_addgene_name(part.name)
-            if gene_name:
-                # Update the part's description in the database
-                db = get_parts_database()
-                with db.get_connection() as conn:
-                    cursor = conn.cursor()
-                    cursor.execute(
-                        "UPDATE parts SET description = ? WHERE id = ?",
-                        (gene_name, part.id)
-                    )
-                    conn.commit()
-                updated += 1
-                details.append({
-                    'name': part.name,
-                    'description': gene_name,
-                    'status': 'updated'
-                })
-            else:
-                skipped += 1
-                details.append({
-                    'name': part.name,
-                    'status': 'not_found_on_addgene'
-                })
-        except Exception as e:
-            failed += 1
-            details.append({
-                'name': part.name,
-                'status': 'error',
-                'reason': str(e)
-            })
+        # Reset job state
+        _addgene_job = {
+            'running': True,
+            'progress': 0,
+            'total': 0,
+            'updated': 0,
+            'failed': 0,
+            'skipped': 0,
+            'details': [],
+            'finished': False,
+            'error': None
+        }
+    
+    # Start background thread
+    thread = threading.Thread(target=_run_addgene_lookup_background, daemon=True)
+    thread.start()
     
     return jsonify({
-        'updated': updated,
-        'failed': failed,
-        'skipped': skipped,
-        'total_parts': len(parts),
-        'details': details
-    }), 200
+        'status': 'started',
+        'message': 'Addgene lookup started in background. Poll /api/admin/addgene-lookup/status for progress.'
+    }), 202
+
+
+@admin_bp.route('/addgene-lookup/status', methods=['GET'])
+@require_admin
+def addgene_lookup_status(user):
+    """
+    Get the status of the background Addgene lookup job.
+    """
+    with _addgene_lock:
+        return jsonify({
+            'running': _addgene_job['running'],
+            'finished': _addgene_job['finished'],
+            'progress': _addgene_job['progress'],
+            'total': _addgene_job['total'],
+            'updated': _addgene_job['updated'],
+            'failed': _addgene_job['failed'],
+            'skipped': _addgene_job['skipped'],
+            'error': _addgene_job['error'],
+            'details': _addgene_job['details'][-20:]  # Last 20 results
+        }), 200

@@ -606,34 +606,103 @@ async function runAddgeneLookup() {
   const statusDiv = document.getElementById('addgene-status');
   
   btn.disabled = true;
-  btn.textContent = '⏳ Looking up names...';
+  btn.textContent = '⏳ Starting...';
   statusDiv.style.display = 'block';
   statusDiv.style.background = '#dbeafe';
   statusDiv.style.border = '1px solid #3b82f6';
-  statusDiv.innerHTML = 'Fetching Gene/Insert names from Addgene... This may take a minute for many parts.';
+  statusDiv.innerHTML = 'Starting Addgene lookup job...';
   
   try {
     const data = await apiFetch(`${API}/addgene-lookup`, { method: 'POST' });
     
-    if (data.updated > 0) {
-      statusDiv.style.background = '#d1fae5';
-      statusDiv.style.border = '1px solid #10b981';
-      statusDiv.innerHTML = `<strong>✓ Done!</strong> Updated ${data.updated} part(s) with Addgene names. ` +
-        `${data.skipped} skipped, ${data.failed} failed. ` +
-        `<a href="javascript:location.reload()">Reload page</a> to see changes.`;
+    if (data.status === 'already_running') {
+      statusDiv.innerHTML = 'A lookup is already running. Monitoring progress...';
     } else {
-      statusDiv.style.background = '#fef3c7';
-      statusDiv.style.border = '1px solid #f59e0b';
-      statusDiv.innerHTML = `No parts were updated. ${data.skipped} already have descriptions or weren't found on Addgene.`;
+      statusDiv.innerHTML = 'Job started! Fetching names from Addgene in the background...';
     }
+    
+    // Start polling for status
+    pollAddgeneStatus();
   } catch (e) {
     statusDiv.style.background = '#fee2e2';
     statusDiv.style.border = '1px solid #ef4444';
     statusDiv.innerHTML = `<strong>Error:</strong> ${e.message}`;
-  } finally {
     btn.disabled = false;
     btn.textContent = '🔍 Fetch Names from Addgene';
   }
 }
+
+let _addgenePollInterval = null;
+
+function pollAddgeneStatus() {
+  const btn = document.getElementById('addgeneLookupBtn');
+  const statusDiv = document.getElementById('addgene-status');
+  
+  // Clear any existing interval
+  if (_addgenePollInterval) clearInterval(_addgenePollInterval);
+  
+  _addgenePollInterval = setInterval(async () => {
+    try {
+      const data = await apiFetch(`${API}/addgene-lookup/status`);
+      
+      const pct = data.total > 0 ? Math.round((data.progress / data.total) * 100) : 0;
+      
+      if (data.running) {
+        btn.textContent = `⏳ ${pct}% (${data.progress}/${data.total})`;
+        statusDiv.style.background = '#dbeafe';
+        statusDiv.style.border = '1px solid #3b82f6';
+        statusDiv.innerHTML = `<strong>In progress...</strong> ${data.progress}/${data.total} parts checked. ` +
+          `${data.updated} updated so far. You can close this page — it will keep running on the server.`;
+      } else if (data.finished) {
+        clearInterval(_addgenePollInterval);
+        _addgenePollInterval = null;
+        btn.disabled = false;
+        btn.textContent = '🔍 Fetch Names from Addgene';
+        
+        if (data.error) {
+          statusDiv.style.background = '#fee2e2';
+          statusDiv.style.border = '1px solid #ef4444';
+          statusDiv.innerHTML = `<strong>Error:</strong> ${data.error}`;
+        } else if (data.updated > 0) {
+          statusDiv.style.background = '#d1fae5';
+          statusDiv.style.border = '1px solid #10b981';
+          let detailsHtml = '';
+          if (data.details && data.details.length > 0) {
+            const updated = data.details.filter(d => d.status === 'updated');
+            if (updated.length > 0) {
+              detailsHtml = '<br><small>Recent: ' + updated.slice(-5).map(d => `${d.name} → ${d.description}`).join(', ') + '</small>';
+            }
+          }
+          statusDiv.innerHTML = `<strong>✓ Done!</strong> Updated ${data.updated} part(s) with Addgene names. ` +
+            `${data.skipped} skipped, ${data.failed} failed.${detailsHtml}<br>` +
+            `<a href="javascript:location.reload()">Reload page</a> to see changes everywhere.`;
+        } else {
+          statusDiv.style.background = '#fef3c7';
+          statusDiv.style.border = '1px solid #f59e0b';
+          statusDiv.innerHTML = `<strong>Done.</strong> No parts were updated. ${data.skipped} already have descriptions or weren't found on Addgene.`;
+        }
+      }
+    } catch (e) {
+      // Polling error — might be transient, keep trying
+    }
+  }, 3000); // Poll every 3 seconds
+}
+
+// On page load, check if a job is already running
+(async function checkExistingJob() {
+  try {
+    const data = await apiFetch(`${API}/addgene-lookup/status`);
+    if (data.running) {
+      const btn = document.getElementById('addgeneLookupBtn');
+      const statusDiv = document.getElementById('addgene-status');
+      btn.disabled = true;
+      statusDiv.style.display = 'block';
+      statusDiv.style.background = '#dbeafe';
+      statusDiv.style.border = '1px solid #3b82f6';
+      statusDiv.innerHTML = 'A lookup job is running in the background...';
+      pollAddgeneStatus();
+    }
+  } catch (e) { /* ignore */ }
+})();
 </script>
 {% endblock %}
