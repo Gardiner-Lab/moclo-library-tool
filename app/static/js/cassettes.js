@@ -229,7 +229,7 @@ function renderCassetteDetail(cassette) {
                 <div class="part-list-item clickable" onclick="showPartDetails('${part.id}')" style="cursor: pointer;">
                     <div class="part-order-number">${index + 1}</div>
                     <div class="part-list-info">
-                        <div class="part-list-name">${escapeHtml(part.description && !part.description.toLowerCase().includes('synthetic') ? `${part.description} (${part.name})` : part.name)}</div>
+                        <div class="part-list-name">${escapeHtml(part.name)}</div>
                         <div class="part-list-meta">
                             <span class="type-badge type-${part.part_type.toLowerCase()}">${formatPartType(part.part_type)}</span>
                             <span>5': ${part.overhang_5prime}</span>

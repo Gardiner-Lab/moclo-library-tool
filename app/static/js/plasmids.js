@@ -79,8 +79,10 @@ function applyFilter() {
         filteredPlasmids = [...allPlasmids];
     } else {
         filteredPlasmids = allPlasmids.filter(plasmid => {
+            const featureText = getPlasmidFeatureLabels(plasmid).join(' ').toLowerCase();
             return plasmid.name.toLowerCase().includes(searchQuery) ||
-                   plasmid.id.toLowerCase().includes(searchQuery);
+                   plasmid.id.toLowerCase().includes(searchQuery) ||
+                   featureText.includes(searchQuery);
         });
     }
     renderPlasmids();
@@ -114,6 +116,51 @@ function renderPlasmids() {
 }
 
 /**
+ * Get feature labels from the plasmid's .gb features.
+ * Extracts meaningful feature labels (CDS, promoter, gene, etc.)
+ * that were annotated in the original GenBank files.
+ * Returns array of "label (type)" strings.
+ */
+function getPlasmidFeatureLabels(plasmid) {
+    if (!plasmid.features || plasmid.features.length === 0) {
+        return [];
+    }
+
+    // Feature types we want to highlight on the card
+    const interestingTypes = new Set([
+        'CDS', 'gene', 'promoter', 'terminator', 'misc_feature',
+        'regulatory', 'sig_peptide', 'transit_peptide'
+    ]);
+
+    // Labels to skip (generic/uninformative)
+    const skipLabels = new Set([
+        'source', 'ori', 'ORI', 'pMB1', 'pBR322ori-F', 'pBRforEco',
+        'G to A'
+    ]);
+
+    const labels = [];
+    const seen = new Set();
+
+    for (const feature of plasmid.features) {
+        if (!feature.label) continue;
+        if (!interestingTypes.has(feature.type)) continue;
+        if (skipLabels.has(feature.label)) continue;
+
+        // Skip overhang markers
+        if (feature.label.includes('4bp overhang')) continue;
+        // Skip backbone resistance markers (SmR, AmpR) unless user's insert
+        if (feature.label === 'SmR' || feature.label === 'AmpR') continue;
+
+        const key = feature.label;
+        if (seen.has(key)) continue;
+        seen.add(key);
+
+        labels.push(feature.label);
+    }
+    return labels;
+}
+
+/**
  * Create a plasmid card element
  */
 function createPlasmidCard(plasmid) {
@@ -121,16 +168,27 @@ function createPlasmidCard(plasmid) {
     card.className = 'plasmid-card';
     
     const cassettesText = plasmid.cassette_count === 1 ? '1 cassette' : `${plasmid.cassette_count} cassettes`;
+    const featureLabels = getPlasmidFeatureLabels(plasmid);
+    
+    let featuresHtml = '';
+    if (featureLabels.length > 0) {
+        featuresHtml = `
+            <div class="plasmid-features">
+                ${featureLabels.map(label => `<span class="feature-label">${escapeHtml(label)}</span>`).join('')}
+            </div>
+        `;
+    }
     
     card.innerHTML = `
         <div class="plasmid-card-header">
-            <h3>${plasmid.name}</h3>
+            <h3>${escapeHtml(plasmid.name)}</h3>
             <div class="plasmid-card-badges">
                 <span class="badge badge-success">${cassettesText}</span>
                 <span class="badge badge-secondary">${plasmid.size} bp</span>
             </div>
         </div>
         <div class="plasmid-card-body">
+            ${featuresHtml}
             <div class="plasmid-meta">
                 <div class="meta-item">
                     <span class="meta-label">Created:</span>

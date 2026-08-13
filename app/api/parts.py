@@ -387,23 +387,27 @@ def _handle_genbank_upload():
         level=upload_level
     )
     
-    # Create part with additional metadata from plasmid
-    # Try to look up a descriptive name from Addgene if the description is
-    # generic (e.g. "synthetic circular DNA") and the name matches a MoClo pattern
-    description = part_data['description']
-    addgene_name = None
-    try:
-        from app.services.addgene import lookup_addgene_name
-        part_name = part_data['name']
-        if not description or description.lower().strip() in (
-            'synthetic circular dna', 'synthetic circular dna.',
-            'synthetic dna construct', ''
-        ):
-            addgene_name = lookup_addgene_name(part_name)
-            if addgene_name:
-                description = addgene_name
-    except Exception:
-        pass  # Addgene lookup is best-effort, don't block upload
+    # Build description from .gb feature labels instead of the generic DEFINITION line
+    features = part_data.get('features', [])
+    if features:
+        # Extract meaningful feature labels (skip source, overhang markers, backbone stuff)
+        skip_labels = {'source', 'ori', 'ORI', 'pMB1', 'pBR322ori-F', 'pBRforEco', 'G to A', 'SmR', 'AmpR'}
+        interesting_types = {'CDS', 'gene', 'promoter', 'terminator', 'misc_feature', 'regulatory', 'sig_peptide', 'transit_peptide'}
+        labels = []
+        seen = set()
+        for f in features:
+            label = f.get('label', '')
+            ftype = f.get('type', '')
+            if not label or ftype not in interesting_types:
+                continue
+            if label in skip_labels or '4bp overhang' in label:
+                continue
+            if label not in seen:
+                seen.add(label)
+                labels.append(label)
+        description = ', '.join(labels) if labels else part_data['description']
+    else:
+        description = part_data['description']
 
     part = Part.create(
         name=part_data['name'],
@@ -422,7 +426,8 @@ def _handle_genbank_upload():
         host_strain=part_data.get('host_strain'),
         reference=part_data.get('reference'),
         comments=comments_text,
-        level=upload_level
+        level=upload_level,
+        features=part_data.get('features')
     )
     
     return jsonify({
@@ -727,6 +732,7 @@ def update_part(part_id: str):
         # Update fields using Part.update() method
         try:
             part.update(
+                part_type=data.get('part_type'),
                 description=data.get('description'),
                 plasmid_id=data.get('plasmid_id'),
                 location_80=data.get('location_80'),

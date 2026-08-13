@@ -396,157 +396,304 @@ def check_update(user):
             'message': f'Could not check for updates: {str(e)}'
         }), 200
 
-# ── Addgene Lookup (Background Job) ────────────────────────────────────────
 
-import threading
+# ── Update Part Descriptions from Features ─────────────────────────────────
 
-# Global state for the background Addgene lookup job
-_addgene_job = {
-    'running': False,
-    'progress': 0,
-    'total': 0,
-    'updated': 0,
-    'failed': 0,
-    'skipped': 0,
-    'details': [],
-    'finished': False,
-    'error': None
-}
-_addgene_lock = threading.Lock()
-
-
-def _run_addgene_lookup_background():
-    """Background thread function to perform Addgene lookups."""
-    global _addgene_job
-    from app.services.addgene import lookup_addgene_name
+@admin_bp.route('/update-descriptions', methods=['POST'])
+@require_admin
+def update_part_descriptions(user):
+    """
+    Update all parts' descriptions using their stored .gb feature labels.
+    
+    Replaces generic descriptions (like "synthetic circular DNA") with
+    meaningful feature labels extracted from the GenBank file.
+    """
+    import json
     from app.models.parts_database import get_parts_database
     
     try:
         parts = Part.get_all()
         
-        generic_descriptions = {
-            '', 'synthetic circular dna', 'synthetic circular dna.',
-            'synthetic dna construct', 'synthetic dna construct.',
-            'none', 'n/a'
-        }
+        skip_labels = {'source', 'ori', 'ORI', 'pMB1', 'pBR322ori-F', 'pBRforEco', 'G to A', 'SmR', 'AmpR'}
+        interesting_types = {'CDS', 'gene', 'promoter', 'terminator', 'misc_feature', 'regulatory', 'sig_peptide', 'transit_peptide'}
         
-        with _addgene_lock:
-            _addgene_job['total'] = len(parts)
-            _addgene_job['progress'] = 0
+        updated = 0
+        skipped = 0
+        details = []
         
-        for i, part in enumerate(parts):
-            current_desc = (part.description or '').strip().lower()
-            
-            with _addgene_lock:
-                _addgene_job['progress'] = i + 1
-            
-            # Skip if already has a meaningful description
-            # (not empty, not generic like "synthetic circular DNA")
-            if current_desc and 'synthetic' not in current_desc and current_desc not in generic_descriptions:
-                with _addgene_lock:
-                    _addgene_job['skipped'] += 1
+        db = get_parts_database()
+        
+        for part in parts:
+            if not part.features or len(part.features) == 0:
+                skipped += 1
                 continue
             
-            # Try Addgene lookup
-            try:
-                gene_name = lookup_addgene_name(part.name)
-                if gene_name:
-                    db = get_parts_database()
-                    with db.get_connection() as conn:
-                        cursor = conn.cursor()
-                        cursor.execute(
-                            "UPDATE parts SET description = ? WHERE id = ?",
-                            (gene_name, part.id)
-                        )
-                        conn.commit()
-                    with _addgene_lock:
-                        _addgene_job['updated'] += 1
-                        _addgene_job['details'].append({
-                            'name': part.name,
-                            'description': gene_name,
-                            'status': 'updated'
-                        })
-                else:
-                    with _addgene_lock:
-                        _addgene_job['skipped'] += 1
-                        _addgene_job['details'].append({
-                            'name': part.name,
-                            'status': 'not_found_on_addgene'
-                        })
-            except Exception as e:
-                with _addgene_lock:
-                    _addgene_job['failed'] += 1
-                    _addgene_job['details'].append({
-                        'name': part.name,
-                        'status': 'error',
-                        'reason': str(e)
-                    })
-    except Exception as e:
-        with _addgene_lock:
-            _addgene_job['error'] = str(e)
-    finally:
-        with _addgene_lock:
-            _addgene_job['running'] = False
-            _addgene_job['finished'] = True
-
-
-@admin_bp.route('/addgene-lookup', methods=['POST'])
-@require_admin
-def batch_addgene_lookup(user):
-    """
-    Start a background Addgene lookup job.
-    
-    Returns immediately. Use GET /api/admin/addgene-lookup/status to poll progress.
-    """
-    global _addgene_job
-    
-    with _addgene_lock:
-        if _addgene_job['running']:
-            return jsonify({
-                'status': 'already_running',
-                'message': 'An Addgene lookup is already in progress.',
-                'progress': _addgene_job['progress'],
-                'total': _addgene_job['total']
-            }), 409
+            # Build description from feature labels
+            labels = []
+            seen = set()
+            for f in part.features:
+                label = f.get('label', '')
+                ftype = f.get('type', '')
+                if not label or ftype not in interesting_types:
+                    continue
+                if label in skip_labels or '4bp overhang' in label:
+                    continue
+                if label not in seen:
+                    seen.add(label)
+                    labels.append(label)
+            
+            if not labels:
+                skipped += 1
+                continue
+            
+            new_description = ', '.join(labels)
+            
+            # Update in database
+            with db.get_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute(
+                    "UPDATE parts SET description = ? WHERE id = ?",
+                    (new_description, part.id)
+                )
+                conn.commit()
+            
+            updated += 1
+            details.append({
+                'name': part.name,
+                'description': new_description
+            })
         
-        # Reset job state
-        _addgene_job = {
-            'running': True,
-            'progress': 0,
-            'total': 0,
-            'updated': 0,
-            'failed': 0,
-            'skipped': 0,
-            'details': [],
-            'finished': False,
-            'error': None
-        }
-    
-    # Start background thread
-    thread = threading.Thread(target=_run_addgene_lookup_background, daemon=True)
-    thread.start()
-    
-    return jsonify({
-        'status': 'started',
-        'message': 'Addgene lookup started in background. Poll /api/admin/addgene-lookup/status for progress.'
-    }), 202
-
-
-@admin_bp.route('/addgene-lookup/status', methods=['GET'])
-@require_admin
-def addgene_lookup_status(user):
-    """
-    Get the status of the background Addgene lookup job.
-    """
-    with _addgene_lock:
         return jsonify({
-            'running': _addgene_job['running'],
-            'finished': _addgene_job['finished'],
-            'progress': _addgene_job['progress'],
-            'total': _addgene_job['total'],
-            'updated': _addgene_job['updated'],
-            'failed': _addgene_job['failed'],
-            'skipped': _addgene_job['skipped'],
-            'error': _addgene_job['error'],
-            'details': _addgene_job['details'][-20:]  # Last 20 results
+            'status': 'complete',
+            'updated': updated,
+            'skipped': skipped,
+            'details': details[:50]
         }), 200
+        
+    except Exception as e:
+        return jsonify({
+            'error': str(e)
+        }), 500
+
+
+@admin_bp.route('/reparse-parts', methods=['POST'])
+@require_admin
+def reparse_parts_from_genbank(user):
+    """
+    Batch re-upload .gb files to update existing parts with features and descriptions.
+    
+    Accepts multipart/form-data with multiple .gb files.
+    Matches each file to an existing part by name (record ID).
+    Updates the part's features and description from the .gb annotations.
+    
+    Form Data:
+        files: One or more .gb files
+    """
+    from app.services.part_genbank_parser_v2 import _extract_part_features, PartGenBankError
+    from Bio import SeqIO
+    from io import StringIO
+    import json as json_module
+    from app.models.parts_database import get_parts_database
+    
+    if not request.files:
+        return jsonify({'error': 'No files provided'}), 400
+    
+    files = request.files.getlist('files')
+    if not files:
+        # Try alternate field name
+        files = request.files.getlist('file')
+    
+    if not files:
+        return jsonify({'error': 'No files provided'}), 400
+    
+    results = {
+        'updated': 0,
+        'not_found': 0,
+        'errors': 0,
+        'details': []
+    }
+    
+    skip_labels = {'source', 'ori', 'ORI', 'pMB1', 'pBR322ori-F', 'pBRforEco', 'G to A', 'SmR', 'AmpR'}
+    interesting_types = {'CDS', 'gene', 'promoter', 'terminator', 'misc_feature', 'regulatory', 'sig_peptide', 'transit_peptide'}
+    
+    db = get_parts_database()
+    
+    for file in files:
+        filename = file.filename or ''
+        try:
+            content = file.read().decode('utf-8')
+            handle = StringIO(content)
+            record = SeqIO.read(handle, "genbank")
+            
+            part_name = record.id or record.name
+            
+            # Extract features
+            features = _extract_part_features(record)
+            
+            # Build description from feature labels
+            labels = []
+            seen = set()
+            for f in features:
+                label = f.get('label', '')
+                ftype = f.get('type', '')
+                if not label or ftype not in interesting_types:
+                    continue
+                if label in skip_labels or '4bp overhang' in label:
+                    continue
+                if label not in seen:
+                    seen.add(label)
+                    labels.append(label)
+            
+            new_description = ', '.join(labels) if labels else record.description
+            
+            # Find existing part by name
+            with db.get_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute("SELECT id FROM parts WHERE name = ?", (part_name,))
+                row = cursor.fetchone()
+                
+                if row:
+                    # Update features and description
+                    cursor.execute(
+                        "UPDATE parts SET features = ?, description = ? WHERE name = ?",
+                        (json_module.dumps(features), new_description, part_name)
+                    )
+                    conn.commit()
+                    results['updated'] += 1
+                    results['details'].append({
+                        'name': part_name,
+                        'status': 'updated',
+                        'description': new_description,
+                        'feature_count': len(features)
+                    })
+                else:
+                    results['not_found'] += 1
+                    results['details'].append({
+                        'name': part_name,
+                        'status': 'not_found',
+                        'file': filename
+                    })
+        except Exception as e:
+            results['errors'] += 1
+            results['details'].append({
+                'file': filename,
+                'status': 'error',
+                'reason': str(e)
+            })
+    
+    return jsonify(results), 200
+
+
+@admin_bp.route('/fetch-genbank-features', methods=['POST'])
+@require_admin
+def fetch_genbank_features(user):
+    """
+    Fetch original .gb files from the GitHub MoClo registry for Addgene parts,
+    extract features, and update the parts in the database.
+    
+    Looks up parts matching MoClo naming patterns (pICSL, pICH, pAGM, pAGT)
+    and fetches their GenBank files from:
+    https://github.com/althonos/moclo/tree/master/moclo-plant/registry/plant/
+    """
+    try:
+        import re
+        import urllib.request
+        import urllib.error
+        import json as json_module
+        from io import StringIO
+        from Bio import SeqIO
+        from app.services.part_genbank_parser_v2 import _extract_part_features
+        from app.models.parts_database import get_parts_database
+    except ImportError as e:
+        return jsonify({'error': f'Missing dependency: {str(e)}'}), 500
+    
+    GITHUB_BASE = "https://raw.githubusercontent.com/althonos/moclo/master/moclo-plant/registry/plant"
+    MOCLO_PATTERN = re.compile(r'^p(I(CSL|CH)|AGM|AGT)\d+$', re.IGNORECASE)
+    
+    skip_labels = {'source', 'ori', 'ORI', 'pMB1', 'pBR322ori-F', 'pBRforEco', 'G to A', 'SmR', 'AmpR'}
+    interesting_types = {'CDS', 'gene', 'promoter', 'terminator', 'misc_feature', 'regulatory', 'sig_peptide', 'transit_peptide'}
+    
+    # Get all Addgene parts
+    parts = Part.get_all()
+    addgene_parts = [p for p in parts if MOCLO_PATTERN.match(p.name)]
+    
+    results = {
+        'total': len(addgene_parts),
+        'updated': 0,
+        'not_found': 0,
+        'errors': 0,
+        'details': []
+    }
+    
+    db = get_parts_database()
+    
+    for part in addgene_parts:
+        url = f"{GITHUB_BASE}/{part.name}.gb"
+        try:
+            req = urllib.request.Request(url, headers={'User-Agent': 'MoClo-Library-Tool/1.0'})
+            with urllib.request.urlopen(req, timeout=10) as response:
+                content = response.read().decode('utf-8')
+            
+            # Parse the GenBank file
+            handle = StringIO(content)
+            record = SeqIO.read(handle, "genbank")
+            
+            # Extract features
+            features = _extract_part_features(record)
+            
+            # Build description from feature labels
+            labels = []
+            seen = set()
+            for f in features:
+                label = f.get('label', '')
+                ftype = f.get('type', '')
+                if not label or ftype not in interesting_types:
+                    continue
+                if label in skip_labels or '4bp overhang' in label:
+                    continue
+                if label not in seen:
+                    seen.add(label)
+                    labels.append(label)
+            
+            new_description = ', '.join(labels) if labels else 'synthetic circular DNA'
+            
+            # Update in database
+            with db.get_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute(
+                    "UPDATE parts SET features = ?, description = ? WHERE id = ?",
+                    (json_module.dumps(features), new_description, part.id)
+                )
+                conn.commit()
+            
+            results['updated'] += 1
+            results['details'].append({
+                'name': part.name,
+                'status': 'updated',
+                'description': new_description,
+                'feature_count': len(features)
+            })
+            
+        except urllib.error.HTTPError as e:
+            if e.code == 404:
+                results['not_found'] += 1
+                results['details'].append({
+                    'name': part.name,
+                    'status': 'not_found'
+                })
+            else:
+                results['errors'] += 1
+                results['details'].append({
+                    'name': part.name,
+                    'status': 'error',
+                    'reason': f'HTTP {e.code}'
+                })
+        except Exception as e:
+            results['errors'] += 1
+            results['details'].append({
+                'name': part.name,
+                'status': 'error',
+                'reason': str(e)
+            })
+    
+    return jsonify(results), 200

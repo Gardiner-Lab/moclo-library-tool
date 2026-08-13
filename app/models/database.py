@@ -199,6 +199,12 @@ class Database:
             cursor.execute("ALTER TABLE cassettes ADD COLUMN parts_metadata TEXT")
         except Exception:
             pass  # Column already exists
+        
+        # Add features column to parts
+        try:
+            cursor.execute("ALTER TABLE parts ADD COLUMN features TEXT")
+        except Exception:
+            pass  # Column already exists
 
     def _create_indexes(self, cursor):
         """

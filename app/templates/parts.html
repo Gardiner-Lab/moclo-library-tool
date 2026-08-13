@@ -119,6 +119,17 @@
             <form id="editPartForm">
                 <div class="form-grid">
                     <div class="form-group">
+                        <label for="editPartType">Part Type</label>
+                        <select id="editPartType" class="form-control">
+                            <option value="Coding">Coding</option>
+                            <option value="NonCodingPromoter">Promoter</option>
+                            <option value="NonCodingTerminator">Terminator</option>
+                            <option value="NonCodingIntron">Intron</option>
+                            <option value="NonCodingOther">Other</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
                         <label for="editDescription">Description</label>
                         <textarea id="editDescription" class="form-control" rows="3"></textarea>
                     </div>

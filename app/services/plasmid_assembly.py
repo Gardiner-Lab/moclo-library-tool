@@ -646,6 +646,20 @@ def _get_cassette_features(cassette: Cassette, insertion_pos: int, orientation: 
         
         features.append(feature)
         
+        # Also include the part's own GenBank features (from the .gb file)
+        # adjusted to the correct position in the assembled plasmid
+        if hasattr(part, 'features') and part.features:
+            for gb_feature in part.features:
+                adjusted_feature = {
+                    'type': gb_feature.get('type', 'misc_feature'),
+                    'start': part_start + gb_feature.get('start', 0),
+                    'end': part_start + gb_feature.get('end', 0),
+                    'strand': (gb_feature.get('strand', 1) * strand),
+                    'label': gb_feature.get('label', ''),
+                }
+                if adjusted_feature['label']:
+                    features.append(adjusted_feature)
+        
         # Move position forward by part length minus overlap (except for first part)
         if i == 0:
             current_pos += part_length - 4  # Remove 3' overhang

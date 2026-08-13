@@ -240,6 +240,31 @@ function createPartCard(part) {
 
     info.appendChild(name);
     info.appendChild(type);
+
+    // Show .gb feature labels if available
+    if (part.features && part.features.length > 0) {
+        const featuresDiv = document.createElement('div');
+        featuresDiv.className = 'plasmid-features';
+        const seen = new Set();
+        const skipLabels = new Set(['source', 'ori', 'ORI', 'pMB1', 'pBR322ori-F', 'pBRforEco', 'G to A']);
+        const interestingTypes = new Set(['CDS', 'gene', 'promoter', 'terminator', 'misc_feature', 'regulatory', 'sig_peptide', 'transit_peptide']);
+        for (const f of part.features) {
+            if (!f.label || !interestingTypes.has(f.type)) continue;
+            if (skipLabels.has(f.label)) continue;
+            if (f.label.includes('4bp overhang')) continue;
+            if (f.label === 'SmR' || f.label === 'AmpR') continue;
+            if (seen.has(f.label)) continue;
+            seen.add(f.label);
+            const span = document.createElement('span');
+            span.className = 'feature-label';
+            span.textContent = f.label;
+            featuresDiv.appendChild(span);
+        }
+        if (featuresDiv.children.length > 0) {
+            info.appendChild(featuresDiv);
+        }
+    }
+
     info.appendChild(compatibility);
 
     card.appendChild(visualization);
@@ -263,18 +288,11 @@ function formatPartType(type) {
 }
 
 /**
- * Get a useful display name for a part.
- * Shows "Description (plasmid_name)" if description is meaningful,
- * otherwise just the plasmid name.
+ * Get display name for a part.
+ * Always shows just the plasmid name.
  */
 function getPartDisplayName(name, description) {
-    if (!description) return name;
-    const lower = description.toLowerCase().trim();
-    // Filter out generic/useless descriptions
-    if (lower.includes('synthetic') || lower === '' || lower === 'none' || lower === 'n/a') {
-        return name;
-    }
-    return `${description} (${name})`;
+    return name;
 }
 
 /**
@@ -373,24 +391,20 @@ function renderPartDetails(part) {
 
         ${hasFeatures ? `
         <div class="part-detail-section">
-            <h3>Component Parts</h3>
+            <h3>GenBank Features</h3>
             <div class="feature-parts-list">
                 ${part.features
-                    .filter(f => f.qualifiers && f.qualifiers.source === 'cassette')
+                    .filter(f => f.label && f.type !== 'source')
                     .map((f, idx) => {
-                        const partType = f.qualifiers.part_type || f.type;
-                        const typeLabel = formatPartType(partType);
-                        const typeClass = partType ? partType.toLowerCase() : 'misc';
-                        const strand = f.strand === -1 ? ' (RC)' : '';
+                        const strand = f.strand === -1 ? ' (reverse)' : '';
                         return `
                             <div class="feature-part-item">
                                 <div class="feature-part-order">${idx + 1}</div>
                                 <div class="feature-part-info">
                                     <div class="feature-part-name">${f.label || 'Unknown'}${strand}</div>
                                     <div class="feature-part-meta">
-                                        <span class="type-badge type-${typeClass}">${typeLabel}</span>
+                                        <span class="type-badge type-${f.type.toLowerCase()}">${f.type}</span>
                                         <span>${f.start}-${f.end} bp</span>
-                                        ${f.qualifiers.part_level ? `<span>Level ${f.qualifiers.part_level}</span>` : ''}
                                     </div>
                                 </div>
                             </div>`;
@@ -398,7 +412,6 @@ function renderPartDetails(part) {
             </div>
         </div>
         ` : ''}
-        </div>
 
         <div class="part-detail-section">
             <h3>Basic Information</h3>
@@ -719,6 +732,7 @@ function showEditPartModal(part) {
     const modal = document.getElementById('editPartModal');
     
     // Populate form fields
+    document.getElementById('editPartType').value = part.part_type || 'Coding';
     document.getElementById('editDescription').value = part.description || '';
     document.getElementById('editPlasmidId').value = part.plasmid_id || '';
     document.getElementById('editLevel').value = part.level || '';
@@ -769,6 +783,7 @@ document.addEventListener('DOMContentLoaded', function() {
             
             // Collect form data
             const data = {
+                part_type: document.getElementById('editPartType').value || null,
                 description: document.getElementById('editDescription').value || null,
                 plasmid_id: document.getElementById('editPlasmidId').value || null,
                 level: document.getElementById('editLevel').value || null,

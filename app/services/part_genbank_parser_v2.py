@@ -126,6 +126,9 @@ def parse_part_genbank(file_content: str) -> Dict[str, Any]:
         # Detect part type
         part_type = detect_part_type(record, description)
         
+        # Extract features from the GenBank file
+        features = _extract_part_features(record)
+        
         return {
             'name': name,
             'description': description,
@@ -135,7 +138,7 @@ def parse_part_genbank(file_content: str) -> Dict[str, Any]:
             'full_sequence': full_sequence,
             'part_type': part_type,
             'organism': organism,
-            'features': [],
+            'features': features,
             'metadata': plasmid_metadata,
             'intron_annotations': intron_annotations,
             'bsai_sites_found': len(forward_sites) + len(reverse_sites),
@@ -158,6 +161,43 @@ def parse_part_genbank(file_content: str) -> Dict[str, Any]:
         if isinstance(e, PartGenBankError):
             raise
         raise PartGenBankError(f"Failed to parse GenBank file: {str(e)}")
+
+
+def _extract_part_features(record) -> list:
+    """
+    Extract meaningful features from a GenBank record.
+    
+    Returns a list of feature dictionaries with type, label, start, end, strand.
+    Skips the 'source' feature and features without a label.
+    """
+    features = []
+    for feature in record.features:
+        if feature.type == 'source':
+            continue
+        
+        # Get the label from qualifiers
+        label = None
+        for qualifier in ['label', 'gene', 'product', 'note']:
+            if qualifier in feature.qualifiers:
+                val = feature.qualifiers[qualifier]
+                if isinstance(val, list):
+                    label = val[0]
+                else:
+                    label = val
+                break
+        
+        if not label:
+            continue
+        
+        features.append({
+            'type': feature.type,
+            'label': label,
+            'start': int(feature.location.start),
+            'end': int(feature.location.end),
+            'strand': feature.location.strand or 1
+        })
+    
+    return features
 
 
 def extract_intron_annotations(record, part_start: int, part_end: int) -> list:
