@@ -288,11 +288,18 @@ function formatPartType(type) {
 }
 
 /**
- * Get display name for a part.
- * Always shows just the plasmid name.
+ * Get a display name for a part.
+ * Shows "Description (plasmid_name)" when the description is meaningful,
+ * otherwise just the plasmid name. Generic/auto-generated descriptions
+ * (e.g. "synthetic circular DNA") are filtered out.
  */
 function getPartDisplayName(name, description) {
-    return name;
+    if (!description) return name;
+    const lower = description.toLowerCase().trim();
+    if (lower === '' || lower === 'none' || lower === 'n/a' || lower.includes('synthetic')) {
+        return name;
+    }
+    return `${description} (${name})`;
 }
 
 /**
@@ -815,6 +822,10 @@ document.addEventListener('DOMContentLoaded', function() {
                 
                 // Show success message
                 alert('Part metadata updated successfully');
+                
+                // Reload the parts list so the card grid reflects the change
+                // (e.g. updated description in the card title)
+                await loadParts();
                 
                 // Reload part details
                 await showPartDetails(partId);
