@@ -27,10 +27,17 @@ def assemble_parts(parts: List[Part]) -> str:
     4. End with the last part's 3' overhang
     
     In MoClo assembly, when BsaI cuts and parts are ligated, the 4bp overhangs
-    form scars that remain in the final assembled sequence. These scars are the
-    junction points between parts. The cassette retains the 5' overhang of the
-    first part and the 3' overhang of the last part for insertion into backbones.
-    
+    (sticky ends) anneal to form scars that remain in the final assembled
+    sequence. Because the two annealing sticky ends are complementary halves of
+    the SAME 4bp junction, each scar appears exactly ONCE in the ligated product.
+
+    Each stored part sequence already includes its own 5' overhang at the start
+    and its 3' overhang at the end (as extracted by the GenBank parser). Two
+    compatible parts share an overhang: part1's 3' overhang == part2's 5' overhang.
+    To ligate them we must overlap that shared overhang so it is not duplicated:
+    we take part1 in full, then append each subsequent part with its leading
+    (shared) 5' overhang removed.
+
     Args:
         parts: Ordered list of parts to assemble (must be at least 2 parts)
         
@@ -41,12 +48,12 @@ def assemble_parts(parts: List[Part]) -> str:
         AssemblyError: If parts are incompatible or validation fails
         
     Example:
-        >>> part1 = Part(..., overhang_5prime='AAAA', sequence='TTTTGGGG', overhang_3prime='CCCC', ...)
-        >>> part2 = Part(..., overhang_5prime='CCCC', sequence='GGGGTTTT', overhang_3prime='GGGG', ...)
-        >>> assembled = assemble_parts([part1, part2])
-        >>> assembled
-        'AAAATTTTGGGGCCCCGGGGTTTTGGGG'
-        # Note: Starts with part1's 5' overhang, includes scar, ends with part2's 3' overhang
+        >>> # sequences include their own overhangs (5' at start, 3' at end)
+        >>> part1 = Part(..., overhang_5prime='AAAA', sequence='AAAAxxxxCCCC', overhang_3prime='CCCC', ...)
+        >>> part2 = Part(..., overhang_5prime='CCCC', sequence='CCCCyyyyGGGG', overhang_3prime='GGGG', ...)
+        >>> assemble_parts([part1, part2])
+        'AAAAxxxxCCCCyyyyGGGG'
+        # The shared 'CCCC' scar appears once at the junction, not twice.
     """
     # Validate the assembly
     validation = validate_assembly(parts)
@@ -54,22 +61,19 @@ def assemble_parts(parts: List[Part]) -> str:
     if not validation['valid']:
         raise AssemblyError(validation['error'])
     
-    # Start with the first part's 5' overhang and sequence
-    assembled_sequence = parts[0].overhang_5prime + parts[0].sequence
+    # Start with the first part's full sequence (already includes its 5' and 3' overhangs)
+    assembled_sequence = parts[0].sequence
     
-    # Add each subsequent part with its overhang scar
-    # The overhang scar is the 4bp junction that forms when parts are ligated
+    # Add each subsequent part, overlapping the shared 4bp overhang scar.
+    # The previous part already ends with the shared overhang (its 3' overhang),
+    # and this part's sequence begins with that same overhang (its 5' overhang).
+    # We strip this part's leading overhang so the scar is not duplicated.
     for i in range(1, len(parts)):
         part = parts[i]
-        # Add the overhang scar (the 5' overhang of this part, which matches
-        # the 3' overhang of the previous part)
-        overhang_scar = part.overhang_5prime
-        assembled_sequence += overhang_scar
-        # Add the part sequence
-        assembled_sequence += part.sequence
-    
-    # Add the last part's 3' overhang
-    assembled_sequence += parts[-1].overhang_3prime
+        # Strip this part's leading 4bp 5' overhang, which is the shared scar
+        # already contributed by the previous part's 3' overhang. This prevents
+        # the sticky-end junction from being duplicated in the ligated product.
+        assembled_sequence += part.sequence[4:]
     
     return assembled_sequence
 
@@ -204,11 +208,14 @@ def _capture_parts_metadata(parts: List[Part], assembled_sequence: str) -> List[
     current_pos = 0
     
     for i, part in enumerate(parts):
-        # Calculate position in assembled sequence
+        # Calculate position in assembled sequence.
+        # The assembled sequence overlaps the shared 4bp overhang between parts,
+        # so each part after the first contributes its length minus the 4bp
+        # leading overhang (which is shared with the previous part's 3' overhang).
         if i == 0:
             part_length = len(part.sequence)
         else:
-            part_length = 4 + len(part.sequence)  # 4bp overhang scar + sequence
+            part_length = len(part.sequence) - 4  # leading shared overhang overlaps previous part
         
         part_start = current_pos
         part_end = current_pos + part_length
@@ -334,12 +341,13 @@ def validate_parts_for_assembly(part_ids: List[str]) -> Dict[str, Any]:
             'assembled_length': 0
         }
     
-    # Calculate expected assembled length
-    # First part contributes full length
-    # Each subsequent part contributes: 4bp (overhang scar) + full part length
+    # Calculate expected assembled length.
+    # Each stored part sequence already includes its own 5' and 3' overhangs.
+    # When parts ligate, the shared 4bp overhang between adjacent parts overlaps
+    # (appears once), so each part after the first contributes its length minus 4.
     assembled_length = len(parts[0].sequence)
     for i in range(1, len(parts)):
-        assembled_length += 4 + len(parts[i].sequence)  # overhang scar + part sequence
+        assembled_length += len(parts[i].sequence) - 4  # shared overhang overlaps previous part
     
     return {
         'valid': True,
