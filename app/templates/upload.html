@@ -230,6 +230,25 @@
                 </div>
             </div>
 
+            <!-- MoClo Level -->
+            <div class="form-group">
+                <label for="genbankLevel">MoClo Level <span class="optional">(optional)</span></label>
+                <select
+                    id="genbankLevel"
+                    name="level"
+                    class="form-control"
+                >
+                    <option value="">Auto-detect from restriction sites</option>
+                    <option value="0">Level 0 (basic part, BsaI flanked)</option>
+                    <option value="1">Level 1 (cassette, BpiI flanked)</option>
+                </select>
+                <div class="form-help">
+                    Choose "Level 1" for cassette plasmids. Level 1 constructs contain internal
+                    BsaI sites from their assembled Level 0 parts, so auto-detect may mis-read them
+                    as Level 0. Selecting Level 1 forces BpiI as the cloning enzyme.
+                </div>
+            </div>
+
             <!-- Form Actions -->
             <div class="form-actions">
                 <button type="submit" class="btn btn-primary btn-block" id="genbankSubmitButton">

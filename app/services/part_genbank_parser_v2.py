@@ -19,7 +19,7 @@ class PartGenBankError(Exception):
     pass
 
 
-def parse_part_genbank(file_content: str) -> Dict[str, Any]:
+def parse_part_genbank(file_content: str, preferred_enzyme: str = None) -> Dict[str, Any]:
     """
     Parse a GenBank file for a MoClo part using overhang-based extraction.
     
@@ -28,8 +28,13 @@ def parse_part_genbank(file_content: str) -> Dict[str, Any]:
     - BsaI (GGTCTC/GAGACC) → Level 0
     - BpiI (GAAGAC/GTCTTC) → Level 1
     
+    A Level 1 cassette contains internal BsaI sites (from its assembled Level 0
+    parts) and is flanked by BpiI sites. Pass preferred_enzyme='BpiI' (or 'BsaI')
+    to force the cloning enzyme instead of relying on detection order.
+    
     Args:
         file_content: String content of the GenBank file
+        preferred_enzyme: Optional 'BsaI' or 'BpiI' to force the cloning enzyme
         
     Returns:
         Dictionary with part information and plasmid metadata
@@ -55,8 +60,41 @@ def parse_part_genbank(file_content: str) -> Dict[str, Any]:
         # BpiI: GAAGAC / GTCTTC
         bpii_fwd = [m.start() for m in re.finditer('GAAGAC', full_sequence)]
         bpii_rev = [m.start() for m in re.finditer('GTCTTC', full_sequence)]
+
+        # Normalize the preferred enzyme hint
+        pref = (preferred_enzyme or '').strip().lower()
+        if pref in ('bpii', 'bpi', 'bbsi', 'level1', 'level 1', '1'):
+            pref = 'bpii'
+        elif pref in ('bsai', 'level0', 'level 0', '0'):
+            pref = 'bsai'
+        else:
+            pref = None
         
-        if bsai_fwd and bsai_rev:
+        if pref == 'bpii' and bpii_fwd and bpii_rev:
+            enzyme = 'BpiI'
+            level = '1'
+            forward_sites = bpii_fwd
+            reverse_sites = bpii_rev
+            recognition_len = 6  # GAAGAC
+            spacer = 2  # BpiI cuts 2bp after recognition
+        elif pref == 'bsai' and bsai_fwd and bsai_rev:
+            enzyme = 'BsaI'
+            level = '0'
+            forward_sites = bsai_fwd
+            reverse_sites = bsai_rev
+            recognition_len = 6  # GGTCTC
+            spacer = 1  # BsaI cuts 1bp after recognition
+        elif bsai_fwd and bsai_rev and bpii_fwd and bpii_rev and (len(bsai_fwd) + len(bsai_rev)) > 2:
+            # Level 1 cassette: contains internal BsaI sites from its assembled
+            # Level 0 parts and is flanked by BpiI sites for Level 2 assembly.
+            # Prefer BpiI so the internal BsaI sites don't cause mis-detection.
+            enzyme = 'BpiI'
+            level = '1'
+            forward_sites = bpii_fwd
+            reverse_sites = bpii_rev
+            recognition_len = 6  # GAAGAC
+            spacer = 2  # BpiI cuts 2bp after recognition
+        elif bsai_fwd and bsai_rev:
             enzyme = 'BsaI'
             level = '0'
             forward_sites = bsai_fwd

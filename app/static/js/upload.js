@@ -281,6 +281,11 @@ async function handleGenbankSubmit(event) {
     if (partType) {
         formData.append('part_type', partType);
     }
+
+    const genbankLevel = document.getElementById('genbankLevel') ? document.getElementById('genbankLevel').value : '';
+    if (genbankLevel) {
+        formData.append('level', genbankLevel);
+    }
     
     // Set loading state
     const submitButton = document.getElementById('genbankSubmitButton');

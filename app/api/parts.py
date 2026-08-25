@@ -342,9 +342,21 @@ def _handle_genbank_upload():
             'error': 'File must be UTF-8 encoded text'
         }), 400
     
+    # Determine preferred cloning enzyme from the form.
+    # A user can force Level 1 (BpiI) so that internal BsaI sites from the
+    # assembled Level 0 parts don't cause it to be mis-detected as Level 0.
+    level_hint = request.form.get('level')
+    enzyme_hint = request.form.get('enzyme')
+    preferred_enzyme = enzyme_hint
+    if not preferred_enzyme and level_hint:
+        if str(level_hint) == '1':
+            preferred_enzyme = 'BpiI'
+        elif str(level_hint) == '0':
+            preferred_enzyme = 'BsaI'
+    
     # Parse GenBank file
     try:
-        part_data = parse_part_genbank(file_content)
+        part_data = parse_part_genbank(file_content, preferred_enzyme=preferred_enzyme)
     except PartGenBankError as e:
         return jsonify({
             'error': f'GenBank parsing error: {str(e)}'
