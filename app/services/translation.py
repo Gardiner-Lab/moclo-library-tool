@@ -257,15 +257,23 @@ def analyze_coding_sequence(sequence: str, part_boundaries: List[Dict[str, Any]]
         # Check for intron annotations from GenBank
         if part.get('intron_annotations'):
             for intron_annot in part['intron_annotations']:
-                # Convert part-relative positions to cassette-absolute positions
-                # For parts after the first one, start_pos includes a 4bp overhang scar
-                # but intron annotations are relative to the part sequence (not including scar)
-                # So we need to add 4 to skip the scar for non-first parts
+                # Convert part-relative intron positions to cassette-absolute positions.
+                #
+                # Intron annotations are relative to the part's sequence body,
+                # EXCLUDING the leading 4bp 5' overhang (the parser measures them
+                # from overhang_5_start + 4). The stored part sequence, however,
+                # INCLUDES that 4bp overhang at its start.
+                #
+                # During assembly:
+                #   - The first part keeps its full sequence, so its body starts 4bp
+                #     into the cassette -> add 4 to reach the body.
+                #   - Every subsequent part has its leading 4bp overhang stripped, so
+                #     start_pos already points at the body -> no offset needed.
                 part_index = part_boundaries.index(part)
-                scar_offset = 4 if part_index > 0 else 0
+                body_offset = 4 if part_index == 0 else 0
                 
-                abs_start = part['start_pos'] + scar_offset + intron_annot['start']
-                abs_end = part['start_pos'] + scar_offset + intron_annot['end']
+                abs_start = part['start_pos'] + body_offset + intron_annot['start']
+                abs_end = part['start_pos'] + body_offset + intron_annot['end']
                 intron_positions.append({
                     'start': abs_start,
                     'end': abs_end,
@@ -497,12 +505,15 @@ def get_part_boundaries_from_cassette(parts: List[Any], assembled_sequence: str)
     for i, part in enumerate(parts):
         part_start = current_pos
         
-        # First part: full sequence
+        # Part sequences already include their own 5' and 3' overhangs.
+        # During assembly the shared 4bp overhang between adjacent parts overlaps
+        # (the leading overhang of each part after the first is stripped), so:
+        #   - the first part contributes its full sequence
+        #   - each subsequent part contributes its sequence minus the leading 4bp
         if i == 0:
             part_length = len(part.sequence)
         else:
-            # Subsequent parts: overhang scar (4bp) + part sequence
-            part_length = 4 + len(part.sequence)
+            part_length = len(part.sequence) - 4
         
         part_end = part_start + part_length
         
