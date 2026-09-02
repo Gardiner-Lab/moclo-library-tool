@@ -743,6 +743,7 @@ def update_part(part_id: str):
         
         # Update fields using Part.update() method
         try:
+            old_part_type = part.part_type
             part.update(
                 part_type=data.get('part_type'),
                 description=data.get('description'),
@@ -764,11 +765,49 @@ def update_part(part_id: str):
             
             # Get updated part
             updated_part = Part.get_by_id(part_id)
-            
-            return jsonify({
+
+            response = {
                 'part': updated_part.to_dict(),
                 'message': 'Part updated successfully'
-            }), 200
+            }
+
+            # If the part type changed, coding / intron-splicing status may have
+            # changed. Recompute the part's own translation and refresh every
+            # cassette that uses it, since cassettes cache their analysis.
+            if updated_part.part_type != old_part_type:
+                try:
+                    from app.services.translation import (
+                        analyze_coding_sequence,
+                        get_part_boundaries_from_cassette,
+                    )
+                    from app.services.assembly import recompute_cassette_translation
+                    from app.models.cassette import Cassette
+
+                    boundaries = get_part_boundaries_from_cassette(
+                        [updated_part], updated_part.sequence
+                    )
+                    response['translation'] = analyze_coding_sequence(
+                        updated_part.sequence, boundaries
+                    )
+
+                    refreshed = []
+                    for cassette in Cassette.get_all():
+                        if part_id in (cassette.part_ids or []):
+                            try:
+                                recompute_cassette_translation(cassette)
+                                refreshed.append(cassette.name)
+                            except Exception:  # noqa: BLE001
+                                pass
+                    response['recomputed_cassettes'] = refreshed
+                    if refreshed:
+                        response['message'] = (
+                            f"Part updated; refreshed translation for "
+                            f"{len(refreshed)} cassette(s)"
+                        )
+                except Exception:  # noqa: BLE001
+                    pass
+
+            return jsonify(response), 200
             
         except Exception as e:
             return jsonify({

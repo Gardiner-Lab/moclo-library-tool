@@ -150,6 +150,33 @@ def create_cassette(
         raise ValueError(f"Failed to create cassette: {str(e)}")
 
 
+def recompute_cassette_translation(cassette) -> Optional[Dict[str, Any]]:
+    """
+    Rebuild a cassette's persisted translation analysis and part-metadata
+    snapshot from its current Level 0 parts.
+
+    Call this after a source part changes in a way that affects whether a
+    coding region is present or an intron must be spliced (for example its
+    part type is edited). Returns the new translation analysis, or None when
+    the cassette's parts can no longer be loaded.
+    """
+    from app.models.part import Part
+    from app.services.translation import (
+        analyze_coding_sequence,
+        get_part_boundaries_from_cassette,
+    )
+
+    parts = [p for p in (Part.get_by_id(pid) for pid in (cassette.part_ids or [])) if p]
+    if not parts:
+        return None
+
+    parts_metadata = _capture_parts_metadata(parts, cassette.assembled_sequence)
+    boundaries = get_part_boundaries_from_cassette(parts, cassette.assembled_sequence)
+    translation = analyze_coding_sequence(cassette.assembled_sequence, boundaries)
+    cassette.update_analysis(translation_data=translation, parts_metadata=parts_metadata)
+    return translation
+
+
 def _determine_cassette_level(parts: List[Part]) -> str:
     """
     Determine the MoClo level of a cassette based on its source parts.

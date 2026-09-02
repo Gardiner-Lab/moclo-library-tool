@@ -236,8 +236,35 @@ class Cassette:
                 "UPDATE cassettes SET name = ? WHERE id = ?",
                 (new_name, self.id)
             )
-        
+
         self.name = new_name
+
+    def update_analysis(
+        self,
+        translation_data: Optional[Dict[str, Any]] = None,
+        parts_metadata: Optional[List[Dict[str, Any]]] = None
+    ) -> None:
+        """
+        Persist a recomputed translation analysis and part-metadata snapshot.
+
+        Used when a source part changes in a way that affects coding or intron
+        splicing (for example its part type is edited), so the stored cassette
+        analysis no longer matches the parts.
+        """
+        db = get_database()
+        with db.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                "UPDATE cassettes SET translation_data = ?, parts_metadata = ? WHERE id = ?",
+                (
+                    json.dumps(translation_data) if translation_data else None,
+                    json.dumps(parts_metadata) if parts_metadata else None,
+                    self.id,
+                )
+            )
+
+        self.translation_data = translation_data
+        self.parts_metadata = parts_metadata
     
     @staticmethod
     def _from_row(row) -> 'Cassette':

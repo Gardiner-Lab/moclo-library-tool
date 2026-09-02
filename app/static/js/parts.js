@@ -819,9 +819,20 @@ document.addEventListener('DOMContentLoaded', function() {
                 
                 // Close edit modal
                 closeEditPartModal();
-                
-                // Show success message
-                alert('Part metadata updated successfully');
+
+                // Show success message, noting any downstream recompute
+                let msg = 'Part metadata updated successfully';
+                if (response && Array.isArray(response.recomputed_cassettes)) {
+                    const n = response.recomputed_cassettes.length;
+                    msg += n
+                        ? `\n\nPart type changed: refreshed translation for ${n} cassette(s):\n- ` +
+                          response.recomputed_cassettes.join('\n- ')
+                        : '\n\nPart type changed: no cassettes use this part.';
+                    if (response.translation && !response.translation.has_coding) {
+                        msg += '\n\nNote: no coding region was found in this part.';
+                    }
+                }
+                alert(msg);
                 
                 // Reload the parts list so the card grid reflects the change
                 // (e.g. updated description in the card title)
