@@ -887,10 +887,10 @@ async function handleBulkSubmit(event) {
                 resultsDiv.innerHTML += `<div style="color: #16a34a;">✓ ${escapeHtml(objName)}${kindNote} — uploaded${renameNote}</div>`;
             } else if (response.status === 409) {
                 duplicateCount++;
-                resultsDiv.innerHTML += `<div style="color: #d97706;">⚠ ${shown} — ${data.error || 'duplicate'}</div>`;
+                resultsDiv.innerHTML += `<div style="color: #d97706;">⚠ ${shown} — ${data.error || data.message || 'duplicate'}</div>`;
             } else {
                 failCount++;
-                resultsDiv.innerHTML += `<div style="color: #dc2626;">✗ ${shown} — ${data.error || 'failed'}</div>`;
+                resultsDiv.innerHTML += `<div style="color: #dc2626;">✗ ${shown} — ${data.error || data.message || 'failed'}</div>`;
             }
         } catch (error) {
             failCount++;
