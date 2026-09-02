@@ -627,7 +627,7 @@ function initBulkUploadForm() {
         if (rows) rows.innerHTML = '';
     });
 
-    // "Set all to" level buttons
+    // "Set all to" batch buttons for category and part type
     const levelGroup = document.getElementById('bulkLevelGroup');
     if (levelGroup) {
         levelGroup.querySelectorAll('[data-setall]').forEach((btn) => {
@@ -636,6 +636,14 @@ function initBulkUploadForm() {
                 document.querySelectorAll('#bulkFileRows .bulk-file-level').forEach((sel) => {
                     sel.value = val;
                     sel.dispatchEvent(new Event('change'));
+                });
+            });
+        });
+        levelGroup.querySelectorAll('[data-settype]').forEach((btn) => {
+            btn.addEventListener('click', () => {
+                const val = btn.getAttribute('data-settype');
+                document.querySelectorAll('#bulkFileRows .bulk-file-parttype').forEach((sel) => {
+                    sel.value = val;
                 });
             });
         });
@@ -653,6 +661,20 @@ function initBulkUploadForm() {
 function inferMocloLevel(filename) {
     const m = String(filename).match(/(?:^|[_\-.\s])l(?:vl|evel)?[_\-.\s]*([012])(?:[_\-.\s]|$)/i);
     return m ? m[1] : '';
+}
+
+/**
+ * Guess a part type from a filename. Only fires on a whole word so it does not
+ * mislabel cryptic plasmid ids. Returns a Part.VALID_PART_TYPES value or ''.
+ */
+function inferPartType(filename) {
+    const s = String(filename).toLowerCase();
+    if (/promoter/.test(s)) return 'NonCodingPromoter';
+    if (/terminator/.test(s)) return 'NonCodingTerminator';
+    if (/(^|[^a-z])(cds|coding)([^a-z]|$)/.test(s)) return 'Coding';
+    if (/intron/.test(s)) return 'NonCodingIntron';
+    if (/(^|[^a-z])(utr|5utr|3utr)([^a-z]|$)/.test(s)) return 'NonCodingOther';
+    return '';
 }
 
 /**
@@ -735,6 +757,22 @@ function updateBulkFileDisplay() {
                 tag.className = 'fname-hint';
                 label.appendChild(document.createTextNode(' '));
                 label.appendChild(tag);
+                const controls = document.createElement('span');
+                controls.className = 'bulk-file-controls';
+
+                // Part type override (parts only; the backbone endpoint ignores it)
+                const typeSel = document.createElement('select');
+                typeSel.className = 'bulk-file-parttype form-control';
+                typeSel.innerHTML =
+                    '<option value="">Type: auto</option>' +
+                    '<option value="Coding">Coding</option>' +
+                    '<option value="NonCodingPromoter">Promoter</option>' +
+                    '<option value="NonCodingTerminator">Terminator</option>' +
+                    '<option value="NonCodingIntron">Intron</option>' +
+                    '<option value="NonCodingOther">Other</option>';
+                const typeGuess = inferPartType(fname);
+                typeSel.value = typeGuess;
+
                 const sel = document.createElement('select');
                 sel.className = 'bulk-file-level form-control';
                 sel.innerHTML =
@@ -743,6 +781,10 @@ function updateBulkFileDisplay() {
                     '<option value="1">Level 1 (BpiI)</option>' +
                     '<option value="2">Level 2 (BsaI)</option>';
                 sel.value = initial;
+                const syncTypeVisibility = () => {
+                    typeSel.style.display = sel.value === 'backbone' ? 'none' : '';
+                };
+                syncTypeVisibility();
                 const paintTag = () => {
                     tag.classList.remove('changed', 'backbone');
                     if (sel.value === initial && guess) {
@@ -763,9 +805,11 @@ function updateBulkFileDisplay() {
                     }
                 };
                 paintTag();
-                sel.addEventListener('change', paintTag);
+                sel.addEventListener('change', () => { paintTag(); syncTypeVisibility(); });
                 row.appendChild(label);
-                row.appendChild(sel);
+                controls.appendChild(typeSel);
+                controls.appendChild(sel);
+                row.appendChild(controls);
                 rows.appendChild(row);
             });
             levelGroup.style.display = 'block';
@@ -806,12 +850,15 @@ async function handleBulkSubmit(event) {
         return;
     }
 
-    // Map each file to its chosen category from the per-file rows.
-    // Values: 'backbone' (default when no level token) or '0' / '1' / '2'.
+    // Map each file to its chosen category and part type from the per-file rows.
+    // Category: 'backbone' (default when no level token) or '0' / '1' / '2'.
     const categoryFor = {};
+    const partTypeFor = {};
     document.querySelectorAll('#bulkFileRows .bulk-file-row').forEach((r) => {
         const s = r.querySelector('.bulk-file-level');
+        const t = r.querySelector('.bulk-file-parttype');
         categoryFor[r.dataset.filename] = s ? s.value : 'backbone';
+        partTypeFor[r.dataset.filename] = t ? t.value : '';
     });
 
     // Get optional lab source
@@ -832,6 +879,7 @@ async function handleBulkSubmit(event) {
         const category = categoryFor[original.name] || 'backbone';
         const isBackbone = category === 'backbone';
         const level = isBackbone ? '' : category;
+        const partType = isBackbone ? '' : (partTypeFor[original.name] || '');
         // For a part, rename the file so its name carries the level token
         // before it is parsed. Backbone files are sent as-is.
         const newName = nameWithLevel(original.name, level);
@@ -861,6 +909,9 @@ async function handleBulkSubmit(event) {
         }
         if (level !== '') {
             formData.append('level', level);
+        }
+        if (partType !== '') {
+            formData.append('part_type', partType);
         }
         const endpoint = isBackbone ? '/api/backbones' : '/api/parts';
 

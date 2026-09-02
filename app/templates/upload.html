@@ -307,12 +307,19 @@
 
             <!-- Per-file category -->
             <div class="form-group" id="bulkLevelGroup" style="display: none;">
-                <label>Category per file</label>
+                <label>Category and part type per file</label>
                 <div class="bulk-level-toolbar">
-                    <span class="form-help" style="margin:0;">Set all to:</span>
+                    <span class="form-help" style="margin:0;">All categories:</span>
                     <button type="button" class="btn-small" data-setall="backbone">Backbone</button>
                     <button type="button" class="btn-small" data-setall="0">Level 0</button>
                     <button type="button" class="btn-small" data-setall="1">Level 1</button>
+                </div>
+                <div class="bulk-level-toolbar">
+                    <span class="form-help" style="margin:0;">All types:</span>
+                    <button type="button" class="btn-small" data-settype="">Auto</button>
+                    <button type="button" class="btn-small" data-settype="NonCodingPromoter">Promoter</button>
+                    <button type="button" class="btn-small" data-settype="NonCodingTerminator">Terminator</button>
+                    <button type="button" class="btn-small" data-settype="Coding">Coding</button>
                 </div>
                 <div id="bulkFileRows" class="bulk-file-rows"></div>
                 <div class="form-help">
@@ -321,6 +328,9 @@
                     token is treated as a <strong>backbone</strong> and registered as an acceptor
                     vector. When a level is set, the file is renamed with the matching
                     <code>_L0</code> / <code>_L1</code> / <code>_L2</code> token before it is parsed.
+                    Part type defaults to auto-detect; set it here when the file lacks
+                    <code>promoter</code> / <code>terminator</code> feature annotations and would
+                    otherwise be stored as "Other".
                 </div>
             </div>
 
@@ -487,11 +497,26 @@
         flex: 1;
     }
 
+    .bulk-file-controls {
+        flex: 0 0 auto;
+        display: flex;
+        gap: 0.35rem;
+    }
+
     .bulk-file-row select {
         flex: 0 0 auto;
         width: auto;
         padding: 0.2rem 0.4rem;
         font-size: 0.8rem;
+    }
+
+    @media (max-width: 560px) {
+        .bulk-file-row {
+            flex-wrap: wrap;
+        }
+        .bulk-file-controls {
+            flex: 1 1 100%;
+        }
     }
 
     .fname-hint {
