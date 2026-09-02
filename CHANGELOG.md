@@ -5,6 +5,34 @@ All notable changes to the MoClo Library Tool project will be documented in this
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.0] - 2026-09-02
+
+### Added
+- Real Addgene Plant MoClo demo data (kit #1000000044) and a pre-assembled
+  multigene Level 2 example built from three chained transcription units.
+- `restriction_sites.compute_slot_overhangs` / `build_moclo_acceptor`: faithful
+  Type IIS digest of an acceptor into per-slot excision window and fusion overhangs.
+- Bulk upload: per-file category selector (Backbone / Level 0 / Level 1 / Level 2),
+  pre-filled from an `L0` / `L1` / `L2` token in the filename.
+- Backbone is now an upload category on the upload page; a bulk file with no level
+  token is registered as an acceptor vector.
+- `scripts/update.sh`: backup, health gate and automatic rollback on failed update.
+- `tests/test_plasmid_assembly.py`.
+
+### Changed
+- Golden Gate at the cassette-to-backbone step is now biologically faithful: each
+  4 bp scar is kept once and no Type IIS recognition site is left in the product.
+- Part and cassette GenBank exports are wrapped in their Type IIS sites so an
+  exported `.gb` re-imports as a genuine MoClo unit; the parser also falls back to
+  `/overhang_*` and `/moclo_level` qualifiers when no sites are present.
+- Bulk upload sends a per-file MoClo level, and renames each part file with the
+  matching `_L0` / `_L1` / `_L2` token before parsing.
+- Internal restriction-site check on upload is level-aware (skipped for Level 1+).
+
+### Security
+- `docker-compose.prod.yml` requires `SECRET_KEY`; the app refuses to start in
+  production with the default key.
+
 ## [0.1.0] - 2024-01-XX
 
 ### Added
