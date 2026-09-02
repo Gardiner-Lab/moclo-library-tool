@@ -52,6 +52,7 @@ def parse_part_genbank(file_content: str, preferred_enzyme: str = None) -> Dict[
         level = '0'
         forward_sites = []
         reverse_sites = []
+        annotation_fallback = False
         
         # BsaI: GGTCTC / GAGACC
         bsai_fwd = [m.start() for m in re.finditer('GGTCTC', full_sequence)]
@@ -109,46 +110,65 @@ def parse_part_genbank(file_content: str, preferred_enzyme: str = None) -> Dict[
             recognition_len = 6  # GAAGAC
             spacer = 2  # BpiI cuts 2bp after recognition
         else:
-            raise PartGenBankError(
-                f"No MoClo restriction sites found. "
-                f"Need BsaI (GGTCTC/GAGACC) for Level 0 or BpiI (GAAGAC/GTCTTC) for Level 1. "
-                f"Found: {len(bsai_fwd)} GGTCTC, {len(bsai_rev)} GAGACC, "
-                f"{len(bpii_fwd)} GAAGAC, {len(bpii_rev)} GTCTTC."
-            )
-        
-        # Use first forward and first reverse site
-        fwd_pos = forward_sites[0]
-        rev_pos = reverse_sites[0]
-        
-        # Extract overhangs
-        # 5' overhang: 4bp after recognition site + spacer
-        overhang_5_start = fwd_pos + recognition_len + spacer
-        if overhang_5_start + 4 > len(full_sequence):
-            raise PartGenBankError(f"Sequence too short after {enzyme} forward site")
-        overhang_5prime = full_sequence[overhang_5_start:overhang_5_start + 4]
-        
-        # 3' overhang: 4bp before reverse site (accounting for spacer)
-        overhang_3_end = rev_pos - spacer
-        if overhang_3_end < 4:
-            # Wraps around circular sequence
-            overhang_3prime = full_sequence[len(full_sequence) - (4 - overhang_3_end):] + full_sequence[:overhang_3_end]
+            # ---- Annotation fallback ----------------------------------------
+            # No Type IIS sites. A part or cassette exported by this tool (or by
+            # another tool) may carry /overhang_5prime, /overhang_3prime and
+            # /moclo_level qualifiers. Trust those and treat the whole record
+            # sequence as the part; it already carries its own 4 bp overhangs.
+            ann = _overhangs_from_qualifiers(record)
+            if ann is None:
+                raise PartGenBankError(
+                    f"No MoClo restriction sites found and no overhang "
+                    f"annotations present. Need BsaI (GGTCTC/GAGACC) for Level 0, "
+                    f"BpiI (GAAGAC/GTCTTC) for Level 1, or /overhang_5prime and "
+                    f"/overhang_3prime qualifiers. Found: {len(bsai_fwd)} GGTCTC, "
+                    f"{len(bsai_rev)} GAGACC, {len(bpii_fwd)} GAAGAC, "
+                    f"{len(bpii_rev)} GTCTTC."
+                )
+            annotation_fallback = True
+            enzyme = 'annotation'
+            overhang_5prime, overhang_3prime, level = ann
+
+        if annotation_fallback:
+            part_sequence = full_sequence
+            part_start = 4
+            part_end = max(4, len(full_sequence) - 4)
+            part_start_with_oh = 0
+            part_end_with_oh = len(full_sequence)
         else:
-            overhang_3prime = full_sequence[overhang_3_end - 4:overhang_3_end]
-        
-        # Determine part boundaries
-        part_start = overhang_5_start + 4  # After the 5' overhang
-        part_end = overhang_3_end - 4  # Before the 3' overhang
-        
-        # Extract part sequence (including overhangs as the part's flanking bases)
-        # Actually keep the full region between the enzyme sites including overhangs
-        part_start_with_oh = overhang_5_start  # Start at 5' overhang
-        part_end_with_oh = overhang_3_end  # End at 3' overhang end
-        
-        if part_start_with_oh < part_end_with_oh:
-            part_sequence = full_sequence[part_start_with_oh:part_end_with_oh]
-        else:
-            # Circular - wraps around
-            part_sequence = full_sequence[part_start_with_oh:] + full_sequence[:part_end_with_oh]
+            # Use first forward and first reverse site
+            fwd_pos = forward_sites[0]
+            rev_pos = reverse_sites[0]
+
+            # Extract overhangs
+            # 5' overhang: 4bp after recognition site + spacer
+            overhang_5_start = fwd_pos + recognition_len + spacer
+            if overhang_5_start + 4 > len(full_sequence):
+                raise PartGenBankError(f"Sequence too short after {enzyme} forward site")
+            overhang_5prime = full_sequence[overhang_5_start:overhang_5_start + 4]
+
+            # 3' overhang: 4bp before reverse site (accounting for spacer)
+            overhang_3_end = rev_pos - spacer
+            if overhang_3_end < 4:
+                # Wraps around circular sequence
+                overhang_3prime = full_sequence[len(full_sequence) - (4 - overhang_3_end):] + full_sequence[:overhang_3_end]
+            else:
+                overhang_3prime = full_sequence[overhang_3_end - 4:overhang_3_end]
+
+            # Determine part boundaries
+            part_start = overhang_5_start + 4  # After the 5' overhang
+            part_end = overhang_3_end - 4  # Before the 3' overhang
+
+            # Extract part sequence (including overhangs as the part's flanking bases)
+            # Actually keep the full region between the enzyme sites including overhangs
+            part_start_with_oh = overhang_5_start  # Start at 5' overhang
+            part_end_with_oh = overhang_3_end  # End at 3' overhang end
+
+            if part_start_with_oh < part_end_with_oh:
+                part_sequence = full_sequence[part_start_with_oh:part_end_with_oh]
+            else:
+                # Circular - wraps around
+                part_sequence = full_sequence[part_start_with_oh:] + full_sequence[:part_end_with_oh]
         
         # Extract metadata from GenBank record
         name = record.id or record.name or 'Unknown'
@@ -199,6 +219,34 @@ def parse_part_genbank(file_content: str, preferred_enzyme: str = None) -> Dict[
         if isinstance(e, PartGenBankError):
             raise
         raise PartGenBankError(f"Failed to parse GenBank file: {str(e)}")
+
+
+def _overhangs_from_qualifiers(record):
+    """Read /overhang_5prime, /overhang_3prime and /moclo_level from any feature.
+
+    Returns (overhang_5prime, overhang_3prime, level) or None. Used when a .gb
+    has no Type IIS sites, for example a part or cassette exported by this tool.
+    """
+    valid = set('ACGT')
+    for feat in record.features:
+        q = feat.qualifiers
+        v5 = q.get('overhang_5prime') or q.get('overhang_5') or q.get('oh5')
+        v3 = q.get('overhang_3prime') or q.get('overhang_3') or q.get('oh3')
+        if not v5 or not v3:
+            continue
+        oh5 = str(v5[0]).strip().upper()
+        oh3 = str(v3[0]).strip().upper()
+        if len(oh5) != 4 or len(oh3) != 4:
+            continue
+        if not (set(oh5) <= valid and set(oh3) <= valid):
+            continue
+        lvl = None
+        for key in ('moclo_level', 'level', 'part_level'):
+            if key in q and q[key]:
+                lvl = str(q[key][0]).strip()
+                break
+        return oh5, oh3, (lvl or '0')
+    return None
 
 
 def _extract_part_features(record) -> list:
@@ -487,8 +535,16 @@ def extract_plasmid_metadata(record) -> Dict[str, Any]:
 
 def detect_part_type(record, description: str) -> str:
     """Detect part type from features and description."""
+    valid_types = {'Coding', 'NonCodingPromoter', 'NonCodingTerminator',
+                   'NonCodingIntron', 'NonCodingOther'}
+    # Prefer an explicit /part_type qualifier (written by this tool's exporter)
+    for feature in record.features:
+        pt = feature.qualifiers.get('part_type')
+        if pt and str(pt[0]) in valid_types:
+            return str(pt[0])
+
     desc_lower = description.lower()
-    
+
     if any(kw in desc_lower for kw in ['promoter', 'prom']):
         return 'NonCodingPromoter'
     elif any(kw in desc_lower for kw in ['cds', 'coding sequence', 'orf', 'gene', 'protein']):

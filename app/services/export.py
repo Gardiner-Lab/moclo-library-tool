@@ -29,6 +29,36 @@ def _get_cairosvg():
     return _cairosvg
 
 
+# Type IIS wrappers so an exported part or cassette is a genuine, re-cloneable
+# MoClo unit: a forward recognition site + spacer, the body (which already
+# carries its own 4 bp overhangs), then a spacer + reverse recognition site.
+# The spacer lengths match what part_genbank_parser_v2 expects (BsaI cuts 1 nt
+# after the site, BpiI 2 nt after).
+_MOCLO_WRAP = {
+    'BsaI': ('GGTCTCA', 'TGAGACC'),
+    'BpiI': ('GAAGACAA', 'TTGTCTTC'),
+}
+
+
+def _wrap_with_typeiis(sequence: str, enzyme: str):
+    """Return (wrapped_sequence, offset) where offset is the prefix length."""
+    prefix, suffix = _MOCLO_WRAP.get(enzyme, _MOCLO_WRAP['BsaI'])
+    return prefix + sequence + suffix, len(prefix)
+
+
+def _typeiis_site_feature_lines(enzyme: str, total_length: int):
+    """FEATURES lines annotating the two flanking Type IIS sites."""
+    lines = [
+        "     misc_feature    1..6",
+        f'                     /label="{enzyme} site"',
+        '                     /note="Type IIS recognition site, removed on assembly"',
+        f"     misc_feature    complement({total_length - 5}..{total_length})",
+        f'                     /label="{enzyme} site"',
+        '                     /note="Type IIS recognition site, removed on assembly"',
+    ]
+    return lines
+
+
 def generate_fasta(cassette: Cassette) -> str:
     """
     Generate FASTA format representation of a cassette.
@@ -121,23 +151,39 @@ def generate_genbank(cassette: Cassette) -> str:
         if part:
             parts.append(part)
     
+    # Wrap the assembled sequence in Type IIS sites so the exported .gb is a
+    # genuine, re-cloneable MoClo unit. A Level 1 cassette is flanked by BpiI
+    # (for Level 2 assembly); a Level 2 cassette by BsaI.
+    body = cassette.assembled_sequence
+    enzyme = 'BsaI' if str(getattr(cassette, 'level', '') or '') == '2' else 'BpiI'
+    wrapped_sequence, wrap_offset = _wrap_with_typeiis(body, enzyme)
+
     # Generate LOCUS line
     # Format: LOCUS <name> <length> bp DNA linear <date>
     # Name should be max 16 characters, no spaces
     locus_name = cassette.name.replace(' ', '_')[:16]
-    sequence_length = len(cassette.assembled_sequence)
+    sequence_length = len(wrapped_sequence)
     current_date = datetime.now().strftime('%d-%b-%Y').upper()
-    
+
     locus_line = f"LOCUS       {locus_name:<16} {sequence_length:>6} bp    DNA     linear   {current_date}"
-    
+
     # Generate DEFINITION line
     definition_line = "DEFINITION  MoClo cassette assembly"
-    
+
     # Generate FEATURES section
     features_lines = ["FEATURES             Location/Qualifiers"]
-    
+
+    # Top-level cassette feature carrying the overhangs and level, so the file
+    # round-trips even through a parser that reads annotations rather than sites.
+    features_lines.append(f"     misc_feature    {1 + wrap_offset}..{len(body) + wrap_offset}")
+    features_lines.append(f'                     /label="{cassette.name}"')
+    features_lines.append(f'                     /moclo_level="{cassette.level or "1"}"')
+    features_lines.append(f'                     /overhang_5prime="{body[:4]}"')
+    features_lines.append(f'                     /overhang_3prime="{body[-4:]}"')
+    features_lines.extend(_typeiis_site_feature_lines(enzyme, sequence_length))
+
     # Calculate positions for each part in the assembled sequence
-    position = 1
+    position = 1 + wrap_offset
     for i, part in enumerate(parts):
         # Calculate the length of this part in the assembled sequence
         if i == 0:
@@ -170,7 +216,7 @@ def generate_genbank(cassette: Cassette) -> str:
     origin_lines = ["ORIGIN"]
     
     # Format sequence in GenBank style: 10 groups of 6 bases per line, with line numbers
-    sequence = cassette.assembled_sequence.lower()
+    sequence = wrapped_sequence.lower()
     line_number = 1
     
     for i in range(0, len(sequence), 60):
@@ -380,19 +426,27 @@ def generate_part_genbank(part: Part) -> str:
     import re
     from app.models.part import Part
     
+    # Wrap the part body in Type IIS sites so the exported .gb is a genuine,
+    # re-cloneable MoClo part. Level 1 parts (cassettes used as parts) are
+    # flanked by BpiI; everything else by BsaI.
+    body = part.sequence
+    body_length = len(body)
+    enzyme = 'BpiI' if str(getattr(part, 'level', '') or '') == '1' else 'BsaI'
+    wrapped_sequence, wrap_offset = _wrap_with_typeiis(body, enzyme)
+
     # Generate LOCUS line
     locus_name = part.name.replace(' ', '_')[:16]
-    sequence_length = len(part.sequence)
+    sequence_length = len(wrapped_sequence)
     current_date = datetime.now().strftime('%d-%b-%Y').upper()
-    
+
     locus_line = f"LOCUS       {locus_name:<16} {sequence_length:>6} bp    DNA     linear   {current_date}"
-    
+
     # Generate DEFINITION line
     definition_line = f"DEFINITION  {part.part_type} part - {part.name}"
-    
+
     # Generate FEATURES section
     features_lines = ["FEATURES             Location/Qualifiers"]
-    
+
     # Map part type to GenBank feature type
     feature_type_map = {
         'Coding': 'CDS',
@@ -402,9 +456,11 @@ def generate_part_genbank(part: Part) -> str:
         'NonCodingOther': 'misc_feature'
     }
     feature_type = feature_type_map.get(part.part_type, 'misc_feature')
-    
-    # Add main feature for the part sequence
-    features_lines.append(f"     {feature_type:<16}1..{sequence_length}")
+
+    features_lines.extend(_typeiis_site_feature_lines(enzyme, sequence_length))
+
+    # Add main feature for the part sequence (offset past the 5' Type IIS site)
+    features_lines.append(f"     {feature_type:<16}{1 + wrap_offset}..{body_length + wrap_offset}")
     features_lines.append(f'                     /label="{part.name}"')
     features_lines.append(f'                     /part_type="{part.part_type}"')
     
@@ -455,11 +511,15 @@ def generate_part_genbank(part: Part) -> str:
         strand = feat.get('strand', 1)
         label = feat.get('label', '')
         qualifiers = feat.get('qualifiers', {})
-        
-        # Skip features with invalid positions
-        if start < 1 or end < 1 or end > sequence_length:
+
+        # Skip features with invalid positions (checked against the body)
+        if start < 1 or end < 1 or end > body_length:
             continue
-        
+
+        # Offset past the 5' Type IIS site
+        start += wrap_offset
+        end += wrap_offset
+
         # Format location (complement for reverse strand)
         if strand == -1:
             location = f"complement({start}..{end})"
@@ -478,9 +538,9 @@ def generate_part_genbank(part: Part) -> str:
     
     # Generate ORIGIN section with sequence
     origin_lines = ["ORIGIN"]
-    
+
     # Format sequence in GenBank style
-    sequence = part.sequence.lower()
+    sequence = wrapped_sequence.lower()
     line_number = 1
     
     for i in range(0, len(sequence), 60):

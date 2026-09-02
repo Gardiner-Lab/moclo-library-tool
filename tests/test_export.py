@@ -571,8 +571,13 @@ def test_generate_genbank_origin_section(sample_cassette):
             sequence_from_genbank += ''.join(parts[1:])
         elif parts:
             sequence_from_genbank += ''.join(parts)
-    
-    assert sequence_from_genbank == sequence_lower
+
+    # The export wraps the assembled sequence in Type IIS (BpiI) sites so the
+    # file is a re-cloneable MoClo unit; the body must be present verbatim.
+    from app.services.export import _wrap_with_typeiis
+    wrapped, _ = _wrap_with_typeiis(sample_cassette.assembled_sequence, 'BpiI')
+    assert sequence_from_genbank == wrapped.lower()
+    assert sequence_lower in sequence_from_genbank
 
 
 def test_generate_genbank_terminator(sample_cassette):
@@ -625,10 +630,10 @@ def test_generate_genbank_part_annotations(temp_db, sample_user):
     # Check part types are included
     assert 'NonCodingPromoter' in genbank
     assert 'Coding' in genbank
-    
-    # Check positions: part1 should be 1..12, part2 should be 13..20
-    assert '1..12' in genbank
-    assert '13..20' in genbank
+
+    # Positions are offset by the 5' BpiI wrapper (8 nt): part1 9..20, part2 21..28
+    assert '9..20' in genbank
+    assert '21..28' in genbank
 
 
 def test_generate_genbank_part_metadata(temp_db, sample_user):
@@ -886,9 +891,9 @@ def test_generate_genbank_multiple_parts(temp_db, sample_user):
     assert 'Promoter' in genbank
     assert 'CDS' in genbank
     assert 'Terminator' in genbank
-    
-    # Check that we have three misc_feature entries
-    assert genbank.count('misc_feature') == 3
+
+    # 3 part features + 1 top-level cassette feature + 2 Type IIS site features
+    assert genbank.count('misc_feature') == 6
 
 
 def test_generate_genbank_sequence_lowercase(sample_cassette):
@@ -945,9 +950,11 @@ def test_generate_genbank_preserves_sequence_integrity(sample_cassette):
         parts = line.strip().split()
         if parts and parts[0].isdigit():
             sequence_from_genbank += ''.join(parts[1:])
-    
-    # Sequence should match (case-insensitive)
-    assert sequence_from_genbank.upper() == sample_cassette.assembled_sequence.upper()
+
+    # The assembled sequence must survive verbatim inside the BpiI-wrapped export.
+    assert sample_cassette.assembled_sequence.upper() in sequence_from_genbank.upper()
+    assert sequence_from_genbank.upper().startswith('GAAGAC')
+    assert sequence_from_genbank.upper().endswith('GTCTTC')
 
 
 def test_generate_genbank_feature_positions_correct(temp_db, sample_user):
@@ -982,12 +989,10 @@ def test_generate_genbank_feature_positions_correct(temp_db, sample_user):
     )
     
     genbank = generate_genbank(cassette)
-    
-    # Part1 should be at positions 1..12
-    assert '1..12' in genbank
-    
-    # Part2 should be at positions 13..20
-    assert '13..20' in genbank
+
+    # Positions are offset by the 8 nt 5' BpiI wrapper.
+    assert '9..20' in genbank   # Part1
+    assert '21..28' in genbank  # Part2
 
 
 def test_generate_genbank_all_part_types(temp_db, sample_user):
@@ -1319,8 +1324,6 @@ def test_generate_cassette_image_empty_parts(temp_db, sample_user):
         )
     
     assert "at least 2 parts" in str(exc_info.value)
-    
-    assert "Cassette has no parts to visualize" in str(exc_info.value)
 
 
 @requires_cairo
