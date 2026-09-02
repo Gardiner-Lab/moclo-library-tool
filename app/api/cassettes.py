@@ -558,7 +558,6 @@ def get_compatible_backbones(user, cassette, cassette_id):
         }), 500
 
 @cassettes_bp.route('/<cassette_id>/translation', methods=['GET'])
-@require_auth
 @require_cassette_ownership
 def get_cassette_translation(user, cassette, cassette_id):
     """
