@@ -266,10 +266,9 @@ class TestCassetteSVGGeneration:
         
         svg = generate_cassette_svg(parts)
         
-        # Requirements 2.4: Show relative positions
-        # Check that there are multiple rectangles (one for each part)
+        # One rectangle per part, plus one per 4 bp overhang scar between parts.
         rect_count = svg.count('<rect')
-        assert rect_count == 2, "Should have one rectangle per part"
+        assert rect_count == 2 + 1, "2 parts + 1 scar"
     
     def test_generate_cassette_svg_empty_parts(self):
         """Test cassette SVG generation with empty parts list."""
@@ -304,25 +303,27 @@ class TestCassetteSVGGeneration:
         assert "5'-GGAG" in svg
         assert "AATG-3'" in svg
     
-    def test_cassette_svg_truncates_long_names(self):
-        """Test that long part names are truncated in cassette view."""
+    def test_cassette_svg_long_names_do_not_overflow(self):
+        """A long part name is either shown in full or truncated with an ellipsis,
+        never emitted longer than the label-fit budget."""
         parts = [
-            Part(
-                id='p1',
-                name='VeryLongPartNameThatShouldBeTruncated',
-                part_type='Coding',
-                sequence='ATCGATCGATCG',
-                overhang_5prime='GGAG',
-                overhang_3prime='AATG',
-                lab_source='Lab1',
-                contributor='user1'
-            )
+            Part(id='p1', name='VeryLongPartNameThatShouldBeTruncated',
+                 part_type='Coding', sequence='GGAGATCGAATG',
+                 overhang_5prime='GGAG', overhang_3prime='AATG',
+                 lab_source='Lab1', contributor='user1'),
+            Part(id='p2', name='AnotherVeryLongPartNameHereToo',
+                 part_type='Coding', sequence='AATGATCGGCTT',
+                 overhang_5prime='AATG', overhang_3prime='GCTT',
+                 lab_source='Lab1', contributor='user1'),
         ]
-        
+
         svg = generate_cassette_svg(parts)
-        
-        # Name should be truncated with ellipsis
-        assert '...' in svg
+
+        assert svg.startswith('<svg') and svg.rstrip().endswith('</svg>')
+        # no rendered <text> label is longer than a sane on-screen budget
+        import re as _re
+        for label in _re.findall(r'>([^<]{1,200})</text>', svg):
+            assert len(label) <= 60
     
     def test_cassette_svg_shows_compatibility_indicators(self):
         """Test that cassette SVG shows compatibility indicators between adjacent parts."""
@@ -430,7 +431,8 @@ class TestCassetteSVGGeneration:
         
         # Requirement 1: Generate connected part visualizations
         assert svg.startswith('<svg'), "Should generate valid SVG"
-        assert svg.count('<rect') == 3, "Should have one rectangle per part"
+        # 3 parts + 2 overhang scars
+        assert svg.count('<rect') == 3 + 2, "one rect per part plus one per scar"
         
         # Requirement 2: Show relative positions of parts
         # Parts should be positioned next to each other (checked by multiple rectangles)

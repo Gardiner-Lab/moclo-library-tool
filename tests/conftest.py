@@ -2,10 +2,41 @@
 Pytest configuration and fixtures for the MoClo Library Tool tests.
 """
 
-import pytest
 import os
+# Prevent demo seeding as an import-time side effect (keeps the parts DB empty
+# for tests that assert on it). Must be set before app.main is imported.
+os.environ.setdefault("MOCLO_SKIP_SEED", "1")
+
+import pytest
 import tempfile
 from app.main import create_app
+
+
+@pytest.fixture(autouse=True)
+def _isolate_databases(tmp_path, monkeypatch):
+    """Give every test its own empty main and parts databases.
+
+    The parts catalogue lives in a separate SQLite file behind a module-level
+    singleton; without this reset, parts (including Hypothesis-generated ones)
+    leak between tests and break assertions like ``Part.get_all() == []``.
+    """
+    import app.models.database as _main_db
+    import app.models.parts_database as _parts_db
+
+    main_path = str(tmp_path / "moclo.db")
+    parts_path = str(tmp_path / "parts.db")
+    monkeypatch.setenv("DATABASE_PATH", main_path)
+    monkeypatch.setenv("PARTS_DATABASE_PATH", parts_path)
+
+    _main_db._db_instance = None
+    _parts_db._parts_db_instance = None
+    _main_db.initialize_database(main_path)
+    _parts_db.initialize_parts_database(parts_path)
+
+    yield
+
+    _main_db._db_instance = None
+    _parts_db._parts_db_instance = None
 
 
 @pytest.fixture

@@ -337,7 +337,22 @@ def validate_part_for_upload(
     # Validate overhangs
     validate_overhang_format(overhang_5prime, "5' overhang")
     validate_overhang_format(overhang_3prime, "3' overhang")
-    
+
+    # The stored part sequence must begin with its 5' overhang and end with its
+    # 3' overhang. The assembly engine relies on this (it strips the shared 4 bp
+    # scar by slicing sequence[4:]); a mismatch silently corrupts assemblies.
+    if sequence[:4].upper() != overhang_5prime.upper():
+        raise ValidationError(
+            f"Sequence must start with the 5' overhang '{overhang_5prime}' "
+            f"(it starts with '{sequence[:4]}'). MoClo part sequences include "
+            f"their own overhangs."
+        )
+    if sequence[-4:].upper() != overhang_3prime.upper():
+        raise ValidationError(
+            f"Sequence must end with the 3' overhang '{overhang_3prime}' "
+            f"(it ends with '{sequence[-4:]}')."
+        )
+
     # Check for internal restriction sites (BsaI, BpiI)
     # Skip for Level 1+ parts — they are expected to contain BpiI sites for Level 2 assembly
     # Only Level 0 basic parts should be checked for unwanted internal sites

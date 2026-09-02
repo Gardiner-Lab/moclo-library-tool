@@ -1,4 +1,4 @@
-.PHONY: help setup install test test-cov run docker-build docker-up docker-down clean
+.PHONY: help setup install test test-cov run docker-build docker-up docker-down clean update update-check
 
 help:
 	@echo "MoClo Library Tool - Available Commands"
@@ -11,6 +11,8 @@ help:
 	@echo "docker-build - Build Docker image"
 	@echo "docker-up    - Start Docker container"
 	@echo "docker-down  - Stop Docker container"
+	@echo "update-check - Report whether a newer published version exists"
+	@echo "update       - Pull new image, health-check, auto-rollback on failure"
 	@echo "clean        - Remove generated files and caches"
 
 setup:
@@ -42,6 +44,12 @@ docker-up:
 
 docker-down:
 	docker-compose down
+
+update-check:
+	./scripts/update.sh --check
+
+update:
+	./scripts/update.sh
 
 clean:
 	find . -type d -name "__pycache__" -exec rm -rf {} +

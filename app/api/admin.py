@@ -356,35 +356,43 @@ def check_update(user):
         with urllib.request.urlopen(req, timeout=10) as response:
             tags = _json.loads(response.read().decode())
         
-        if not tags:
+        import re as _re
+
+        def parse_version(v):
+            m = _re.match(r'v?(\d+)\.(\d+)\.(\d+)', str(v or ''))
+            return tuple(int(x) for x in m.groups()) if m else None
+
+        # Keep only well-formed semver tags and pick the true maximum.
+        semver_tags = [t['name'] for t in tags if parse_version(t.get('name'))]
+        semver_tags.sort(key=parse_version)
+        latest_tag = semver_tags[-1].lstrip('v') if semver_tags else None
+
+        current = parse_version(APP_VERSION)
+        latest = parse_version(latest_tag)
+
+        if not latest or not current:
             return jsonify({
                 'current_version': APP_VERSION,
-                'latest_version': None,
+                'latest_version': latest_tag,
                 'update_available': False,
                 'message': 'Could not determine latest version'
             }), 200
-        
-        # Get latest tag (sorted by name, tags come newest first from API)
-        latest_tag = tags[0]['name'].lstrip('v')
-        
-        # Compare versions
-        def parse_version(v):
-            return tuple(int(x) for x in v.split('.'))
-        
-        current = parse_version(APP_VERSION)
-        latest = parse_version(latest_tag)
+
         update_available = latest > current
-        
+
         return jsonify({
             'current_version': APP_VERSION,
             'latest_version': latest_tag,
             'update_available': update_available,
-            'message': f'Update available: v{latest_tag}' if update_available else 'You are up to date',
+            'ahead_of_release': current > latest,
+            'release_notes': f'https://github.com/{"Gardiner-Lab/moclo-library-tool"}/releases/tag/v{latest_tag}',
+            'message': (f'Update available: v{latest_tag}' if update_available
+                        else ('Running a newer build than the latest release'
+                              if current > latest else 'You are up to date')),
             'update_instructions': (
-                'Run on the host machine:\n'
-                'docker-compose -f docker-compose.prod.yml pull\n'
-                'docker-compose -f docker-compose.prod.yml up -d\n\n'
-                'Or use: ./update-prod.sh'
+                'On the host machine run:  ./scripts/update.sh\n'
+                '(backs up the databases, pulls the new image, health-checks, '
+                'and rolls back automatically if the new version is unhealthy)'
             ) if update_available else None
         }), 200
         

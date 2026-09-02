@@ -78,16 +78,18 @@ BUTTON_*.txt
 CSS_DEBUG.md
 INITIALIZATION.md
 
-# Dev/test helper scripts (root level)
-test_*.py
-verify_*.py
-diagnose_*.py
-check_*.py
-fix_*.py
-cleanup_*.py
-create_*.py
-import_*.py
-seed_*.py
+# Dev/test helper scripts (repo root only - not the tests/ package)
+/test_*.py
+/verify_*.py
+/diagnose_*.py
+/check_*.py
+/fix_*.py
+/cleanup_*.py
+/create_*.py
+/import_*.py
+/seed_*.py
+!tests/**
+tests/**/__pycache__/
 set_*.py
 remove_*.py
 manual_*.py

@@ -16,31 +16,41 @@ def create_app():
     app = Flask(__name__)
     
     # Configuration
-    app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev-secret-key-change-in-production')
+    _DEFAULT_SECRET = 'dev-secret-key-change-in-production'
+    app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', _DEFAULT_SECRET)
     app.config['DATABASE_PATH'] = os.environ.get('DATABASE_PATH', '/data/moclo.db')
+
+    # In production the session key must be a real secret, or session cookies
+    # can be forged.
+    if (app.config['SECRET_KEY'] == _DEFAULT_SECRET
+            and os.environ.get('FLASK_ENV') == 'production'):
+        raise RuntimeError(
+            "SECRET_KEY is unset. Set the SECRET_KEY environment variable to a "
+            "random value before running in production."
+        )
     
     # Enable template auto-reload for development
     app.config['TEMPLATES_AUTO_RELOAD'] = True
     app.config['SEND_FILE_MAX_AGE_DEFAULT'] = 0
     
-    # Initialize database with optional seed data
+    # Schema init is always safe and idempotent. Demo seeding (default admin +
+    # demo parts) is skipped when MOCLO_SKIP_SEED is set, so importing this
+    # module in tests does not populate the parts database.
+    skip_seed = bool(os.environ.get('MOCLO_SKIP_SEED'))
     seed_file = os.environ.get('SEED_DATA_FILE')
-    if seed_file or os.path.exists('/data/seed_data.json'):
-        # Use initialization script with seed data support
+    if (seed_file or os.path.exists('/data/seed_data.json')) and not skip_seed:
         initialize_with_seed_data(
             app.config['DATABASE_PATH'],
             seed_file or '/data/seed_data.json'
         )
     else:
-        # Standard initialization without seed data
         initialize_database(app.config['DATABASE_PATH'])
-        # Also initialize the separate parts database
         parts_db_path = os.environ.get('PARTS_DATABASE_PATH', '/data/parts.db')
         initialize_parts_database(parts_db_path)
-        # Ensure default admin exists
-        from app.init_db import _ensure_default_admin, _ensure_demo_backbones
-        _ensure_default_admin()
-        _ensure_demo_backbones()
+        if not skip_seed:
+            from app.init_db import _ensure_default_admin, _ensure_demo_backbones
+            _ensure_default_admin()
+            _ensure_demo_backbones()
     
     # Enable CORS with credentials support
     CORS(app, supports_credentials=True)

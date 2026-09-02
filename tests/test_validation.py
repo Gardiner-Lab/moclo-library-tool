@@ -147,7 +147,7 @@ class TestCheckDuplicatePart:
         Part.create(
             name="Test Part",
             part_type="Coding",
-            sequence="ATCGATCGATCG",
+            sequence="AATGATCGGCTT",
             overhang_5prime="AATG",
             overhang_3prime="GCTT",
             lab_source="Test Lab",
@@ -155,7 +155,7 @@ class TestCheckDuplicatePart:
         )
         
         # Check for duplicate with same sequence and overhangs
-        result = check_duplicate_part("ATCGATCGATCG", "AATG", "GCTT")
+        result = check_duplicate_part("AATGATCGGCTT", "AATG", "GCTT")
         assert result is True
     
     def test_no_duplicate_different_sequence(self, temp_db):
@@ -164,7 +164,7 @@ class TestCheckDuplicatePart:
         Part.create(
             name="Test Part",
             part_type="Coding",
-            sequence="ATCGATCGATCG",
+            sequence="AATGATCGGCTT",
             overhang_5prime="AATG",
             overhang_3prime="GCTT",
             lab_source="Test Lab",
@@ -181,7 +181,7 @@ class TestCheckDuplicatePart:
         Part.create(
             name="Test Part",
             part_type="Coding",
-            sequence="ATCGATCGATCG",
+            sequence="AATGATCGGCTT",
             overhang_5prime="AATG",
             overhang_3prime="GCTT",
             lab_source="Test Lab",
@@ -189,11 +189,11 @@ class TestCheckDuplicatePart:
         )
         
         # Check with different 5' overhang
-        result = check_duplicate_part("ATCGATCGATCG", "TTTT", "GCTT")
+        result = check_duplicate_part("AATGATCGGCTT", "TTTT", "GCTT")
         assert result is False
         
         # Check with different 3' overhang
-        result = check_duplicate_part("ATCGATCGATCG", "AATG", "AAAA")
+        result = check_duplicate_part("AATGATCGGCTT", "AATG", "AAAA")
         assert result is False
     
     def test_exclude_id_parameter(self, temp_db):
@@ -202,7 +202,7 @@ class TestCheckDuplicatePart:
         part = Part.create(
             name="Test Part",
             part_type="Coding",
-            sequence="ATCGATCGATCG",
+            sequence="AATGATCGGCTT",
             overhang_5prime="AATG",
             overhang_3prime="GCTT",
             lab_source="Test Lab",
@@ -216,7 +216,7 @@ class TestCheckDuplicatePart:
         assert result is False
         
         # Check for duplicate without excluding
-        result = check_duplicate_part("ATCGATCGATCG", "AATG", "GCTT")
+        result = check_duplicate_part("AATGATCGGCTT", "AATG", "GCTT")
         assert result is True
 
 
@@ -315,7 +315,7 @@ class TestValidatePartForUpload:
         validate_part_for_upload(
             name="Test Part",
             part_type="Coding",
-            sequence="ATCGATCGATCG",
+            sequence="AATGATCGGCTT",
             overhang_5prime="AATG",
             overhang_3prime="GCTT",
             lab_source="Test Lab",
@@ -357,7 +357,7 @@ class TestValidatePartForUpload:
         Part.create(
             name="Original Part",
             part_type="Coding",
-            sequence="ATCGATCGATCG",
+            sequence="AATGATCGGCTT",
             overhang_5prime="AATG",
             overhang_3prime="GCTT",
             lab_source="Test Lab",
@@ -369,7 +369,7 @@ class TestValidatePartForUpload:
             validate_part_for_upload(
                 name="Duplicate Part",
                 part_type="Coding",
-                sequence="ATCGATCGATCG",
+                sequence="AATGATCGGCTT",
                 overhang_5prime="AATG",
                 overhang_3prime="GCTT",
                 lab_source="Test Lab",
@@ -383,7 +383,7 @@ class TestValidatePartForUpload:
         Part.create(
             name="Original Part",
             part_type="Coding",
-            sequence="ATCGATCGATCG",
+            sequence="AATGATCGGCTT",
             overhang_5prime="AATG",
             overhang_3prime="GCTT",
             lab_source="Test Lab",
@@ -394,7 +394,7 @@ class TestValidatePartForUpload:
         validate_part_for_upload(
             name="Duplicate Part",
             part_type="Coding",
-            sequence="ATCGATCGATCG",
+            sequence="AATGATCGGCTT",
             overhang_5prime="AATG",
             overhang_3prime="GCTT",
             lab_source="Test Lab",
