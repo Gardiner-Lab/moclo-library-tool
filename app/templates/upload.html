@@ -269,6 +269,10 @@
         <div class="info-banner">
             <strong>📦 Bulk GenBank Upload</strong>
             <p>Upload multiple GenBank files (.gb, .gbk, or .genbank) at once. Each file will be parsed and added as a separate part.</p>
+            <p><strong>Filename tip:</strong> put an <code>L0</code>, <code>L1</code>, <code>L2</code> or
+            <code>Lvl1</code> token in the filename (set off by <code>_</code>, <code>-</code>, <code>.</code>
+            or a space, for example <code>myCassette_L1.gb</code>) and the MoClo level is filled in for you.
+            You can still change it per file below before uploading.</p>
         </div>
 
         <form id="bulkUploadForm" class="upload-form" enctype="multipart/form-data">
@@ -299,14 +303,34 @@
                 <div id="bulkFileError" class="error-message"></div>
             </div>
 
+            <!-- Per-file MoClo level -->
+            <div class="form-group" id="bulkLevelGroup" style="display: none;">
+                <label>MoClo Level per file</label>
+                <div class="bulk-level-toolbar">
+                    <span class="form-help" style="margin:0;">Set all to:</span>
+                    <button type="button" class="btn-small" data-setall="">Auto</button>
+                    <button type="button" class="btn-small" data-setall="0">Level 0</button>
+                    <button type="button" class="btn-small" data-setall="1">Level 1</button>
+                </div>
+                <div id="bulkFileRows" class="bulk-file-rows"></div>
+                <div class="form-help">
+                    A green <em>from filename</em> tag means the level was read from the name.
+                    Rows in amber have no level and default to <strong>Auto-detect</strong>, which
+                    can mis-read a Level 1 cassette as Level 0 and reject its flanking BpiI sites as
+                    internal. You are asked to confirm before any amber row is uploaded. When you
+                    set a level, the file is renamed with the matching <code>_L0</code> /
+                    <code>_L1</code> / <code>_L2</code> token before it is parsed.
+                </div>
+            </div>
+
             <!-- Lab Source (Optional Override) -->
             <div class="form-group">
                 <label for="bulkLabSource">Lab Source <span class="optional">(optional, applies to all)</span></label>
-                <input 
-                    type="text" 
-                    id="bulkLabSource" 
+                <input
+                    type="text"
+                    id="bulkLabSource"
                     name="lab_source"
-                    class="form-control" 
+                    class="form-control"
                     placeholder="Override auto-detected source for all files"
                 >
             </div>
@@ -416,6 +440,80 @@
         .form-actions .btn {
             flex: 1;
         }
+    }
+
+    .bulk-level-toolbar {
+        display: flex;
+        align-items: center;
+        gap: 0.4rem;
+        margin-bottom: 0.5rem;
+        flex-wrap: wrap;
+    }
+
+    .btn-small {
+        padding: 0.2rem 0.6rem;
+        font-size: 0.8rem;
+        border: 1px solid var(--border-color);
+        border-radius: 4px;
+        background: var(--bg-color);
+        color: var(--text-color);
+        cursor: pointer;
+    }
+
+    .btn-small:hover {
+        border-color: var(--primary-color);
+    }
+
+    .bulk-file-rows {
+        display: flex;
+        flex-direction: column;
+        gap: 0.35rem;
+        max-height: 260px;
+        overflow-y: auto;
+    }
+
+    .bulk-file-row {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        justify-content: space-between;
+    }
+
+    .bulk-file-row .fname {
+        font-size: 0.82rem;
+        font-family: monospace;
+        word-break: break-all;
+        flex: 1;
+    }
+
+    .bulk-file-row select {
+        flex: 0 0 auto;
+        width: auto;
+        padding: 0.2rem 0.4rem;
+        font-size: 0.8rem;
+    }
+
+    .fname-hint {
+        display: inline-block;
+        padding: 0.05rem 0.35rem;
+        border-radius: 3px;
+        font-size: 0.68rem;
+        font-family: sans-serif;
+        background: #16a34a;
+        color: #fff;
+        vertical-align: middle;
+    }
+
+    .fname-hint.changed {
+        background: #6b7280;
+    }
+
+    .bulk-file-row.needs-level .fname {
+        color: #b45309;
+    }
+
+    .bulk-file-row.needs-level select {
+        border-color: #f59e0b;
     }
 </style>
 {% endblock %}

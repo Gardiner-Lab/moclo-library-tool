@@ -617,10 +617,70 @@ function initBulkUploadForm() {
         fileInput.value = '';
         fileList.style.display = 'none';
         filePrompt.style.display = 'block';
+        const levelGroup = document.getElementById('bulkLevelGroup');
+        const rows = document.getElementById('bulkFileRows');
+        if (levelGroup) levelGroup.style.display = 'none';
+        if (rows) rows.innerHTML = '';
     });
+
+    // "Set all to" level buttons
+    const levelGroup = document.getElementById('bulkLevelGroup');
+    if (levelGroup) {
+        levelGroup.querySelectorAll('[data-setall]').forEach((btn) => {
+            btn.addEventListener('click', () => {
+                const val = btn.getAttribute('data-setall');
+                document.querySelectorAll('#bulkFileRows .bulk-file-level').forEach((sel) => {
+                    sel.value = val;
+                });
+            });
+        });
+    }
 
     // Form submission
     form.addEventListener('submit', handleBulkSubmit);
+}
+
+/**
+ * Guess a MoClo level from a filename. Looks for an L / Lvl / Level token
+ * next to a 0, 1 or 2 with a separator on both sides so it does not match
+ * digits inside an unrelated id. Returns '', '0', '1' or '2'.
+ */
+function inferMocloLevel(filename) {
+    const m = String(filename).match(/(?:^|[_\-.\s])l(?:vl|evel)?[_\-.\s]*([012])(?:[_\-.\s]|$)/i);
+    return m ? m[1] : '';
+}
+
+/**
+ * Return the filename with an `_L<level>` token, replacing any conflicting
+ * level token already present. No change when level is '' or the name already
+ * carries the right token.
+ */
+function nameWithLevel(filename, level) {
+    if (!level) return filename;
+    if (inferMocloLevel(filename) === level) return filename;
+    const dot = filename.lastIndexOf('.');
+    let base = dot > 0 ? filename.slice(0, dot) : filename;
+    const ext = dot > 0 ? filename.slice(dot) : '';
+    const tokenRe = /(^|[_\-.\s])l(?:vl|evel)?[_\-.\s]*[012](?=[_\-.\s]|$)/i;
+    if (tokenRe.test(base)) {
+        base = base.replace(tokenRe, `$1L${level}`);
+    } else {
+        base = `${base}_L${level}`;
+    }
+    return base + ext;
+}
+
+/**
+ * Build a File with a new name, falling back to the original if the runtime
+ * does not allow constructing File objects.
+ */
+function renameFile(file, newName) {
+    if (newName === file.name) return file;
+    try {
+        return new File([file], newName, { type: file.type, lastModified: file.lastModified });
+    } catch (e) {
+        return file;
+    }
 }
 
 /**
@@ -651,6 +711,60 @@ function updateBulkFileDisplay() {
         filePrompt.style.display = 'none';
         fileList.style.display = 'flex';
         clearError('bulkFileError');
+
+        // Build the per-file MoClo level rows
+        const levelGroup = document.getElementById('bulkLevelGroup');
+        const rows = document.getElementById('bulkFileRows');
+        if (levelGroup && rows) {
+            rows.innerHTML = '';
+            validFiles.forEach((fname) => {
+                const guess = inferMocloLevel(fname);
+                const row = document.createElement('div');
+                row.className = 'bulk-file-row' + (guess ? '' : ' needs-level');
+                row.dataset.filename = fname;
+                const label = document.createElement('span');
+                label.className = 'fname';
+                label.textContent = fname;
+                if (guess) {
+                    const tag = document.createElement('span');
+                    tag.className = 'fname-hint';
+                    tag.textContent = 'from filename';
+                    tag.title = `Level ${guess} read from the filename`;
+                    label.appendChild(document.createTextNode(' '));
+                    label.appendChild(tag);
+                }
+                const sel = document.createElement('select');
+                sel.className = 'bulk-file-level form-control';
+                sel.innerHTML =
+                    '<option value="">Auto-detect</option>' +
+                    '<option value="0">Level 0 (BsaI)</option>' +
+                    '<option value="1">Level 1 (BpiI)</option>' +
+                    '<option value="2">Level 2 (BsaI)</option>';
+                sel.value = guess;
+                sel.addEventListener('change', () => {
+                    row.classList.toggle('needs-level', sel.value === '');
+                    let t = label.querySelector('.fname-hint');
+                    if (guess && sel.value === guess) {
+                        if (t) { t.textContent = 'from filename'; t.classList.remove('changed'); }
+                    } else if (sel.value === '') {
+                        if (t) t.remove();
+                    } else {
+                        if (!t) {
+                            t = document.createElement('span');
+                            t.className = 'fname-hint';
+                            label.appendChild(document.createTextNode(' '));
+                            label.appendChild(t);
+                        }
+                        t.textContent = 'manual';
+                        t.classList.add('changed');
+                    }
+                });
+                row.appendChild(label);
+                row.appendChild(sel);
+                rows.appendChild(row);
+            });
+            levelGroup.style.display = 'block';
+        }
     }
 }
 
@@ -687,6 +801,35 @@ async function handleBulkSubmit(event) {
         return;
     }
 
+    // Map each file to its chosen level from the per-file rows
+    const levelFor = {};
+    document.querySelectorAll('#bulkFileRows .bulk-file-row').forEach((r) => {
+        const s = r.querySelector('.bulk-file-level');
+        levelFor[r.dataset.filename] = s ? s.value : '';
+    });
+
+    // Prompt for any file left on Auto-detect: it may be mis-read as Level 0
+    const noLevel = files.filter((f) => !levelFor[f.name]);
+    if (noLevel.length > 0) {
+        const list = noLevel.slice(0, 10).map((f) => '  - ' + f.name).join('\n');
+        const more = noLevel.length > 10 ? `\n  ...and ${noLevel.length - 10} more` : '';
+        const ok = window.confirm(
+            `${noLevel.length} file(s) have no MoClo level set and will use Auto-detect, ` +
+            `which can mis-read a Level 1 cassette as Level 0:\n\n${list}${more}\n\n` +
+            `OK = upload anyway with Auto-detect.\n` +
+            `Cancel = go back and set the level (or rename the file with an _L1 token).`
+        );
+        if (!ok) {
+            if (noLevel[0]) {
+                const firstRow = document.querySelector(
+                    `#bulkFileRows .bulk-file-row[data-filename="${(window.CSS && CSS.escape) ? CSS.escape(noLevel[0].name) : noLevel[0].name}"]`
+                );
+                if (firstRow) firstRow.scrollIntoView({ block: 'center' });
+            }
+            return;
+        }
+    }
+
     // Get optional lab source
     const labSource = document.getElementById('bulkLabSource').value.trim();
 
@@ -701,7 +844,25 @@ async function handleBulkSubmit(event) {
     let duplicateCount = 0;
 
     for (let i = 0; i < files.length; i++) {
-        const file = files[i];
+        const original = files[i];
+        const level = levelFor[original.name] || '';
+        // Rename the file so its name carries the level token before it is
+        // parsed, then send the renamed file.
+        const newName = nameWithLevel(original.name, level);
+        const file = renameFile(original, newName);
+        const renamed = file.name !== original.name;
+
+        if (renamed) {
+            const rowEl = document.querySelector(
+                `#bulkFileRows .bulk-file-row[data-filename="${(window.CSS && CSS.escape) ? CSS.escape(original.name) : original.name}"]`
+            );
+            if (rowEl) {
+                const lbl = rowEl.querySelector('.fname');
+                if (lbl && lbl.firstChild) lbl.firstChild.textContent = file.name;
+                rowEl.dataset.filename = file.name;
+            }
+        }
+
         const pct = Math.round(((i + 1) / files.length) * 100);
         progressBar.style.width = pct + '%';
         progressText.textContent = `${i + 1} / ${files.length}`;
@@ -711,6 +872,9 @@ async function handleBulkSubmit(event) {
         formData.append('file', file);
         if (labSource) {
             formData.append('lab_source', labSource);
+        }
+        if (level !== '') {
+            formData.append('level', level);
         }
 
         try {
@@ -722,20 +886,25 @@ async function handleBulkSubmit(event) {
 
             const data = await response.json();
 
+            const shown = renamed
+                ? `${escapeHtml(original.name)} → ${escapeHtml(file.name)}`
+                : escapeHtml(file.name);
             if (response.ok) {
                 successCount++;
                 const partName = data.part ? data.part.name : file.name;
-                resultsDiv.innerHTML += `<div style="color: #16a34a;">✓ ${escapeHtml(partName)} — uploaded successfully</div>`;
+                const lvlNote = data.level ? ` (Level ${escapeHtml(String(data.level))})` : '';
+                const renameNote = renamed ? ` <span style="color:#6b7280;">— renamed to ${escapeHtml(file.name)}</span>` : '';
+                resultsDiv.innerHTML += `<div style="color: #16a34a;">✓ ${escapeHtml(partName)}${lvlNote} — uploaded${renameNote}</div>`;
             } else if (response.status === 409) {
                 duplicateCount++;
-                resultsDiv.innerHTML += `<div style="color: #d97706;">⚠ ${escapeHtml(file.name)} — ${data.error || 'duplicate'}</div>`;
+                resultsDiv.innerHTML += `<div style="color: #d97706;">⚠ ${shown} — ${data.error || 'duplicate'}</div>`;
             } else {
                 failCount++;
-                resultsDiv.innerHTML += `<div style="color: #dc2626;">✗ ${escapeHtml(file.name)} — ${data.error || 'failed'}</div>`;
+                resultsDiv.innerHTML += `<div style="color: #dc2626;">✗ ${shown} — ${data.error || 'failed'}</div>`;
             }
         } catch (error) {
             failCount++;
-            resultsDiv.innerHTML += `<div style="color: #dc2626;">✗ ${escapeHtml(file.name)} — ${error.message}</div>`;
+            resultsDiv.innerHTML += `<div style="color: #dc2626;">✗ ${escapeHtml(original.name)} — ${error.message}</div>`;
         }
 
         // Scroll results to bottom
