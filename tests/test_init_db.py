@@ -236,10 +236,11 @@ class TestDatabaseInitialization:
             # Set the global database instance to the test database
             db_module._db_instance = get_database(db_path)
             
-            # Verify only one user was created
+            # The seeded user is created once (a default 'admin' is also ensured).
             all_users = User.get_all()
-            assert len(all_users) == 1
-            assert all_users[0].username == 'testuser'
+            usernames = [u.username for u in all_users]
+            assert usernames.count('testuser') == 1
+            assert set(usernames) <= {'testuser', 'admin'}
         finally:
             # Reset global instance
             import app.models.database as db_module

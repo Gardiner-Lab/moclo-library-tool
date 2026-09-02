@@ -194,290 +194,172 @@ def create_seed_parts(parts_data: List[Dict[str, str]], db_path: str):
 
 
 def _ensure_demo_backbones():
-    """
-    Ensure demo backbones and parts exist for the assembly tutorial.
-    
-    Creates demo Level 0 parts and Level 1/Level 2 backbones
-    if they don't already exist.
+    """Seed a demo library from real MoClo Plant Parts (Addgene kit #1000000044)
+    plus two generated acceptor vectors, so a fresh install shows the full
+    Level 0 -> Level 1 -> Level 2 workflow with authentic sequences.
     """
     from app.models.backbone import Backbone
-    from app.models.user import User
-    import json
-    
-    # Get system/demo user
-    demo_user = User.get_by_username('demo')
-    if not demo_user:
-        demo_user = User.get_by_username('admin')
+    from app.models.cassette import Cassette
+    from app.services.part_genbank_parser_v2 import parse_part_genbank, PartGenBankError
+    from app.services.assembly import create_cassette
+    from app.services.restriction_sites import build_moclo_acceptor
+
+    demo_user = User.get_by_username('demo') or User.get_by_username('admin')
     if not demo_user:
         return
-    
-    # === Demo Parts ===
-    demo_parts_data = [
-        {
-            'name': 'DEMO-L0-Promoter-35S',
-            'part_type': 'NonCodingPromoter',
-            'sequence': 'GGAGCATTTCATTTGGAGAGGACACGCTGAAATCACCAGTCTCTCTCTACAAATCTATCTCTCTCTATTTTTCTCCAGAATAATGTGTGAGTAGTTCCCAGATAAGGAATCTACTAATGCAGTAGTTCCCAGATAAGGGAATCTGCTATTTCAATTTTTCTATTAAATCTTTGTGATTTCATCTAAAGAAGGAGTTATGCAGTGCTGCCATAACCATGAGTGATAACACTGCGGCCAACTTACTTCTGACAACGATCGGAGGACCGAAGGAGCTAACCGCTTTTTTGCACAACATGGGGGATCATGTAACTCGCCTTGATCGTTGGGAACCGGAGCTGAATGAAGCCATACCAAACGACGAGCGTGACACCACGATGCCTGTAGCAATGGCAACAACGTTGCGCAAACTATTAACTGGCGAACTACTTACTCTAGCTTCCCGGCAACAATTAATG',
-            'overhang_5prime': 'GGAG',
-            'overhang_3prime': 'AATG',
-            'description': 'DEMO Level 0 - CaMV 35S promoter. Assemble with DEMO-L0-CDS and DEMO-L0-Terminator into DEMO-L1-Backbone.',
-            'level': '0'
-        },
-        {
-            'name': 'DEMO-L0-Promoter-UBQ10',
-            'part_type': 'NonCodingPromoter',
-            'sequence': 'AATGCTCGATCGTTTAAGTGGAATCGTATCGAATCGTAATCGAATGCATCGTAATCGTAATCGAATCGAATCGTAATCGAATCGTAATCGAATCGTAATCGAATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGAAAATGTGTGATCACAACTTGTACATATAGAGATAGAGAGATACTGAAACAGTACATACCACATATTCAATTGTATCAAAATCAAATCATGTGTTCAAAATCAAATCATGTGATCAAATCAAATCATGTGTGCTCATTAATACTTAAATCTAACAATCTTTCAATGGCAGAAAAGGAGATCGAGAATCGATCGATCGATCGATCGAATCGATCGAATCGATCGATCGATCAATG',
-            'overhang_5prime': 'AATG',
-            'overhang_3prime': 'AATG',
-            'description': 'DEMO Level 0 - UBQ10 promoter (Slot 2). mCherry cassette starts AATG for L2 Slot 2.',
-            'level': '0'
-        },
-        {
-            'name': 'DEMO-L0-CDS-GFP',
-            'part_type': 'Coding',
-            'sequence': 'AATGATGAGTAAAGGAGAAGAACTTTTCACTGGAGTTGTCCCAATTCTTGTTGAATTAGATGGTGATGTTAATGGGCACAAATTTTCTGTCAGTGGAGAGGGTGAAGGTGATGCAACATACGGAAAACTTACCCTTAAATTTATTTGCACTACTGGAAAACTACCTGTTCCATGGCCAACACTTGTCACTACTTTCGCGTATGGTCTTCAATGCTTTGCGAGATACCCAGATCATATGAAACAGCATGACTTTTTCAAGAGTGCCATGCCCGAAGGTTATGTACAGGAAAGAACTATATTTTTCAAAGATGACGGGAACTACAAGACACGTGCTGAAGTCAAGTTTGAAGGTGATACCCTTGTTAATAGAATCGAGTTAAAAGGTATTGATTTTAAAGAAGATGGAAACATTCTTGGACACAAATTGGAATACAACTATAACTCACACAATGTATACATCATGGCAGACAAACAAAAGAATGGAATCAAAGTTAACTTCAAAATTAGACACAACATTGAAGATGGAAGCGTTCAACTAGCAGACCATTATCAACAAAATACTCCAATTGGCGATGGCCCTGTCCTTTTACCAGACAACCATTACCTGTCCACACAATCTGCCCTTTCGAAAGATCCCAACGAAAAGAGAGACCACATGGTCCTTCTTGAGTTTGTAACAGCTGCTGGGATTACACATGGCATGGATGAACTATACAAATAAAGCTT',
-            'overhang_5prime': 'AATG',
-            'overhang_3prime': 'GCTT',
-            'description': 'DEMO Level 0 - GFP coding sequence. Assemble with a promoter and terminator.',
-            'level': '0'
-        },
-        {
-            'name': 'DEMO-L0-CDS-mCherry',
-            'part_type': 'Coding',
-            'sequence': 'AATGATGGTGAGCAAGGGCGAGGAGGATAACATGGCCATCATCAAGGAGTTCATGCGCTTCAAGGTGCACATGGAGGGCTCCGTGAACGGCCACGAGTTCGAGATCGAGGGCGAGGGCGAGGGCCGCCCCTACGAGGGCACCCAGACCGCCAAGCTGAAGGTGACCAAGGGTGGCCCCCTGCCCTTCGCCTGGGACATCCTGTCCCCTCAGTTCATGTACGGCTCCAAGGCCTACGTGAAGCACCCCGCCGACATCCCCGACTACTTGAAGCTGTCCTTCCCCGAGGGCTTCAAGTGGGAGCGCGTGATGAACTTCGAGGACGGCGGCGTGGTGACCGTGACCCAGGACTCCTCCCTGCAGGACGGCGAGTTCATCTACAAGGTGAAGCTGCGCGGCACCAACTTCCCCTCCGACGGCCCCGTAATGCAGAAGAAGACCATGGGCTGGGAGGCCTCCTCCGAGCGGATGTACCCCGAGGACGGCGCCCTGAAGGGCGAGATCAAGCAGAGGCTGAAGCTGAAGGACGGCGGCCACTACGACGCTGAGGTCAAGACCACCTACAAGGCCAAGAAGCCCGTGCAGCTGCCCGGCGCCTACAACGTCAACATCAAGTTGGACATCACCTCCCACAACGAGGACTACACCATCGTGGAACAGTACGAACGCGCCGAGGGCCGCCACTCCACCGGCGGCATGGACGAGCTGTACAAGTAAAGCTT',
-            'overhang_5prime': 'AATG',
-            'overhang_3prime': 'GCTT',
-            'description': 'DEMO Level 0 - mCherry red fluorescent protein. Use for second transcription unit.',
-            'level': '0'
-        },
-        {
-            'name': 'DEMO-L0-Terminator-NOS',
-            'part_type': 'NonCodingTerminator',
-            'sequence': 'GCTTGAATCGAATCGAAATCAAATCGGAGAGAAATCAAATCGATTTGAATGAAATGTTCATGAATGTTTGAATGTTTGAATGATTTGGATGACTTGGATGATCTGAATGATCTGGATGATCTGAAGGATCCGAAGACTTGGATAACCGTATTACCGCCTTTGAGTGAGCTGATACCGCTCGCCGCAGCCGAACGACCGAGCGCAGCGAGTCAGTGAGCGAGGAAGCGGAAATG',
-            'overhang_5prime': 'GCTT',
-            'overhang_3prime': 'AATG',
-            'description': 'DEMO Level 0 - NOS terminator (Slot 1). GFP cassette ends AATG for L2 Slot 1.',
-            'level': '0'
-        },
-        {
-            'name': 'DEMO-L0-Terminator-35S',
-            'part_type': 'NonCodingTerminator',
-            'sequence': 'GCTTGTCGACTCTAGAGGATCCCCGGGTACCGAGCTCGAATTCACTGGCCGTCGTTTTACAACGTCGTGACTGGGAAAACCCTGGCGTTACCCAACTTAATCGCCTTGCAGCACATCCCCCTTTCGCCAGCTGGCGTAATAGCGAAGAGGCCCGCACCGATCGCCCTTCCCAACAGTTGCGCAGCCTGAATGGCGAATGGCGCCTGATGCGGTATTTTCTCCTTACGCATCTGTGCGGTATTTCACACCGCATACAGGTGGCACTTTTCGGGGAAATGTGCGCGGAACCCCTATTTGTTTATTTTTCTAAATACATTCAAATATGTATCCGCTCATCGCT',
-            'overhang_5prime': 'GCTT',
-            'overhang_3prime': 'CGCT',
-            'description': 'DEMO Level 0 - 35S terminator (Slot 2). Pair with DEMO-L0-Promoter-UBQ10 for second transcription unit.',
-            'level': '0'
-        }
-    ]
-    
-    # Create demo parts if they don't exist
-    existing_parts = Part.get_all()
-    existing_names = [p.name for p in existing_parts]
-    
-    for part_data in demo_parts_data:
-        if part_data['name'] not in existing_names:
-            try:
-                Part.create(
-                    name=part_data['name'],
-                    part_type=part_data['part_type'],
-                    sequence=part_data['sequence'],
-                    overhang_5prime=part_data['overhang_5prime'],
-                    overhang_3prime=part_data['overhang_3prime'],
-                    lab_source='Demo Library',
-                    contributor=demo_user.username,
-                    description=part_data['description'],
-                    level=part_data['level']
-                )
-                logger.info(f"Created demo part: {part_data['name']}")
-            except Exception as e:
-                logger.error(f"Error creating demo part {part_data['name']}: {e}")
-    
-    # === Demo Backbones ===
-    all_backbones = Backbone.get_all()
-    demo_backbone_names = [b.name for b in all_backbones]
-    
-    # Level 1 backbone (BsaI) - accepts Level 0 parts
-    if 'DEMO-L1-Backbone-BsaI' not in demo_backbone_names:
-        try:
-            # Generate a minimal backbone sequence with BsaI sites
-            # Overhangs: 5'=GGAG (start of promoter), 3'=CGCT (end of terminator)
-            # BsaI site: GGTCTC N(1) [4bp overhang] ... [4bp overhang] N(1) GAGACC
-            backbone_seq = (
-                "ATGACCATGATTACGCCAAGCTATTTAGGTGACACTATAGAATACTCAAGCTATGCATCAAGCTTGGTACCGAGCTCGGATCCACTA"
-                "GTAACGGCCGCCAGTGTGCTGGAATTCGCCCTTGGTCTCAGGAG"  # BsaI site → overhang GGAG
-                "ATCGATCGATCGATCGATCGATCGATCGATCGATCG"  # Insertion region (replaced during assembly)
-                "CGCTCGAGACCAAGGGCGAATTCTGCAGATATCCATCACACTGGCGGCC"  # overhang CGCT ← BsaI site
-                "GCTCGAGTCTAGAGGGCCCGTTTAAACCCGCTGATCAGCCTCGACTGTGCCTTCTAGTTGCCAGCCATCTGTTGTTTGCCCCTCCCCCGTGCCTTCCTTGAC"
-                "CCTGGAAGGTGCCACTCCCACTGTCCTTTCCTAATAAAATGAGGAAATTGCATCGCATTGTCTGAGTAGGTGTCATTCTATTCTGGGGGGTGGGGTGGGGCAG"
-                "GACAGCAAGGGGGAGGATTGGGAAGACAATAGCAGGCATGCTGGGGATGCGGTGGGCTCTATGGCTTCTGAGGCGGAAAGAACCAGCTGGGGCTCTAGGGGGTAT"
-                "CCCCACGCGCCCTGTAGCGGCGCATTAAGCGCGGCGGGTGTGGTGGTTACGCGCAGCGTGACCGCTACACTTGCCAGCGCCCTAGCGCCCGCTCCTTTCGCTTTCTT"
-                "CCCTTCCTTTCTCGCCACGTTCGCCGGCTTTCCCCGTCAAGCTCTAAATCGGGGGCTCCCTTTAGGGTTCCGATTTAGTGCTTTACGGCACCTCGACCCCAAAAAACT"
-                "TGATTAGGGTGATGGTTCACGTAGTGGGCCATCGCCCTGATAGACGGTTTTTCGCCCTTTGACGTTGGAGTCCACGTTCTTTAATAGTGGACTCTTGTTCCAAACTGG"
-                "AACAACACTCAACCCTATCTCGGTCTATTCTTTTGATTTATAAGGGATTTTGCCGATTTCGGCCTATTGGTTAAAAAATGAGCTGATTTAACAAAAATTTAACGCGAAT"
-                "TTTAACAAAATATTAACGTTTACAATTTCAGGTGGCACTTTTCGGGGAAATGTGCGCGGAACCCCTATTTGTTTATTTTTCTAAATACATTCAAATATGTATCCGCTCAT"
-                "GAGACAATAACCCTGATAAATGCTTCAATAATATTGAAAAAGGAAGAGTATGAGTATTCAACATTTCCGTGTCGCCCTTATTCCCTTTTTTGCGGCATTTTGCCTTCCTG"
-                "TTTTTGCTCACCCAGAAACGCTGGTGAAAGTAAAAGATGCTGAAGATCAGTTGGGTGCACGAGTGGGTTACATCGAACTGGATCTCAACAGCGGTAAGATCCTTGAGAG"
-                "TTTTCGCCCCGAAGAACGTTTTCCAATGATGAGCACTTTTAAAGTTCTGCTATGTGGCGCGGTATTATCCCGTATTGACGCCGGGCAAGAGCAACTCGGTCGCCGCATA"
-                "CACTATTCTCAGAATGACTTGGTTGAGTACTCACCAGTCACAGAAAAGCATCTTACGGATGGCATGACAGTAAGAGAATTATGCAGTGCTGCCATAACCATGAGTGATAA"
-                "CACTGCGGCCAACTTACTTCTGACAACGATCGGAGGACCGAAGGAGCTAACCGCTTTTTTGCACAACATGGGGGATCATGTAACTCGCCTTGATCGTTGGGAACCGGAGC"
-                "TGAATGAAGCCATACCAAACGACGAGCGTGACACCACGATGCCTGTAGCAATGGCAACAACGTTGCGCAAACTATTAACTGGCGAACTACTTACTCTAGCTTCCCGGCAAC"
-            )
-            
-            # BsaI restriction sites for this backbone
-            bsai_sites = [
-                {
-                    'enzyme': 'BsaI',
-                    'position': 125,
-                    'strand': 'forward',
-                    'overhang_5prime': 'GGAG',
-                    'overhang_3prime': 'GGAG'
-                },
-                {
-                    'enzyme': 'BsaI',
-                    'position': 167,
-                    'strand': 'reverse',
-                    'overhang_5prime': 'CGCT',
-                    'overhang_3prime': 'CGCT'
-                }
-            ]
-            
-            Backbone.create(
-                name='DEMO-L1-Backbone-BsaI',
-                owner_id=demo_user.id,
-                sequence=backbone_seq,
-                description='DEMO Level 1 acceptor backbone (BsaI). Accepts Level 0 parts with overhangs GGAG→AATG→GCTT→CGCT to create a transcription unit.',
-                restriction_sites=bsai_sites,
-                overhang_5prime='GGAG',
-                overhang_3prime='CGCT',
-                contributor='demo',
-                lab_source='Demo Library'
-            )
-            logger.info("Created DEMO Level 1 backbone (BsaI)")
-        except Exception as e:
-            logger.error(f"Error creating demo L1 backbone: {e}")
-    
-    # Level 2 backbone (BpiI) - accepts Level 1 cassettes (single slot, GGAG→CGCT)
-    if 'DEMO-L2-Backbone-BpiI' not in demo_backbone_names:
-        try:
-            backbone_seq_l2 = (
-                "ATGACCATGATTACGCCAAGCTATTTAGGTGACACTATAGAATACTCAAGCTATGCATCAAGCTTGGTACCGAGCTCGGATCCACTA"
-                "GTAACGGCCGCCAGTGTGCTGGAATTCGCCCTTGAAGACAAGGAG"  # BpiI site → overhang GGAG
-                "ATCGATCGATCGATCGATCGATCGATCGATCGATCG"  # Insertion region
-                "CGCTAAGTCTTCAAGGGCGAATTCTGCAGATATCCATCACACTGGCGGCC"  # overhang CGCT ← BpiI site
-                "GCTCGAGTCTAGAGGGCCCGTTTAAACCCGCTGATCAGCCTCGACTGTGCCTTCTAGTTGCCAGCCATCTGTTGTTTGCCCCTCCCCCGTGCCTTCCTTGAC"
-                "CCTGGAAGGTGCCACTCCCACTGTCCTTTCCTAATAAAATGAGGAAATTGCATCGCATTGTCTGAGTAGGTGTCATTCTATTCTGGGGGGTGGGGTGGGGCAG"
-                "GACAGCAAGGGGGAGGATTGGGAAGACAATAGCAGGCATGCTGGGGATGCGGTGGGCTCTATGGCTTCTGAGGCGGAAAGAACCAGCTGGGGCTCTAGGGGGTAT"
-                "CCCCACGCGCCCTGTAGCGGCGCATTAAGCGCGGCGGGTGTGGTGGTTACGCGCAGCGTGACCGCTACACTTGCCAGCGCCCTAGCGCCCGCTCCTTTCGCTTTCTT"
-                "CCCTTCCTTTCTCGCCACGTTCGCCGGCTTTCCCCGTCAAGCTCTAAATCGGGGGCTCCCTTTAGGGTTCCGATTTAGTGCTTTACGGCACCTCGACCCCAAAAAACT"
-                "TGATTAGGGTGATGGTTCACGTAGTGGGCCATCGCCCTGATAGACGGTTTTTCGCCCTTTGACGTTGGAGTCCACGTTCTTTAATAGTGGACTCTTGTTCCAAACTGG"
-                "AACAACACTCAACCCTATCTCGGTCTATTCTTTTGATTTATAAGGGATTTTGCCGATTTCGGCCTATTGGTTAAAAAATGAGCTGATTTAACAAAAATTTAACGCGAAT"
-            )
-            
-            bpii_sites = [
-                {
-                    'enzyme': 'BpiI',
-                    'position': 125,
-                    'strand': 'reverse',
-                    'recognition_site': 'GAAGAC',
-                    'overhang_5prime': 'GGAG',
-                    'overhang_3prime': 'GGAG'
-                },
-                {
-                    'enzyme': 'BpiI',
-                    'position': 167,
-                    'strand': 'forward',
-                    'recognition_site': 'GAAGAC',
-                    'overhang_5prime': 'CGCT',
-                    'overhang_3prime': 'CGCT'
-                }
-            ]
-            
-            Backbone.create(
-                name='DEMO-L2-Backbone-BpiI',
-                owner_id=demo_user.id,
-                sequence=backbone_seq_l2,
-                description='DEMO Level 2 acceptor backbone (BpiI). Accepts a Level 1 cassette with GGAG→CGCT overhangs. To build a multi-gene construct: first assemble your L1 parts into a cassette on the Assembly page, then insert here.',
-                restriction_sites=bpii_sites,
-                overhang_5prime='GGAG',
-                overhang_3prime='CGCT',
-                contributor='demo',
-                lab_source='Demo Library'
-            )
-            logger.info("Created DEMO Level 2 backbone (BpiI)")
-        except Exception as e:
-            logger.error(f"Error creating demo L2 backbone: {e}")
-    
-    # === Pre-create Demo Cassettes ===
-    # These show users the complete path: L0 parts → L1 cassettes → L2 backbone
-    from app.models.cassette import Cassette
-    existing_cassettes = Cassette.get_all()
-    existing_cassette_names = [c.name for c in existing_cassettes]
-    
-    # Re-fetch parts (may have just been created above)
-    all_parts = Part.get_all()
-    demo_part_map = {p.name: p for p in all_parts if p.name.startswith('DEMO-L0')}
-    
-    if ('DEMO-L1-GFP-Cassette' not in existing_cassette_names 
-        and 'DEMO-L0-Promoter-35S' in demo_part_map
-        and 'DEMO-L0-CDS-GFP' in demo_part_map
-        and 'DEMO-L0-Terminator-NOS' in demo_part_map):
-        try:
-            from app.services.assembly import create_cassette
-            cassette = create_cassette(
-                name='DEMO-L1-GFP-Cassette',
-                owner_id=demo_user.id,
-                parts=[
-                    demo_part_map['DEMO-L0-Promoter-35S'],
-                    demo_part_map['DEMO-L0-CDS-GFP'],
-                    demo_part_map['DEMO-L0-Terminator-NOS']
-                ]
-            )
-            logger.info(f"Created DEMO-L1-GFP-Cassette ({cassette.assembled_sequence[:4]}→{cassette.assembled_sequence[-4:]})")
-        except Exception as e:
-            logger.error(f"Error creating demo GFP cassette: {e}")
-    
-    if ('DEMO-L1-mCherry-Cassette' not in existing_cassette_names
-        and 'DEMO-L0-Promoter-UBQ10' in demo_part_map
-        and 'DEMO-L0-CDS-mCherry' in demo_part_map
-        and 'DEMO-L0-Terminator-35S' in demo_part_map):
-        try:
-            from app.services.assembly import create_cassette
-            cassette = create_cassette(
-                name='DEMO-L1-mCherry-Cassette',
-                owner_id=demo_user.id,
-                parts=[
-                    demo_part_map['DEMO-L0-Promoter-UBQ10'],
-                    demo_part_map['DEMO-L0-CDS-mCherry'],
-                    demo_part_map['DEMO-L0-Terminator-35S']
-                ]
-            )
-            logger.info(f"Created DEMO-L1-mCherry-Cassette ({cassette.assembled_sequence[:4]}→{cassette.assembled_sequence[-4:]})")
-        except Exception as e:
-            logger.error(f"Error creating demo mCherry cassette: {e}")
-    
-    # === Create L1 cassettes as Parts (so they appear on Assembly page for L2 assembly) ===
-    all_cassettes = Cassette.get_all()
-    all_parts_now = Part.get_all()
-    existing_part_names = [p.name for p in all_parts_now]
-    
-    for cs in all_cassettes:
-        if cs.name.startswith('DEMO-L1') and cs.name not in existing_part_names:
-            try:
-                Part.create(
-                    name=cs.name,
-                    part_type='NonCodingOther',
-                    sequence=cs.assembled_sequence,
-                    overhang_5prime=cs.assembled_sequence[:4],
-                    overhang_3prime=cs.assembled_sequence[-4:],
-                    lab_source='Demo Library',
-                    contributor=demo_user.username,
-                    description=f'Level 1 cassette (assembled). Use on Assembly page to combine with other L1 cassettes for Level 2.',
-                    level='1'
-                )
-                logger.info(f"Created L1 part from cassette: {cs.name}")
-            except Exception as e:
-                logger.error(f"Error creating L1 part from {cs.name}: {e}")
-    
 
+    demo_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                            'demo_data', 'plant_moclo')
+
+    # (file, friendly name, part_type, unit) — a coherent GGAG->AATG->GCTT->CGCT chain
+    curated = [
+        ('pICH51277.gb', 'p35S (short)',   'NonCodingPromoter',   'Pro'),
+        ('pICH85281.gb', 'pMAS',           'NonCodingPromoter',   'Pro'),
+        ('pICSL12006.gb', 'pNOS',          'NonCodingPromoter',   'Pro'),
+        ('pICSL80004.gb', 'tRFP (CDS)',    'Coding',              'CDS'),
+        ('pICSL80007.gb', 'CDS reporter',  'Coding',              'CDS'),
+        ('pICSL80014.gb', 'CDS tag',       'Coding',              'CDS'),
+        ('pICH41414.gb', 't35S',           'NonCodingTerminator', 'Ter'),
+    ]
+
+    existing = {p.name for p in Part.get_all()}
+    parts_by_name = {}
+
+    def _remember(name):
+        if name not in parts_by_name:
+            for h in Part.search(name):
+                if h.name == name:
+                    parts_by_name[name] = h
+                    break
+
+    for fname, friendly, ptype, unit in curated:
+        path = os.path.join(demo_dir, fname)
+        if not os.path.exists(path):
+            continue
+        name = f'DEMO {friendly}'
+        if name in existing:
+            _remember(name)
+            continue
+        try:
+            d = parse_part_genbank(open(path, encoding='utf-8').read())
+            part = Part.create(
+                name=name, part_type=ptype,
+                sequence=d['sequence'],
+                overhang_5prime=d['overhang_5prime'],
+                overhang_3prime=d['overhang_3prime'],
+                lab_source='Plant MoClo (Addgene #1000000044)',
+                contributor=demo_user.username,
+                description=f"{friendly} - MoClo Plant Parts, from {fname.replace('.gb','')}",
+                plasmid_id=fname.replace('.gb', ''), unit=unit, level='0',
+                features=d.get('features'),
+            )
+            parts_by_name[name] = part
+            logger.info(f"Created demo part {name} ({d['overhang_5prime']}->{d['overhang_3prime']})")
+        except (PartGenBankError, Exception) as e:  # noqa: BLE001
+            logger.error(f"Demo part {fname}: {e}")
+
+    # Positional fusion-site linkers for multigene Level 2 assembly. Real MoClo
+    # supplies these through position-specific Level 1 vectors; here they are
+    # short Level 0 linker parts so the demo can chain three transcription units
+    # into the single-slot Level 2 acceptor: GGAG .. GTCA .. TAGC .. CGCT.
+    linkers = [
+        ('DEMO end-linker A (CGCT->GTCA)',   'CGCT', 'GTCA', 'CGCTAGGATCACTTGACCAATGCAGTCA'),
+        ('DEMO end-linker B (CGCT->TAGC)',   'CGCT', 'TAGC', 'CGCTAGGATCACTTGACCAATGCATAGC'),
+        ('DEMO start-linker B (GTCA->GGAG)', 'GTCA', 'GGAG', 'GTCATTGACCAATCACTAGGATCAGGAG'),
+        ('DEMO start-linker C (TAGC->GGAG)', 'TAGC', 'GGAG', 'TAGCTTGACCAATCACTAGGATCAGGAG'),
+    ]
+    for name, oh5, oh3, seq in linkers:
+        if name in existing:
+            _remember(name)
+            continue
+        try:
+            p = Part.create(
+                name=name, part_type='NonCodingOther', sequence=seq,
+                overhang_5prime=oh5, overhang_3prime=oh3,
+                lab_source='Generated', contributor=demo_user.username,
+                description='Positional fusion-site linker for multigene Level 2 assembly',
+                unit='Linker', level='0',
+            )
+            parts_by_name[name] = p
+            logger.info(f"Created demo linker {name} ({oh5}->{oh3})")
+        except Exception as e:  # noqa: BLE001
+            logger.error(f"Demo linker {name}: {e}")
+
+    # Acceptor vectors (generated: Plant kit acceptors are not in the parts registry)
+    have_bb = {b.name for b in Backbone.get_all()}
+    for name, enz, desc in [
+        ('DEMO L1 acceptor (BsaI)', 'BsaI',
+         'Level 1 acceptor. Accepts Level 0 parts (GGAG..CGCT) to build a transcription unit.'),
+        ('DEMO L2 acceptor (BpiI)', 'BpiI',
+         'Level 2 acceptor. Accepts a Level 1 cassette, or a chain of them, to build a multigene construct.'),
+    ]:
+        if name in have_bb:
+            continue
+        try:
+            Backbone.create(
+                name=name, owner_id=demo_user.id,
+                sequence=build_moclo_acceptor('GGAG', 'CGCT', enzyme=enz),
+                description=desc, restriction_sites=[],
+                overhang_5prime='GGAG', overhang_3prime='CGCT',
+                contributor='demo', lab_source='Generated',
+            )
+            logger.info(f"Created {name}")
+        except Exception as e:  # noqa: BLE001
+            logger.error(f"Demo backbone {name}: {e}")
+
+    # Demo Level 1 cassettes. One plain transcription unit, plus three
+    # position-linked units (TU1..TU3) whose overhangs chain GGAG -> GTCA ->
+    # TAGC -> CGCT so they assemble together into the Level 2 acceptor.
+    have_cas = {c.name for c in Cassette.get_all()}
+    cassettes_by_name = {c.name: c for c in Cassette.get_all()}
+    cassette_specs = [
+        ('DEMO transcription unit',
+         ['DEMO p35S (short)', 'DEMO tRFP (CDS)', 'DEMO t35S']),
+        ('DEMO TU1 p35S>tRFP (GGAG..GTCA)',
+         ['DEMO p35S (short)', 'DEMO tRFP (CDS)', 'DEMO t35S',
+          'DEMO end-linker A (CGCT->GTCA)']),
+        ('DEMO TU2 pMAS>reporter (GTCA..TAGC)',
+         ['DEMO start-linker B (GTCA->GGAG)', 'DEMO pMAS', 'DEMO CDS reporter',
+          'DEMO t35S', 'DEMO end-linker B (CGCT->TAGC)']),
+        ('DEMO TU3 pNOS>tag (TAGC..CGCT)',
+         ['DEMO start-linker C (TAGC->GGAG)', 'DEMO pNOS', 'DEMO CDS tag',
+          'DEMO t35S']),
+    ]
+    for cname, pnames in cassette_specs:
+        if cname in have_cas:
+            continue
+        parts = [parts_by_name.get(n) for n in pnames]
+        if any(p is None for p in parts):
+            missing = [n for n, p in zip(pnames, parts) if p is None]
+            logger.warning(f"Demo cassette {cname}: missing parts {missing}, skipping")
+            continue
+        try:
+            cas = create_cassette(name=cname, owner_id=demo_user.id, parts=parts)
+            cassettes_by_name[cname] = cas
+            logger.info(f"Created {cname} "
+                        f"({cas.assembled_sequence[:4]}->{cas.assembled_sequence[-4:]})")
+        except Exception as e:  # noqa: BLE001
+            logger.error(f"Demo cassette {cname}: {e}")
+
+    # Pre-assemble the multigene Level 2 plasmid so the demo library itself
+    # reaches Level 2: the three chained transcription units in the L2 acceptor.
+    try:
+        from app.models.final_plasmid import FinalPlasmid
+        from app.services.plasmid_assembly import assemble_plasmid
+
+        l2 = next((b for b in Backbone.get_all()
+                   if b.name == 'DEMO L2 acceptor (BpiI)'), None)
+        chain = [cassettes_by_name.get('DEMO TU1 p35S>tRFP (GGAG..GTCA)'),
+                 cassettes_by_name.get('DEMO TU2 pMAS>reporter (GTCA..TAGC)'),
+                 cassettes_by_name.get('DEMO TU3 pNOS>tag (TAGC..CGCT)')]
+        done = {p.name for p in FinalPlasmid.get_all()}
+        if l2 and all(chain) and 'DEMO multigene L2 (3 TUs)' not in done:
+            pl = assemble_plasmid(backbone=l2, cassettes=chain,
+                                  name='DEMO multigene L2 (3 TUs)',
+                                  owner_id=demo_user.id)
+            logger.info(f"Created DEMO multigene L2 (3 TUs), {pl.size} bp")
+    except Exception as e:  # noqa: BLE001
+        logger.error(f"Demo multigene L2: {e}")
 
 
 def _ensure_default_admin():
