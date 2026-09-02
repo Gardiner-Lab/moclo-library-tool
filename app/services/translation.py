@@ -486,6 +486,72 @@ def analyze_coding_sequence(sequence: str, part_boundaries: List[Dict[str, Any]]
     return result
 
 
+def _introns_from_part_features(part, part_len: int) -> List[Dict[str, Any]]:
+    """
+    Derive intron positions from a part's stored GenBank features.
+
+    Returns positions relative to the part BODY (the part sequence minus its
+    leading 4 bp 5' overhang), matching the convention used for the
+    INTRON_ANNOTATIONS comment block.
+
+    Handles two coordinate conventions in the stored features:
+      - already relative to the part body / sequence, or
+      - still in source-plasmid coordinates, in which case the offset to the
+        part body is inferred from a feature that spans roughly the whole part
+        (for example an "intronized CDS"), else from the furthest feature end.
+    """
+    import re as _re
+
+    feats = getattr(part, 'features', None) or []
+    if not feats:
+        return []
+
+    def _is_intron(f):
+        if str(f.get('type', '')).lower() == 'intron':
+            return True
+        return bool(_re.search(r'\bintron\b', str(f.get('label', '')).lower()))
+
+    def _ints(f):
+        try:
+            return int(f['start']), int(f['end'])
+        except (KeyError, TypeError, ValueError):
+            return None
+
+    intron_feats = [(_ints(f), f) for f in feats if _is_intron(f)]
+    intron_feats = [(se, f) for se, f in intron_feats if se and se[1] > se[0]]
+    if not intron_feats:
+        return []
+
+    all_ends = [_ints(f)[1] for f in feats if _ints(f)]
+    max_end = max(all_ends) if all_ends else part_len
+
+    if all(0 <= s and e <= part_len for (s, e), _ in intron_feats):
+        offset = 0
+    else:
+        tol = max(20, part_len // 50)
+        span_starts = [
+            _ints(f)[0] for f in feats
+            if _ints(f) and abs((_ints(f)[1] - _ints(f)[0]) - part_len) <= tol
+        ]
+        offset = min(span_starts) if span_starts else max(0, max_end - part_len)
+
+    body_len = max(0, part_len - 4)
+    out = []
+    for (s, e), f in intron_feats:
+        bs = max(0, s - offset - 4)
+        be = min(body_len, e - offset - 4)
+        if be - bs >= 2:
+            out.append({
+                'start': bs,
+                'end': be,
+                'length': be - bs,
+                'name': f.get('label') or 'intron',
+                'source': 'genbank_feature',
+            })
+    out.sort(key=lambda d: d['start'])
+    return out
+
+
 def get_part_boundaries_from_cassette(parts: List[Any], assembled_sequence: str) -> List[Dict[str, Any]]:
     """
     Calculate part boundaries in the assembled cassette sequence.
@@ -528,7 +594,14 @@ def get_part_boundaries_from_cassette(parts: List[Any], assembled_sequence: str)
                     intron_annotations = json.loads(match.group(1))
                 except json.JSONDecodeError:
                     pass
-        
+
+        # Fall back to the part's stored GenBank features when the comment
+        # carries no intron block (covers parts whose upload never wrote one).
+        if not intron_annotations:
+            feat_introns = _introns_from_part_features(part, len(part.sequence))
+            if feat_introns:
+                intron_annotations = feat_introns
+
         boundaries.append({
             'part_id': part.id,
             'part_name': part.name,

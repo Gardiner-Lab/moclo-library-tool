@@ -611,31 +611,35 @@ async function loadPartTranslation(partId) {
             return;
         }
 
+        const nIntrons = (t.intron_positions || []).length;
+        const spliced = t.protein_sequence_spliced || '';
+        const splicedClean = spliced && !spliced.slice(0, -1).includes('*');
+        // Warnings that describe the unspliced genomic frame are expected noise
+        // once splicing produces a clean protein; keep them out of the headline.
+        const genomicNoise = /genomic sequence|not in frame|premature stop/i;
+        const realWarnings = (t.warnings || []).filter(
+            w => !(t.requires_splicing && splicedClean && genomicNoise.test(w))
+        );
+
         let html = '';
 
-        if (t.has_introns && t.intron_positions && t.intron_positions.length > 0) {
-            html += `<p class="warning-message">Contains ${t.intron_positions.length} intron(s); ` +
-                `the pre-splicing protein below is from genomic DNA.</p>`;
+        if (t.requires_splicing && splicedClean) {
+            const introLen = (t.spliced_dna_sequence || '').length;
+            html += `<p class="text-muted">${nIntrons} intron(s) removed; spliced protein is ` +
+                `${spliced.length} aa from a ${introLen} bp mRNA.</p>`;
+        } else if (t.has_introns && nIntrons > 0) {
+            html += `<p class="warning-message">Contains ${nIntrons} intron(s); the protein below ` +
+                `is from genomic DNA and needs splicing.</p>`;
         }
-        if (!t.in_frame) {
-            html += '<p class="warning-message">Coding region is not in frame.</p>';
-        }
-        (t.warnings || []).forEach(w => {
+        realWarnings.forEach(w => {
             html += `<p class="warning-message">${escapeHtml(w)}</p>`;
         });
 
-        if (t.protein_sequence) {
+        if (spliced) {
             html += `
                 <div class="translation-item">
-                    <div class="detail-label">Protein${t.requires_splicing ? ' (genomic, pre-splicing)' : ''} — ${t.protein_sequence.length} aa:</div>
-                    <pre class="sequence-display">${formatSequence(t.protein_sequence)}</pre>
-                </div>`;
-        }
-        if (t.protein_sequence_spliced && t.protein_sequence_spliced !== t.protein_sequence) {
-            html += `
-                <div class="translation-item">
-                    <div class="detail-label">Spliced protein — ${t.protein_sequence_spliced.length} aa:</div>
-                    <pre class="sequence-display">${formatSequence(t.protein_sequence_spliced)}</pre>
+                    <div class="detail-label">Spliced protein — ${spliced.length} aa:</div>
+                    <pre class="sequence-display protein-sequence">${formatSequence(spliced)}</pre>
                 </div>`;
         }
         if (t.spliced_dna_sequence) {
@@ -643,6 +647,14 @@ async function loadPartTranslation(partId) {
                 <div class="translation-item">
                     <div class="detail-label">Spliced mRNA — ${t.spliced_dna_sequence.length} bp:</div>
                     <pre class="sequence-display">${formatSequence(t.spliced_dna_sequence)}</pre>
+                </div>`;
+        }
+        if (t.protein_sequence && t.protein_sequence !== spliced) {
+            const label = t.requires_splicing ? 'Genomic protein (pre-splicing)' : 'Protein';
+            html += `
+                <div class="translation-item">
+                    <div class="detail-label">${label} — ${t.protein_sequence.length} aa:</div>
+                    <pre class="sequence-display">${formatSequence(t.protein_sequence)}</pre>
                 </div>`;
         }
 
