@@ -554,6 +554,13 @@ function renderPartDetails(part) {
             </div>
         </div>
 
+        ${['Coding', 'ExpressionCassette'].includes(part.part_type) ? `
+        <div class="part-detail-section">
+            <h3>Translation</h3>
+            <div id="partTranslation">Analysing coding sequence...</div>
+        </div>
+        ` : ''}
+
         <div class="part-detail-section">
             <h3>Compatible Parts</h3>
             <div id="compatibleParts">Loading compatible parts...</div>
@@ -574,6 +581,76 @@ function renderPartDetails(part) {
 
     // Load compatible parts
     loadCompatibleParts(part.id);
+
+    // Load translation for coding parts
+    if (['Coding', 'ExpressionCassette'].includes(part.part_type)) {
+        loadPartTranslation(part.id);
+    }
+}
+
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text == null ? '' : String(text);
+    return div.innerHTML;
+}
+
+/**
+ * Load and display coding-sequence / intron-splicing analysis for a part.
+ */
+async function loadPartTranslation(partId) {
+    const container = document.getElementById('partTranslation');
+    if (!container) return;
+
+    try {
+        const response = await apiRequest(`/api/parts/${partId}/translation`);
+        const t = response.translation || {};
+
+        if (!t.has_coding) {
+            container.innerHTML =
+                '<p class="warning-message">No coding sequence (ATG start) detected in this part.</p>';
+            return;
+        }
+
+        let html = '';
+
+        if (t.has_introns && t.intron_positions && t.intron_positions.length > 0) {
+            html += `<p class="warning-message">Contains ${t.intron_positions.length} intron(s); ` +
+                `the pre-splicing protein below is from genomic DNA.</p>`;
+        }
+        if (!t.in_frame) {
+            html += '<p class="warning-message">Coding region is not in frame.</p>';
+        }
+        (t.warnings || []).forEach(w => {
+            html += `<p class="warning-message">${escapeHtml(w)}</p>`;
+        });
+
+        if (t.protein_sequence) {
+            html += `
+                <div class="translation-item">
+                    <div class="detail-label">Protein${t.requires_splicing ? ' (genomic, pre-splicing)' : ''} — ${t.protein_sequence.length} aa:</div>
+                    <pre class="sequence-display">${formatSequence(t.protein_sequence)}</pre>
+                </div>`;
+        }
+        if (t.protein_sequence_spliced && t.protein_sequence_spliced !== t.protein_sequence) {
+            html += `
+                <div class="translation-item">
+                    <div class="detail-label">Spliced protein — ${t.protein_sequence_spliced.length} aa:</div>
+                    <pre class="sequence-display">${formatSequence(t.protein_sequence_spliced)}</pre>
+                </div>`;
+        }
+        if (t.spliced_dna_sequence) {
+            html += `
+                <div class="translation-item">
+                    <div class="detail-label">Spliced mRNA — ${t.spliced_dna_sequence.length} bp:</div>
+                    <pre class="sequence-display">${formatSequence(t.spliced_dna_sequence)}</pre>
+                </div>`;
+        }
+
+        container.innerHTML = html || '<p class="text-muted">Coding region found.</p>';
+    } catch (error) {
+        container.innerHTML =
+            `<p class="error-message">Failed to analyse translation: ${escapeHtml(error.message)}</p>`;
+    }
 }
 
 /**
@@ -829,8 +906,8 @@ document.addEventListener('DOMContentLoaded', function() {
                         ? `\n\nPart type changed: refreshed translation for ${n} cassette(s):\n- ` +
                           response.recomputed_cassettes.join('\n- ')
                         : '\n\nPart type changed: no cassettes use this part.';
-                    if (response.translation && !response.translation.has_coding) {
-                        msg += '\n\nNote: no coding region was found in this part.';
+                    if (response.coding_warning) {
+                        msg += `\n\nNote: ${response.coding_warning}.`;
                     }
                 }
                 alert(msg);

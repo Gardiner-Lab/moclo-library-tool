@@ -961,6 +961,9 @@ async function handleBulkSubmit(event) {
                     : (data.level ? ` (Level ${escapeHtml(String(data.level))})` : '');
                 const renameNote = renamed ? ` <span style="color:#6b7280;">— renamed to ${escapeHtml(file.name)}</span>` : '';
                 resultsDiv.innerHTML += `<div style="color: #16a34a;">✓ ${escapeHtml(objName)}${kindNote} — uploaded${renameNote}</div>`;
+                if (data.coding_warning) {
+                    resultsDiv.innerHTML += `<div style="color: #d97706; margin-left: 1rem;">⚠ ${escapeHtml(data.coding_warning)}</div>`;
+                }
             } else if (response.status === 409) {
                 duplicateCount++;
                 resultsDiv.innerHTML += `<div style="color: #d97706;">⚠ ${shown} — ${data.error || data.message || 'duplicate'}</div>`;

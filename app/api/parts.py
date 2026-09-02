@@ -442,7 +442,7 @@ def _handle_genbank_upload():
         features=part_data.get('features')
     )
     
-    return jsonify({
+    resp = {
         'part': part.to_dict(),
         'message': f'Part uploaded successfully from GenBank file (Level {upload_level or "0"}, {part_data.get("enzyme_detected", "BsaI")} detected)',
         'source': 'genbank',
@@ -451,7 +451,20 @@ def _handle_genbank_upload():
         'level': upload_level,
         'bsai_sites_found': part_data['bsai_sites_found'],
         'intron_annotations': part_data.get('intron_annotations', [])
-    }), 201
+    }
+
+    # A Coding or ExpressionCassette part is expected to carry a coding sequence.
+    # Analyse it now so the caller can flag a part with none.
+    if part_type in ('Coding', 'ExpressionCassette'):
+        try:
+            translation = _analyze_part_translation(part)
+            resp['translation'] = translation
+            if not translation.get('has_coding'):
+                resp['coding_warning'] = 'No coding sequence (ATG start) detected in this part'
+        except Exception:  # noqa: BLE001
+            pass
+
+    return jsonify(resp), 201
 
 
 @parts_bp.route('/<part_id>', methods=['DELETE'])
@@ -617,6 +630,66 @@ def get_compatible_parts(part_id: str):
         }), 500
 
 
+def _analyze_part_translation(part):
+    """
+    Run coding-sequence and intron-splicing analysis for a single part.
+
+    Meaningful for Coding and ExpressionCassette parts. Returns the same
+    structure as the cassette translation analysis (has_coding, protein_sequence,
+    protein_sequence_spliced, intron_positions, warnings, ...).
+    """
+    from app.services.translation import (
+        analyze_coding_sequence,
+        get_part_boundaries_from_cassette,
+    )
+    boundaries = get_part_boundaries_from_cassette([part], part.sequence)
+    return analyze_coding_sequence(part.sequence, boundaries)
+
+
+@parts_bp.route('/<part_id>/translation', methods=['GET'])
+@require_session
+def get_part_translation(part_id: str):
+    """
+    Coding-sequence and intron-splicing analysis for a part.
+
+    Path Parameters:
+        part_id: Part ID
+
+    Response (200 OK):
+        {
+            "part_id": "string",
+            "part_name": "string",
+            "part_type": "string",
+            "coding_expected": bool,
+            "translation": { has_coding, protein_sequence, protein_sequence_spliced,
+                             spliced_dna_sequence, intron_positions, in_frame,
+                             stop_codons, warnings, ... }
+        }
+    """
+    part = Part.get_by_id(part_id)
+    if part is None:
+        return jsonify({
+            'error': 'Not found',
+            'message': f'Part {part_id} not found'
+        }), 404
+
+    try:
+        translation = _analyze_part_translation(part)
+    except Exception as e:  # noqa: BLE001
+        return jsonify({
+            'error': 'Analysis failed',
+            'message': str(e)
+        }), 500
+
+    return jsonify({
+        'part_id': part.id,
+        'part_name': part.name,
+        'part_type': part.part_type,
+        'coding_expected': part.part_type in ('Coding', 'ExpressionCassette'),
+        'translation': translation
+    }), 200
+
+
 @parts_bp.route('/<part_id>/download/genbank', methods=['GET'])
 @require_session
 def download_part_genbank(part_id: str):
@@ -776,19 +849,16 @@ def update_part(part_id: str):
             # cassette that uses it, since cassettes cache their analysis.
             if updated_part.part_type != old_part_type:
                 try:
-                    from app.services.translation import (
-                        analyze_coding_sequence,
-                        get_part_boundaries_from_cassette,
-                    )
                     from app.services.assembly import recompute_cassette_translation
                     from app.models.cassette import Cassette
 
-                    boundaries = get_part_boundaries_from_cassette(
-                        [updated_part], updated_part.sequence
-                    )
-                    response['translation'] = analyze_coding_sequence(
-                        updated_part.sequence, boundaries
-                    )
+                    translation = _analyze_part_translation(updated_part)
+                    response['translation'] = translation
+                    if (updated_part.part_type in ('Coding', 'ExpressionCassette')
+                            and not translation.get('has_coding')):
+                        response['coding_warning'] = (
+                            'No coding sequence (ATG start) detected in this part'
+                        )
 
                     refreshed = []
                     for cassette in Cassette.get_all():
