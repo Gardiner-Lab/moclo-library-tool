@@ -360,6 +360,14 @@ function showPlasmidModal(plasmid) {
         `;
     }
     
+    // Translation (per transcription unit) — filled in asynchronously
+    html += `
+        <div class="detail-section" id="plasmidTranslation">
+            <h3>Translation</h3>
+            <div>Analysing transcription units...</div>
+        </div>
+    `;
+
     // Export buttons
     html += `
         <div class="detail-section">
@@ -377,9 +385,58 @@ function showPlasmidModal(plasmid) {
             </div>
         </div>
     `;
-    
+
     detailsElement.innerHTML = html;
     modal.style.display = 'block';
+
+    loadPlasmidTranslation(plasmid.id);
+}
+
+/**
+ * Fetch and render per-transcription-unit translation for a Level 2+ plasmid.
+ */
+async function loadPlasmidTranslation(plasmidId) {
+    const container = document.getElementById('plasmidTranslation');
+    if (!container) return;
+
+    try {
+        const data = await apiRequest(`/api/plasmids/${plasmidId}/translation`);
+        const units = data.transcription_units || [];
+
+        let html = '<h3>Translation</h3>';
+        if (units.length === 0) {
+            html += '<div class="text-muted">No transcription units found.</div>';
+            container.innerHTML = html;
+            return;
+        }
+
+        const codingUnits = data.coding_units || [];
+        html += `<div class="text-muted">${codingUnits.length} of ${units.length} unit(s) contain a coding sequence.</div>`;
+
+        units.forEach(tu => {
+            const t = tu.translation || {};
+            const spliced = t.protein_sequence_spliced || '';
+            const protein = spliced || t.protein_sequence || '';
+            html += `<div class="translation-item">`;
+            html += `<div class="detail-label">${escapeHtml(tu.cassette_name || 'unit')} — `;
+            html += tu.has_coding
+                ? `${(protein || '').replace(/\*$/, '').length} aa${spliced ? ' (spliced)' : ''}`
+                : 'no coding sequence';
+            html += `</div>`;
+            if (tu.coding_parts && tu.coding_parts.length > 0) {
+                html += `<div class="text-muted">Coding part(s): ${tu.coding_parts.map(p => escapeHtml(p)).join(', ')}</div>`;
+            }
+            if (protein) {
+                html += `<pre class="sequence-display protein-sequence">${protein.replace(/(.{60})/g, '$1\n')}</pre>`;
+            }
+            html += `</div>`;
+        });
+
+        container.innerHTML = html;
+    } catch (error) {
+        container.innerHTML =
+            `<h3>Translation</h3><div class="error-message">Failed to analyse translation: ${escapeHtml(error.message)}</div>`;
+    }
 }
 
 /**

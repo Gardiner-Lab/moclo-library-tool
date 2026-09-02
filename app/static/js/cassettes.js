@@ -254,6 +254,14 @@ function renderCassetteDetail(cassette) {
             <div class="detail-section">
                 <h3>Translation Analysis</h3>
         `;
+
+        if (trans.coding_parts && trans.coding_parts.length > 0) {
+            html += `
+                <div class="translation-item">
+                    <strong>Coding part(s):</strong> ${trans.coding_parts.map(p => escapeHtml(p)).join(', ')}
+                </div>
+            `;
+        }
         
         // Show splicing warning prominently if introns/exons are present
         if (trans.requires_splicing) {

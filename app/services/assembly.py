@@ -261,30 +261,49 @@ def _capture_parts_metadata(parts: List[Part], assembled_sequence: str) -> List[
             'size': part.size if hasattr(part, 'size') else None,
             'lab_source': part.lab_source if hasattr(part, 'lab_source') else None,
             'contributor': part.contributor if hasattr(part, 'contributor') else None,
-            'description': part.description
+            'description': part.description,
+            'is_coding': part.part_type in ('Coding', 'ExpressionCassette'),
         }
-        
-        # For coding parts, include translation of the part's coding sequence
-        if part.part_type == 'Coding':
-            # Translate the part sequence itself
-            part_seq = part.sequence.upper()
-            start_codons = find_start_codons(part_seq)
-            if start_codons:
-                protein = translate_sequence(part_seq, start_codons[0])
+
+        # For coding parts (a plain CDS or an expression cassette), record the
+        # translation of the part's own coding sequence, spliced when the part
+        # carries introns, so a construct can report per-part protein output.
+        if entry['is_coding']:
+            try:
+                from app.services.translation import (
+                    analyze_coding_sequence,
+                    get_part_boundaries_from_cassette,
+                )
+                pb = get_part_boundaries_from_cassette([part], part.sequence)
+                t = analyze_coding_sequence(part.sequence, pb)
+                protein = t.get('protein_sequence_spliced') or t.get('protein_sequence')
                 entry['coding_translation'] = {
                     'protein_sequence': protein,
-                    'start_codon_position': start_codons[0],
-                    'protein_length': len(protein.rstrip('*')),
-                    'has_stop_codon': '*' in protein
+                    'protein_length': len((protein or '').rstrip('*')),
+                    'has_stop_codon': '*' in (protein or ''),
+                    'requires_splicing': t.get('requires_splicing', False),
+                    'intron_count': len(t.get('intron_positions') or []),
                 }
-            else:
-                entry['coding_translation'] = {
-                    'protein_sequence': None,
-                    'start_codon_position': None,
-                    'protein_length': 0,
-                    'has_stop_codon': False,
-                    'warning': 'No ATG start codon found in coding sequence'
-                }
+                if not t.get('has_coding'):
+                    entry['coding_translation']['warning'] = 'No ATG start codon found in coding sequence'
+            except Exception:  # noqa: BLE001
+                part_seq = part.sequence.upper()
+                start_codons = find_start_codons(part_seq)
+                if start_codons:
+                    protein = translate_sequence(part_seq, start_codons[0])
+                    entry['coding_translation'] = {
+                        'protein_sequence': protein,
+                        'start_codon_position': start_codons[0],
+                        'protein_length': len(protein.rstrip('*')),
+                        'has_stop_codon': '*' in protein,
+                    }
+                else:
+                    entry['coding_translation'] = {
+                        'protein_sequence': None,
+                        'protein_length': 0,
+                        'has_stop_codon': False,
+                        'warning': 'No ATG start codon found in coding sequence',
+                    }
         
         # Extract intron annotations from comments if present
         intron_annotations = []

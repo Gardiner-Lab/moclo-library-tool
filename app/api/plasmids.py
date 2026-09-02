@@ -739,14 +739,15 @@ def get_plasmid_translation(user, plasmid_id):
                 'message': f'Plasmid {plasmid_id} not found'
             }), 404
         
-        # Check if translation data is already stored in metadata
-        if plasmid.metadata and plasmid.metadata.get('translation'):
-            translation = plasmid.metadata['translation']
-            translation['plasmid_id'] = plasmid.id
-            translation['plasmid_name'] = plasmid.name
-            return jsonify(translation), 200
-        
-        # Compute on demand if not stored
+        # Use stored translation only if it carries the per-unit coding fields;
+        # older records predate them, so recompute in that case.
+        stored = plasmid.metadata.get('translation') if plasmid.metadata else None
+        if stored and 'coding_units' in stored:
+            stored['plasmid_id'] = plasmid.id
+            stored['plasmid_name'] = plasmid.name
+            return jsonify(stored), 200
+
+        # Compute on demand if not stored (or stored data is stale)
         from app.services.translation import analyze_plasmid_translation
         
         # Get cassettes

@@ -216,9 +216,11 @@ def analyze_coding_sequence(sequence: str, part_boundaries: List[Dict[str, Any]]
         'intron_positions': [],
         'has_exons': False,
         'exon_parts': [],
-        'requires_splicing': False
+        'requires_splicing': False,
+        'coding_parts': [],
+        'coding_part_ids': []
     }
-    
+
     # Check if there are any coding parts
     coding_parts = [p for p in part_boundaries
                     if p.get('part_type') in ('Coding', 'ExpressionCassette')]
@@ -303,6 +305,8 @@ def analyze_coding_sequence(sequence: str, part_boundaries: List[Dict[str, Any]]
     
     result['intron_parts'] = intron_parts
     result['exon_parts'] = exon_parts
+    result['coding_parts'] = [p.get('part_name') for p in coding_parts]
+    result['coding_part_ids'] = [p.get('part_id') for p in coding_parts if p.get('part_id')]
     result['intron_positions'] = intron_positions
     
     # If introns or exons are present, splicing is required
@@ -668,10 +672,15 @@ def analyze_plasmid_translation(plasmid_sequence: str, cassettes: List[Any],
                     'cassette_id': cassette.id,
                     'cassette_name': cassette.name,
                     'cassette_level': cassette.level or '1',
+                    'has_coding': bool(cassette.translation_data.get('has_coding')),
+                    'coding_parts': cassette.translation_data.get('coding_parts', []),
                     'translation': cassette.translation_data
                 })
                 if cassette.translation_data.get('has_coding'):
                     result['total_reading_frames'] = 1
+        result['coding_units'] = [
+            tu['cassette_name'] for tu in result['transcription_units'] if tu.get('has_coding')
+        ]
         return result
     
     # Level 2+: each cassette is an independent transcription unit
@@ -680,12 +689,16 @@ def analyze_plasmid_translation(plasmid_sequence: str, cassettes: List[Any],
             'cassette_id': cassette.id,
             'cassette_name': cassette.name,
             'cassette_level': cassette.level or 'unknown',
+            'has_coding': False,
+            'coding_parts': [],
             'translation': None
         }
-        
+
         # Use persisted translation data from when the cassette was built from Level 0 parts
         if hasattr(cassette, 'translation_data') and cassette.translation_data:
             tu_entry['translation'] = cassette.translation_data
+            tu_entry['has_coding'] = bool(cassette.translation_data.get('has_coding'))
+            tu_entry['coding_parts'] = cassette.translation_data.get('coding_parts', [])
             if cassette.translation_data.get('has_coding'):
                 result['total_reading_frames'] += 1
         else:
@@ -702,11 +715,17 @@ def analyze_plasmid_translation(plasmid_sequence: str, cassettes: List[Any],
                 boundaries = get_part_boundaries_from_cassette(parts, cassette.assembled_sequence)
                 translation = analyze_coding_sequence(cassette.assembled_sequence, boundaries)
                 tu_entry['translation'] = translation
+                tu_entry['has_coding'] = bool(translation.get('has_coding'))
+                tu_entry['coding_parts'] = translation.get('coding_parts', [])
                 if translation.get('has_coding'):
                     result['total_reading_frames'] += 1
-        
+
         result['transcription_units'].append(tu_entry)
-    
+
+    result['coding_units'] = [
+        tu['cassette_name'] for tu in result['transcription_units'] if tu.get('has_coding')
+    ]
+
     if result['total_reading_frames'] > 1:
         result['warnings'].append(
             f'This Level {plasmid_level} plasmid contains {result["total_reading_frames"]} '
