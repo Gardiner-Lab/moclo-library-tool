@@ -241,11 +241,13 @@
                     <option value="">Auto-detect from restriction sites</option>
                     <option value="0">Level 0 (basic part, BsaI flanked)</option>
                     <option value="1">Level 1 (cassette, BpiI flanked)</option>
+                    <option value="backbone">Backbone / acceptor vector</option>
                 </select>
                 <div class="form-help">
                     Choose "Level 1" for cassette plasmids. Level 1 constructs contain internal
                     BsaI sites from their assembled Level 0 parts, so auto-detect may mis-read them
                     as Level 0. Selecting Level 1 forces BpiI as the cloning enzyme.
+                    Choose "Backbone" to register the file as an acceptor vector instead of a part.
                 </div>
             </div>
 
@@ -303,23 +305,22 @@
                 <div id="bulkFileError" class="error-message"></div>
             </div>
 
-            <!-- Per-file MoClo level -->
+            <!-- Per-file category -->
             <div class="form-group" id="bulkLevelGroup" style="display: none;">
-                <label>MoClo Level per file</label>
+                <label>Category per file</label>
                 <div class="bulk-level-toolbar">
                     <span class="form-help" style="margin:0;">Set all to:</span>
-                    <button type="button" class="btn-small" data-setall="">Auto</button>
+                    <button type="button" class="btn-small" data-setall="backbone">Backbone</button>
                     <button type="button" class="btn-small" data-setall="0">Level 0</button>
                     <button type="button" class="btn-small" data-setall="1">Level 1</button>
                 </div>
                 <div id="bulkFileRows" class="bulk-file-rows"></div>
                 <div class="form-help">
-                    A green <em>from filename</em> tag means the level was read from the name.
-                    Rows in amber have no level and default to <strong>Auto-detect</strong>, which
-                    can mis-read a Level 1 cassette as Level 0 and reject its flanking BpiI sites as
-                    internal. You are asked to confirm before any amber row is uploaded. When you
-                    set a level, the file is renamed with the matching <code>_L0</code> /
-                    <code>_L1</code> / <code>_L2</code> token before it is parsed.
+                    The category is read from an <code>L0</code> / <code>L1</code> / <code>L2</code>
+                    token in the filename (green <em>from filename</em> tag). A file with no level
+                    token is treated as a <strong>backbone</strong> and registered as an acceptor
+                    vector. When a level is set, the file is renamed with the matching
+                    <code>_L0</code> / <code>_L1</code> / <code>_L2</code> token before it is parsed.
                 </div>
             </div>
 
@@ -508,12 +509,8 @@
         background: #6b7280;
     }
 
-    .bulk-file-row.needs-level .fname {
-        color: #b45309;
-    }
-
-    .bulk-file-row.needs-level select {
-        border-color: #f59e0b;
+    .fname-hint.backbone {
+        background: #0ea5e9;
     }
 </style>
 {% endblock %}

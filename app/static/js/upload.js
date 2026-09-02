@@ -283,9 +283,11 @@ async function handleGenbankSubmit(event) {
     }
 
     const genbankLevel = document.getElementById('genbankLevel') ? document.getElementById('genbankLevel').value : '';
-    if (genbankLevel) {
+    const asBackbone = genbankLevel === 'backbone';
+    if (genbankLevel && !asBackbone) {
         formData.append('level', genbankLevel);
     }
+    const endpoint = asBackbone ? '/api/backbones' : '/api/parts';
     
     // Set loading state
     const submitButton = document.getElementById('genbankSubmitButton');
@@ -295,29 +297,31 @@ async function handleGenbankSubmit(event) {
     
     try {
         // Submit to API (multipart/form-data)
-        const response = await fetch('/api/parts', {
+        const response = await fetch(endpoint, {
             method: 'POST',
             body: formData,
             credentials: 'same-origin'
         });
-        
+
         if (!response.ok) {
             const errorData = await response.json();
-            throw new Error(errorData.error || 'Upload failed');
+            throw new Error(errorData.error || errorData.message || 'Upload failed');
         }
-        
+
         const data = await response.json();
-        
+
         // Success - show message with details
-        let message = 'Part uploaded successfully from GenBank file!';
-        if (data.detected_type) {
+        let message = asBackbone
+            ? 'Backbone uploaded successfully from GenBank file!'
+            : 'Part uploaded successfully from GenBank file!';
+        if (!asBackbone && data.detected_type) {
             message += ` (Detected type: ${data.detected_type})`;
         }
         showFlashMessage(message, 'success');
-        
-        // Redirect to parts browser after a short delay
+
+        // Redirect to the relevant browser after a short delay
         setTimeout(() => {
-            window.location.href = '/parts';
+            window.location.href = asBackbone ? '/backbones' : '/parts';
         }, 1500);
         
     } catch (error) {
@@ -631,6 +635,7 @@ function initBulkUploadForm() {
                 const val = btn.getAttribute('data-setall');
                 document.querySelectorAll('#bulkFileRows .bulk-file-level').forEach((sel) => {
                     sel.value = val;
+                    sel.dispatchEvent(new Event('change'));
                 });
             });
         });
@@ -656,7 +661,7 @@ function inferMocloLevel(filename) {
  * carries the right token.
  */
 function nameWithLevel(filename, level) {
-    if (!level) return filename;
+    if (!/^[012]$/.test(level)) return filename;
     if (inferMocloLevel(filename) === level) return filename;
     const dot = filename.lastIndexOf('.');
     let base = dot > 0 ? filename.slice(0, dot) : filename;
@@ -719,46 +724,46 @@ function updateBulkFileDisplay() {
             rows.innerHTML = '';
             validFiles.forEach((fname) => {
                 const guess = inferMocloLevel(fname);
+                const initial = guess || 'backbone';
                 const row = document.createElement('div');
-                row.className = 'bulk-file-row' + (guess ? '' : ' needs-level');
+                row.className = 'bulk-file-row';
                 row.dataset.filename = fname;
                 const label = document.createElement('span');
                 label.className = 'fname';
                 label.textContent = fname;
-                if (guess) {
-                    const tag = document.createElement('span');
-                    tag.className = 'fname-hint';
-                    tag.textContent = 'from filename';
-                    tag.title = `Level ${guess} read from the filename`;
-                    label.appendChild(document.createTextNode(' '));
-                    label.appendChild(tag);
-                }
+                const tag = document.createElement('span');
+                tag.className = 'fname-hint';
+                label.appendChild(document.createTextNode(' '));
+                label.appendChild(tag);
                 const sel = document.createElement('select');
                 sel.className = 'bulk-file-level form-control';
                 sel.innerHTML =
-                    '<option value="">Auto-detect</option>' +
+                    '<option value="backbone">Backbone</option>' +
                     '<option value="0">Level 0 (BsaI)</option>' +
                     '<option value="1">Level 1 (BpiI)</option>' +
                     '<option value="2">Level 2 (BsaI)</option>';
-                sel.value = guess;
-                sel.addEventListener('change', () => {
-                    row.classList.toggle('needs-level', sel.value === '');
-                    let t = label.querySelector('.fname-hint');
-                    if (guess && sel.value === guess) {
-                        if (t) { t.textContent = 'from filename'; t.classList.remove('changed'); }
-                    } else if (sel.value === '') {
-                        if (t) t.remove();
+                sel.value = initial;
+                const paintTag = () => {
+                    tag.classList.remove('changed', 'backbone');
+                    if (sel.value === initial && guess) {
+                        tag.textContent = 'from filename';
+                        tag.title = `Level ${guess} read from the filename`;
+                    } else if (sel.value === initial) {
+                        tag.classList.add('backbone');
+                        tag.textContent = 'no level token, treated as backbone';
+                        tag.title = 'Rename with an _L0 / _L1 token to register as a part';
+                    } else if (sel.value === 'backbone') {
+                        tag.classList.add('backbone', 'changed');
+                        tag.textContent = 'backbone';
+                        tag.title = '';
                     } else {
-                        if (!t) {
-                            t = document.createElement('span');
-                            t.className = 'fname-hint';
-                            label.appendChild(document.createTextNode(' '));
-                            label.appendChild(t);
-                        }
-                        t.textContent = 'manual';
-                        t.classList.add('changed');
+                        tag.classList.add('changed');
+                        tag.textContent = 'manual';
+                        tag.title = '';
                     }
-                });
+                };
+                paintTag();
+                sel.addEventListener('change', paintTag);
                 row.appendChild(label);
                 row.appendChild(sel);
                 rows.appendChild(row);
@@ -801,34 +806,13 @@ async function handleBulkSubmit(event) {
         return;
     }
 
-    // Map each file to its chosen level from the per-file rows
-    const levelFor = {};
+    // Map each file to its chosen category from the per-file rows.
+    // Values: 'backbone' (default when no level token) or '0' / '1' / '2'.
+    const categoryFor = {};
     document.querySelectorAll('#bulkFileRows .bulk-file-row').forEach((r) => {
         const s = r.querySelector('.bulk-file-level');
-        levelFor[r.dataset.filename] = s ? s.value : '';
+        categoryFor[r.dataset.filename] = s ? s.value : 'backbone';
     });
-
-    // Prompt for any file left on Auto-detect: it may be mis-read as Level 0
-    const noLevel = files.filter((f) => !levelFor[f.name]);
-    if (noLevel.length > 0) {
-        const list = noLevel.slice(0, 10).map((f) => '  - ' + f.name).join('\n');
-        const more = noLevel.length > 10 ? `\n  ...and ${noLevel.length - 10} more` : '';
-        const ok = window.confirm(
-            `${noLevel.length} file(s) have no MoClo level set and will use Auto-detect, ` +
-            `which can mis-read a Level 1 cassette as Level 0:\n\n${list}${more}\n\n` +
-            `OK = upload anyway with Auto-detect.\n` +
-            `Cancel = go back and set the level (or rename the file with an _L1 token).`
-        );
-        if (!ok) {
-            if (noLevel[0]) {
-                const firstRow = document.querySelector(
-                    `#bulkFileRows .bulk-file-row[data-filename="${(window.CSS && CSS.escape) ? CSS.escape(noLevel[0].name) : noLevel[0].name}"]`
-                );
-                if (firstRow) firstRow.scrollIntoView({ block: 'center' });
-            }
-            return;
-        }
-    }
 
     // Get optional lab source
     const labSource = document.getElementById('bulkLabSource').value.trim();
@@ -845,9 +829,11 @@ async function handleBulkSubmit(event) {
 
     for (let i = 0; i < files.length; i++) {
         const original = files[i];
-        const level = levelFor[original.name] || '';
-        // Rename the file so its name carries the level token before it is
-        // parsed, then send the renamed file.
+        const category = categoryFor[original.name] || 'backbone';
+        const isBackbone = category === 'backbone';
+        const level = isBackbone ? '' : category;
+        // For a part, rename the file so its name carries the level token
+        // before it is parsed. Backbone files are sent as-is.
         const newName = nameWithLevel(original.name, level);
         const file = renameFile(original, newName);
         const renamed = file.name !== original.name;
@@ -870,15 +856,16 @@ async function handleBulkSubmit(event) {
         // Build form data for this file
         const formData = new FormData();
         formData.append('file', file);
-        if (labSource) {
+        if (!isBackbone && labSource) {
             formData.append('lab_source', labSource);
         }
         if (level !== '') {
             formData.append('level', level);
         }
+        const endpoint = isBackbone ? '/api/backbones' : '/api/parts';
 
         try {
-            const response = await fetch('/api/parts', {
+            const response = await fetch(endpoint, {
                 method: 'POST',
                 body: formData,
                 credentials: 'same-origin'
@@ -891,10 +878,13 @@ async function handleBulkSubmit(event) {
                 : escapeHtml(file.name);
             if (response.ok) {
                 successCount++;
-                const partName = data.part ? data.part.name : file.name;
-                const lvlNote = data.level ? ` (Level ${escapeHtml(String(data.level))})` : '';
+                const obj = data.part || data.backbone || {};
+                const objName = obj.name || file.name;
+                const kindNote = isBackbone
+                    ? ' <span style="color:#6b7280;">— backbone</span>'
+                    : (data.level ? ` (Level ${escapeHtml(String(data.level))})` : '');
                 const renameNote = renamed ? ` <span style="color:#6b7280;">— renamed to ${escapeHtml(file.name)}</span>` : '';
-                resultsDiv.innerHTML += `<div style="color: #16a34a;">✓ ${escapeHtml(partName)}${lvlNote} — uploaded${renameNote}</div>`;
+                resultsDiv.innerHTML += `<div style="color: #16a34a;">✓ ${escapeHtml(objName)}${kindNote} — uploaded${renameNote}</div>`;
             } else if (response.status === 409) {
                 duplicateCount++;
                 resultsDiv.innerHTML += `<div style="color: #d97706;">⚠ ${shown} — ${data.error || 'duplicate'}</div>`;
