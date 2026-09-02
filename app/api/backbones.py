@@ -22,6 +22,7 @@ from app.services.genbank_parser import (
 from app.services.restriction_sites import (
     find_moclo_sites,
     identify_cassette_slots,
+    compute_slot_overhangs,
     validate_moclo_backbone
 )
 from app.services.backbone_compatibility import find_compatible_cassettes
@@ -146,12 +147,18 @@ def upload_backbone(user):
                 'suggestion': f'The sequence should contain at least 2 {enzyme} sites that form valid cassette insertion slots'
             }), 400
         
-        # Identify cassette slots (for validation and response, but don't modify sites)
-        slots = identify_cassette_slots(sites)
-        
-        # Note: We store the raw restriction sites without slot_number
-        # The identify_cassette_slots function will be called when needed
-        # to determine slot information from the sites
+        # Detect cassette slots by a faithful Type IIS digest of the sequence
+        # (the same model used at assembly time), so a multi-slot Level 2
+        # acceptor reports the right number. Fall back to the site-pairing
+        # heuristic only when the digest finds no clean convergent pair.
+        slots = (compute_slot_overhangs(sequence, enzyme=enzyme)
+                 or compute_slot_overhangs(sequence)
+                 or identify_cassette_slots(sites))
+
+        # Persist the resolved slots (each carries slot_number and its fusion
+        # overhangs) so Backbone.cassette_slots counts them correctly and the
+        # assembly engine can read them back.
+        slot_records = slots if (slots and 'slot_number' in slots[0]) else sites
         
         # Extract additional metadata from GenBank annotations
         metadata = parsed_data.get('metadata', {})
@@ -189,7 +196,7 @@ def upload_backbone(user):
             sequence=sequence,
             description=description,
             genbank_data=parsed_data,
-            restriction_sites=sites,
+            restriction_sites=slot_records,
             contributor=contributor or user.username,  # Default to uploader
             donor_organism=donor_organism if donor_organism else None,
             lab_source=lab_source,
