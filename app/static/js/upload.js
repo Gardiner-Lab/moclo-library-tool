@@ -669,12 +669,32 @@ function inferMocloLevel(filename) {
  */
 function inferPartType(filename) {
     const s = String(filename).toLowerCase();
+    if (/cassette/.test(s)) return 'ExpressionCassette';
     if (/promoter/.test(s)) return 'NonCodingPromoter';
     if (/terminator/.test(s)) return 'NonCodingTerminator';
     if (/(^|[^a-z])(cds|coding)([^a-z]|$)/.test(s)) return 'Coding';
     if (/intron/.test(s)) return 'NonCodingIntron';
     if (/(^|[^a-z])(utr|5utr|3utr)([^a-z]|$)/.test(s)) return 'NonCodingOther';
     return '';
+}
+
+/**
+ * Part-type <option> list for a given category. Level 0 offers the basic part
+ * types; a Level 1 or Level 2 file is a transcription unit, so it offers only
+ * "expression cassette" or "non-coding other".
+ */
+function partTypeOptionsHtml(levelValue) {
+    if (levelValue === '1' || levelValue === '2') {
+        return '<option value="">Type: auto</option>' +
+            '<option value="ExpressionCassette">Expression cassette</option>' +
+            '<option value="NonCodingOther">Non-coding other</option>';
+    }
+    return '<option value="">Type: auto</option>' +
+        '<option value="Coding">Coding</option>' +
+        '<option value="NonCodingPromoter">Promoter</option>' +
+        '<option value="NonCodingTerminator">Terminator</option>' +
+        '<option value="NonCodingIntron">Intron</option>' +
+        '<option value="NonCodingOther">Other</option>';
 }
 
 /**
@@ -763,15 +783,7 @@ function updateBulkFileDisplay() {
                 // Part type override (parts only; the backbone endpoint ignores it)
                 const typeSel = document.createElement('select');
                 typeSel.className = 'bulk-file-parttype form-control';
-                typeSel.innerHTML =
-                    '<option value="">Type: auto</option>' +
-                    '<option value="Coding">Coding</option>' +
-                    '<option value="NonCodingPromoter">Promoter</option>' +
-                    '<option value="NonCodingTerminator">Terminator</option>' +
-                    '<option value="NonCodingIntron">Intron</option>' +
-                    '<option value="NonCodingOther">Other</option>';
                 const typeGuess = inferPartType(fname);
-                typeSel.value = typeGuess;
 
                 const sel = document.createElement('select');
                 sel.className = 'bulk-file-level form-control';
@@ -781,10 +793,23 @@ function updateBulkFileDisplay() {
                     '<option value="1">Level 1 (BpiI)</option>' +
                     '<option value="2">Level 2 (BsaI)</option>';
                 sel.value = initial;
-                const syncTypeVisibility = () => {
-                    typeSel.style.display = sel.value === 'backbone' ? 'none' : '';
+
+                // Rebuild the type options to match the chosen category, keeping
+                // the current pick when it is still valid.
+                const syncTypeControl = () => {
+                    if (sel.value === 'backbone') {
+                        typeSel.style.display = 'none';
+                        return;
+                    }
+                    typeSel.style.display = '';
+                    const prev = typeSel.value;
+                    typeSel.innerHTML = partTypeOptionsHtml(sel.value);
+                    const opts = Array.from(typeSel.options).map((o) => o.value);
+                    typeSel.value = opts.includes(prev)
+                        ? prev
+                        : (opts.includes(typeGuess) ? typeGuess : '');
                 };
-                syncTypeVisibility();
+                syncTypeControl();
                 const paintTag = () => {
                     tag.classList.remove('changed', 'backbone');
                     if (sel.value === initial && guess) {
@@ -805,7 +830,7 @@ function updateBulkFileDisplay() {
                     }
                 };
                 paintTag();
-                sel.addEventListener('change', () => { paintTag(); syncTypeVisibility(); });
+                sel.addEventListener('change', () => { paintTag(); syncTypeControl(); });
                 row.appendChild(label);
                 controls.appendChild(typeSel);
                 controls.appendChild(sel);

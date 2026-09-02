@@ -13,11 +13,12 @@ PART_COLORS = {
     'NonCodingPromoter': '#7ED321',  # Green
     'NonCodingTerminator': '#D0021B',  # Red
     'NonCodingIntron': '#F5A623',  # Yellow
-    'NonCodingOther': '#9B9B9B'  # Gray
+    'NonCodingOther': '#9B9B9B',  # Gray
+    'ExpressionCassette': '#4A90E2'  # Blue (Level 1 transcription unit)
 }
 
 # Part types that should display chevrons
-CHEVRON_TYPES = {'Coding', 'NonCodingPromoter'}
+CHEVRON_TYPES = {'Coding', 'NonCodingPromoter', 'ExpressionCassette'}
 
 
 def escape_xml(text: str) -> str:

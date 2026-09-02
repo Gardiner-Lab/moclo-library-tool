@@ -220,7 +220,8 @@ def analyze_coding_sequence(sequence: str, part_boundaries: List[Dict[str, Any]]
     }
     
     # Check if there are any coding parts
-    coding_parts = [p for p in part_boundaries if p.get('part_type') == 'Coding']
+    coding_parts = [p for p in part_boundaries
+                    if p.get('part_type') in ('Coding', 'ExpressionCassette')]
     if not coding_parts:
         return result
     

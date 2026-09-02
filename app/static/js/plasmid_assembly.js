@@ -593,7 +593,8 @@ function formatPartTypeLabel(type) {
         'NonCodingPromoter': 'Promoter',
         'NonCodingTerminator': 'Terminator',
         'NonCodingIntron': 'Intron',
-        'NonCodingOther': 'Other'
+        'NonCodingOther': 'Other',
+        'ExpressionCassette': 'Expression Cassette'
     };
     return map[type] || type;
 }

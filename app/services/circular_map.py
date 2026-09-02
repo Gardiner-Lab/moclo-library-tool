@@ -29,7 +29,8 @@ PART_TYPE_COLORS = {
     'NonCodingPromoter': '#7ED321',   # Green
     'NonCodingTerminator': '#D0021B', # Red
     'NonCodingIntron': '#F5A623',     # Yellow/Orange
-    'NonCodingOther': '#9B9B9B'       # Gray
+    'NonCodingOther': '#9B9B9B',      # Gray
+    'ExpressionCassette': '#4A90E2'   # Blue (contains a coding sequence)
 }
 
 

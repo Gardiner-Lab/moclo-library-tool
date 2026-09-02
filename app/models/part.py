@@ -18,7 +18,8 @@ class Part:
         'NonCodingPromoter',
         'NonCodingTerminator',
         'NonCodingIntron',
-        'NonCodingOther'
+        'NonCodingOther',
+        'ExpressionCassette'  # a Level 1 transcription unit (promoter-CDS-terminator)
     ]
     
     def __init__(
