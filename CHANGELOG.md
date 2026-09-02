@@ -5,6 +5,35 @@ All notable changes to the MoClo Library Tool project will be documented in this
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.8.0] - 2026-09-02
+
+### Added
+- `ExpressionCassette` part type for Level 1 files. Bulk upload offers only
+  "Expression cassette" or "Non-coding other" for a Level 1 or Level 2 row.
+- Per-file part-type selector in bulk upload, pre-filled from the filename, with
+  "All types" batch buttons.
+- Coding-sequence check and translation for `Coding` and `ExpressionCassette`
+  parts: `GET /api/parts/<id>/translation`, a Translation section in the part
+  detail view, and a `coding_warning` in upload and edit responses.
+- Level 1 and Level 2 constructs track which parts are coding: `coding_parts`
+  per cassette, `has_coding` / `coding_parts` per transcription unit, and a
+  `coding_units` summary. Cassette and plasmid detail views report them.
+- Easy in-place updates: `docker-compose.watchtower.yml` for automatic updates,
+  and an Admin dashboard panel with copy-paste commands for a one-shot host
+  update or enabling Watchtower. `make update-auto`.
+
+### Changed
+- Introns are now recognised from a part's stored GenBank features, not only the
+  `INTRON_ANNOTATIONS` comment, so a CDS with annotated introns splices and
+  translates (verified on a 13-intron dCas9 part).
+- Changing a part's type recomputes its translation and refreshes every cassette
+  that uses it.
+
+### Fixed
+- `GET /api/cassettes/<id>/translation` returned 500 from a doubled auth decorator.
+- Bulk backbone uploads use the existing `/api/backbones` endpoint and surface its
+  `message` field in the results log.
+
 ## [1.7.0] - 2026-09-02
 
 ### Added
