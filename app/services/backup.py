@@ -7,6 +7,7 @@ Triggered on user logout.
 
 import os
 import shutil
+import tempfile
 import logging
 from datetime import datetime, timezone
 
@@ -17,8 +18,14 @@ MAX_BACKUPS = 20  # Keep the most recent N backups per database
 
 def _backup_dir() -> str:
     path = os.environ.get('BACKUP_DIR', '/data/backups')
-    os.makedirs(path, exist_ok=True)
-    return path
+    try:
+        os.makedirs(path, exist_ok=True)
+        return path
+    except OSError as e:
+        fallback = os.path.join(tempfile.gettempdir(), 'moclo-backups')
+        logger.warning("Backup dir %s not usable (%s); using %s", path, e, fallback)
+        os.makedirs(fallback, exist_ok=True)
+        return fallback
 
 
 def _prune_old_backups(prefix: str):
@@ -60,9 +67,11 @@ def backup_database(db_path: str, prefix: str) -> bool:
 
 
 def backup_all():
-    """Back up both the main database and the parts database."""
-    main_db = os.environ.get('DATABASE_PATH', '/data/moclo.db')
-    parts_db = os.environ.get('PARTS_DATABASE_PATH', '/data/parts.db')
-
-    backup_database(main_db, 'moclo')
-    backup_database(parts_db, 'parts')
+    """Back up both databases. Best effort: never raises to the caller."""
+    try:
+        main_db = os.environ.get('DATABASE_PATH', '/data/moclo.db')
+        parts_db = os.environ.get('PARTS_DATABASE_PATH', '/data/parts.db')
+        backup_database(main_db, 'moclo')
+        backup_database(parts_db, 'parts')
+    except Exception as e:  # noqa: BLE001
+        logger.error("backup_all failed: %s", e)

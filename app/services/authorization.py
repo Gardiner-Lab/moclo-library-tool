@@ -17,6 +17,16 @@ from app.models.cassette import Cassette
 from app.models.user import User
 
 
+def _resolve_session_id() -> Optional[str]:
+    """Session id from the Flask session, the X-Session-ID header, or a plain
+    session_id cookie, in that order."""
+    return (
+        session.get('session_id')
+        or request.headers.get('X-Session-ID')
+        or request.cookies.get('session_id')
+    )
+
+
 def require_auth(f: Callable) -> Callable:
     """
     Decorator to require authentication for protected routes.
@@ -45,9 +55,7 @@ def require_auth(f: Callable) -> Callable:
     @wraps(f)
     def decorated_function(*args, **kwargs):
         # Try to get session ID from Flask session first, then from header
-        session_id = session.get('session_id')
-        if not session_id:
-            session_id = request.headers.get('X-Session-ID')
+        session_id = _resolve_session_id()
         
         if not session_id:
             return jsonify({
@@ -134,9 +142,7 @@ def require_cassette_ownership(f: Callable) -> Callable:
     @wraps(f)
     def decorated_function(*args, **kwargs):
         # First, check authentication - try Flask session first, then header
-        session_id = session.get('session_id')
-        if not session_id:
-            session_id = request.headers.get('X-Session-ID')
+        session_id = _resolve_session_id()
         
         if not session_id:
             return jsonify({

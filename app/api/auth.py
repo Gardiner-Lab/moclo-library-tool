@@ -218,9 +218,12 @@ def logout():
         # Clear Flask session
         session.clear()
         
-        # Back up databases on logout
-        backup_all()
-        
+        # Back up databases on logout (best effort; must not break logout)
+        try:
+            backup_all()
+        except Exception:  # noqa: BLE001
+            pass
+
         return jsonify({
             'message': 'Logout successful'
         }), 200
