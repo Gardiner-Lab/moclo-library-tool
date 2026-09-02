@@ -73,6 +73,38 @@ A Docker-containerized web application for managing and working with MoClo (Modu
    docker-compose down
    ```
 
+### Production deployment
+
+Run the published image instead of building locally:
+
+```bash
+SECRET_KEY=$(openssl rand -hex 32) \
+  docker compose -f docker-compose.prod.yml up -d
+```
+
+Data (parts, cassettes, plasmids, backups) is stored in the `moclo-data` named volume and survives updates.
+
+### Updating
+
+The Admin dashboard shows the running version and checks GitHub for newer releases ("Check for Updates"), with copy-paste commands for both options below.
+
+**One-shot update** — run on the host, in the app directory:
+
+```bash
+./update-prod.sh
+```
+
+This backs up the databases, pulls the new image, health-checks it, and rolls back automatically if the new version is unhealthy.
+
+**Automatic updates** — enable once and the container keeps itself current (checks hourly):
+
+```bash
+SECRET_KEY=$(openssl rand -hex 32) \
+  docker compose -f docker-compose.prod.yml -f docker-compose.watchtower.yml up -d
+```
+
+`make update` and `make update-auto` are shortcuts for the two commands. To stop automatic updates: `docker rm -f moclo-watchtower`.
+
 ### Development Setup (without Docker)
 
 **Note**: For image export functionality, you need to install Cairo system libraries:

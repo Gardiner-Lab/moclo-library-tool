@@ -1,4 +1,4 @@
-.PHONY: help setup install test test-cov run docker-build docker-up docker-down clean update update-check
+.PHONY: help setup install test test-cov run docker-build docker-up docker-down clean update update-check update-auto
 
 help:
 	@echo "MoClo Library Tool - Available Commands"
@@ -13,6 +13,7 @@ help:
 	@echo "docker-down  - Stop Docker container"
 	@echo "update-check - Report whether a newer published version exists"
 	@echo "update       - Pull new image, health-check, auto-rollback on failure"
+	@echo "update-auto  - Enable Watchtower so the container updates itself"
 	@echo "clean        - Remove generated files and caches"
 
 setup:
@@ -50,6 +51,10 @@ update-check:
 
 update:
 	./scripts/update.sh
+
+update-auto:
+	docker compose -f docker-compose.prod.yml -f docker-compose.watchtower.yml up -d
+	@echo "Watchtower is running; the container will update itself when a new image is published."
 
 clean:
 	find . -type d -name "__pycache__" -exec rm -rf {} +

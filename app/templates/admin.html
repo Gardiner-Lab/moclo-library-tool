@@ -245,20 +245,35 @@ async function checkForUpdate() {
     
     document.getElementById('currentVersion').textContent = 'v' + data.current_version;
     
+    const manual = data.manual_command || './update-prod.sh';
+    const auto = data.auto_update_command
+      || 'docker compose -f docker-compose.prod.yml -f docker-compose.watchtower.yml up -d';
+    const cmdBox = (cmd) => `
+      <div style="display:flex; gap:0.5rem; align-items:stretch; margin:0.35rem 0;">
+        <pre style="flex:1; margin:0; padding:0.5rem; background:#1e293b; color:#e2e8f0; border-radius:0.25rem; overflow-x:auto; font-size:0.8rem;">${cmd.replace(/&/g,'&amp;').replace(/</g,'&lt;')}</pre>
+        <button class="btn-sm btn-primary" onclick="copyText(this, ${JSON.stringify(cmd)})">Copy</button>
+      </div>`;
+
     if (data.update_available) {
       status.innerHTML = `<span style="color: #2563eb; font-weight: 600;">⬆️ Update available: v${data.latest_version}</span>`;
-      instructions.style.display = 'block';
-      instructions.innerHTML = `
-        <strong>To update, run on the host machine:</strong>
-        <pre style="margin: 0.5rem 0; padding: 0.5rem; background: #1e293b; color: #e2e8f0; border-radius: 0.25rem; overflow-x: auto;">./update-prod.sh</pre>
-        <p style="margin: 0.5rem 0 0; color: var(--text-secondary);">Or manually:</p>
-        <pre style="margin: 0.25rem 0; padding: 0.5rem; background: #1e293b; color: #e2e8f0; border-radius: 0.25rem; overflow-x: auto; font-size: 0.8rem;">docker-compose -f docker-compose.prod.yml pull
-docker-compose -f docker-compose.prod.yml up -d</pre>
-        <p style="margin: 0.5rem 0 0; font-size: 0.8rem; color: var(--text-secondary);">Your data (parts, cassettes, plasmids) will be preserved.</p>
-      `;
+    } else if (data.ahead_of_release) {
+      status.innerHTML = `<span style="color: #16a34a;">✓ Running v${data.current_version} (ahead of the latest release)</span>`;
     } else {
       status.innerHTML = `<span style="color: #16a34a;">✓ Up to date (v${data.current_version})</span>`;
     }
+
+    instructions.style.display = 'block';
+    instructions.innerHTML = `
+      <strong>Update now</strong> &mdash; run on the host, in the app directory:
+      ${cmdBox(manual)}
+      <p style="margin:0.25rem 0 0; font-size:0.8rem; color:var(--text-secondary);">
+        Backs up the databases, pulls the new image, health-checks, and rolls back automatically if the new version is unhealthy. Your parts, cassettes and plasmids are preserved.
+      </p>
+      <hr style="margin:0.75rem 0; border:none; border-top:1px solid #cbd5e1;">
+      <strong>Automatic updates</strong> &mdash; enable once, then it keeps itself current (hourly):
+      ${cmdBox(auto)}
+      ${data.release_notes ? `<p style="margin:0.5rem 0 0; font-size:0.8rem;"><a href="${data.release_notes}" target="_blank" rel="noopener">Release notes for v${data.latest_version} &rarr;</a></p>` : ''}
+    `;
   } catch (e) {
     status.innerHTML = `<span style="color: #dc2626;">Could not check: ${e.message}</span>`;
   } finally {
@@ -268,6 +283,17 @@ docker-compose -f docker-compose.prod.yml up -d</pre>
 }
 
 // checkForUpdate defined above, version loaded at bottom of script
+
+async function copyText(btn, text) {
+  try {
+    await navigator.clipboard.writeText(text);
+    const prev = btn.textContent;
+    btn.textContent = 'Copied';
+    setTimeout(() => { btn.textContent = prev; }, 1500);
+  } catch (e) {
+    btn.textContent = 'Copy failed';
+  }
+}
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 function closeModal(id) { document.getElementById(id).classList.remove('open'); }

@@ -1,0 +1,25 @@
+# Optional: automatic updates for the MoClo Library Tool.
+#
+# Watchtower watches the running image and redeploys the container whenever a
+# newer  ghcr.io/gardiner-lab/moclo-library-tool:latest  is published. Your data
+# lives in the named volume, so it is preserved across updates.
+#
+# Enable it alongside the production stack:
+#
+#   SECRET_KEY=$(openssl rand -hex 32) \
+#     docker compose -f docker-compose.prod.yml -f docker-compose.watchtower.yml up -d
+#
+# It checks hourly by default. For a fixed nightly window instead, change the
+# command to:  --cleanup --schedule "0 0 4 * * *" moclo-library-tool
+#
+# To stop auto-updates:  docker rm -f moclo-watchtower
+
+services:
+  watchtower:
+    image: containrrr/watchtower
+    container_name: moclo-watchtower
+    restart: unless-stopped
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    # Only manage the MoClo container, clean up old images, poll every hour.
+    command: --cleanup --interval 3600 moclo-library-tool

@@ -380,17 +380,25 @@ def check_update(user):
 
         update_available = latest > current
 
+        repo = 'Gardiner-Lab/moclo-library-tool'
         return jsonify({
             'current_version': APP_VERSION,
             'latest_version': latest_tag,
             'update_available': update_available,
             'ahead_of_release': current > latest,
-            'release_notes': f'https://github.com/{"Gardiner-Lab/moclo-library-tool"}/releases/tag/v{latest_tag}',
+            'release_notes': f'https://github.com/{repo}/releases/tag/v{latest_tag}',
             'message': (f'Update available: v{latest_tag}' if update_available
                         else ('Running a newer build than the latest release'
                               if current > latest else 'You are up to date')),
+            # One-shot manual update on the host (backup + health gate + auto-rollback):
+            'manual_command': './update-prod.sh',
+            # Hands-off automatic updates: run once, then the container keeps itself current.
+            'auto_update_command': (
+                'docker compose -f docker-compose.prod.yml '
+                '-f docker-compose.watchtower.yml up -d'
+            ),
             'update_instructions': (
-                'On the host machine run:  ./scripts/update.sh\n'
+                'On the host machine run:  ./update-prod.sh\n'
                 '(backs up the databases, pulls the new image, health-checks, '
                 'and rolls back automatically if the new version is unhealthy)'
             ) if update_available else None
