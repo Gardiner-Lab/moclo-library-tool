@@ -28,6 +28,9 @@ MOCLO_ENZYMES = {
     }
 }
 
+# Nucleotides between the recognition sequence and the 4 bp overhang (top strand).
+_ENZYME_SPACER = {'BsaI': 1, 'BsmBI': 1, 'BpiI': 2}
+
 
 def find_moclo_sites(
     sequence: str,
@@ -439,3 +442,136 @@ def validate_moclo_backbone(
         
     except Exception as e:
         return (False, f"Validation error: {str(e)}", [])
+
+
+def build_moclo_acceptor(
+    overhang_5prime: str,
+    overhang_3prime: str,
+    enzyme: str = 'BsaI',
+    stuffer: Optional[str] = None,
+    arm_5: str = 'AGCGTCAGGCACTGTGCCTGACGATCAGTACGGCAT',
+    arm_3: str = 'ATGCCGTACTGATCGTCAGGCACAGTGCCTGACGCT',
+) -> str:
+    """
+    Build a minimal, correctly wired MoClo acceptor sequence for one slot.
+
+    The two Type IIS sites are convergent (recognition sequences point inward at
+    the dropout) and spaced so that digestion removes the dropout and both
+    recognition sequences, leaving the backbone terminating in
+    ``overhang_5prime`` and ``overhang_3prime``. ``compute_slot_overhangs`` reads
+    this layout back exactly.
+
+    Layout (5' -> 3'):
+        arm_5  overhang_5prime  spacer  <rev recognition>  stuffer
+        <fwd recognition>  spacer  overhang_3prime  arm_3
+    """
+    if enzyme not in MOCLO_ENZYMES:
+        raise ValueError(f"Unknown enzyme: {enzyme}")
+    rec = MOCLO_ENZYMES[enzyme]['recognition']
+    rec_rc = reverse_complement(rec)
+    spacer = 'A' * _ENZYME_SPACER[enzyme]
+    if stuffer is None:
+        stuffer = 'TGACT' * 12  # generic dropout placeholder, no Type IIS sites
+    return (
+        arm_5
+        + overhang_5prime.upper()
+        + spacer + rec_rc            # reverse-strand site, cuts toward the dropout
+        + stuffer.upper()
+        + rec + spacer               # forward-strand site, cuts toward the dropout
+        + overhang_3prime.upper()
+        + arm_3
+    )
+
+
+def compute_slot_overhangs(
+    sequence: str,
+    enzyme: Optional[str] = None
+) -> List[Dict[str, Any]]:
+    """
+    Find convergent Type IIS site pairs in a MoClo acceptor and return, for each
+    slot, the exact excision window and the two 4 bp fusion overhangs the insert
+    must present.
+
+    This models Golden Gate faithfully: a MoClo acceptor carries, per slot, an
+    upstream site on the reverse strand and a downstream site on the forward
+    strand, both pointing inward at a dropout. Digestion removes the dropout and
+    both recognition sequences, leaving the backbone terminating in two 4 bp
+    overhangs. The insert ligates between them, so the final product is
+    ``backbone[:excise_start] + insert_body + backbone[excise_end:]`` with each
+    overhang present exactly once and no recognition site left behind.
+
+    Each slot dict contains:
+      - ``slot_number``, ``enzyme``
+      - ``overhang_5prime`` / ``overhang_3prime`` (fusion scars; the insert's
+        5' and 3' overhangs must equal these, or their reverse complements for a
+        reverse-orientation insert)
+      - ``excise_start`` / ``excise_end`` (half-open window to cut out; also
+        exposed as ``insertion_start`` / ``insertion_end`` /
+        ``insertion_length`` and ``expected_overhang_5prime`` /
+        ``expected_overhang_3prime`` for older callers)
+    """
+    seq = (sequence or '').upper()
+    candidates = [enzyme] if enzyme else ['BsaI', 'BpiI', 'BsmBI']
+
+    for enz in candidates:
+        if enz not in MOCLO_ENZYMES:
+            continue
+        spacer = _ENZYME_SPACER[enz]
+        sites = sorted(
+            find_moclo_sites(seq, enzyme=enz, include_reverse=True),
+            key=lambda s: s['position']
+        )
+
+        slots = []
+        slot_number = 1
+        i = 0
+        while i < len(sites) - 1:
+            upstream, downstream = sites[i], sites[i + 1]
+            # A slot is an upstream reverse-strand site and a downstream
+            # forward-strand site, both facing the dropout between them.
+            if upstream['strand'] != 'reverse' or downstream['strand'] != 'forward':
+                i += 1
+                continue
+
+            p_up = upstream['position']      # start of the reverse motif on top strand
+            p_down = downstream['position']  # start of the forward motif on top strand
+
+            # Backbone-retained overhangs sit outside the recognition motifs.
+            oh5_start, oh5_end = p_up - 4 - spacer, p_up - spacer
+            oh3_start, oh3_end = p_down + 6 + spacer, p_down + 10 + spacer
+
+            if oh5_start < 0 or oh3_end > len(seq) or oh5_end >= oh3_start:
+                i += 1
+                continue
+
+            oh5 = seq[oh5_start:oh5_end]
+            oh3 = seq[oh3_start:oh3_end]
+            if len(oh5) != 4 or len(oh3) != 4:
+                i += 1
+                continue
+
+            excise_start = oh5_end          # first base after the retained 5' overhang
+            excise_end = oh3_start          # first base of the retained 3' overhang
+
+            slots.append({
+                'slot_number': slot_number,
+                'enzyme': enz,
+                'overhang_5prime': oh5,
+                'overhang_3prime': oh3,
+                'expected_overhang_5prime': oh5,
+                'expected_overhang_3prime': oh3,
+                'excise_start': excise_start,
+                'excise_end': excise_end,
+                'insertion_start': excise_start,
+                'insertion_end': excise_end,
+                'insertion_length': excise_end - excise_start,
+                'site_5prime': upstream,
+                'site_3prime': downstream,
+            })
+            slot_number += 1
+            i += 2
+
+        if slots:
+            return slots
+
+    return []

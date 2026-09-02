@@ -8,7 +8,7 @@ with backbones based on overhang matching.
 from typing import List, Dict, Any, Optional, Tuple
 from app.models.cassette import Cassette
 from app.models.backbone import Backbone
-from app.services.restriction_sites import identify_cassette_slots
+from app.services.restriction_sites import identify_cassette_slots, compute_slot_overhangs
 
 
 def check_compatibility(
@@ -64,21 +64,13 @@ def check_compatibility(
         cassette_5prime_rc = cassette_seq_rc[:4].upper()
         cassette_3prime_rc = cassette_seq_rc[-4:].upper()
     
-    # Get backbone restriction sites and slots
-    sites = backbone.restriction_sites
-    if not sites:
-        return {
-            'compatible': False,
-            'reason': 'Backbone has no restriction sites detected',
-            'matching_slots': [],
-            'score': 0,
-            'details': {},
-            'orientation': None
-        }
-    
-    # Always process sites through identify_cassette_slots to get proper slot pairs
-    slots = identify_cassette_slots(sites)
-        
+    # Get backbone slots: prefer a faithful Type IIS digest of the sequence, fall
+    # back to the recognition-position heuristic for fixtures with pre-set sites.
+    sites = backbone.restriction_sites or []
+    slots = compute_slot_overhangs(getattr(backbone, 'sequence', '') or '')
+    if not slots:
+        slots = identify_cassette_slots(sites)
+
     if not slots:
         return {
             'compatible': False,

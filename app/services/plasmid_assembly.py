@@ -11,13 +11,63 @@ from app.models.backbone import Backbone
 from app.models.final_plasmid import FinalPlasmid
 from app.models.part import Part
 from app.services.backbone_compatibility import check_compatibility
-from app.services.restriction_sites import identify_cassette_slots
+from app.services.restriction_sites import (
+    identify_cassette_slots,
+    compute_slot_overhangs,
+    reverse_complement,
+)
 import re
 
 
 class AssemblyError(Exception):
     """Exception raised when assembly fails."""
     pass
+
+
+def backbone_slots(backbone) -> List[Dict[str, Any]]:
+    """Resolve a backbone's cassette-insertion slots.
+
+    Prefers a faithful Type IIS digest of ``backbone.sequence``
+    (``compute_slot_overhangs``), which yields the exact excision window and the
+    two fusion overhangs. Falls back to the older recognition-position heuristic
+    only for backbones whose sequence has no clean convergent site pair (for
+    example hand-built fixtures that carry pre-set ``restriction_sites``).
+    """
+    slots = compute_slot_overhangs(getattr(backbone, 'sequence', '') or '')
+    if slots:
+        return slots
+    sites = getattr(backbone, 'restriction_sites', None) or []
+    if sites and 'slot_number' in sites[0]:
+        return sites
+    return identify_cassette_slots(sites)
+
+
+def _chain_cassettes(cassettes: List[Cassette]) -> Cassette:
+    """Concatenate several Level 1 cassettes into one insert for a single-slot
+    backbone, sharing the 4 bp overhang at each internal junction exactly once.
+
+    Requires each cassette's 3' overhang to equal the next cassette's 5' overhang.
+    Returns a lightweight in-memory Cassette (not persisted).
+    """
+    for a, b in zip(cassettes, cassettes[1:]):
+        if a.assembled_sequence[-4:].upper() != b.assembled_sequence[:4].upper():
+            raise AssemblyError(
+                f"Cassettes '{a.name}' and '{b.name}' do not chain: 3' overhang "
+                f"{a.assembled_sequence[-4:]} != 5' overhang {b.assembled_sequence[:4]}"
+            )
+    seq = cassettes[0].assembled_sequence
+    for c in cassettes[1:]:
+        seq += c.assembled_sequence[4:]
+    part_ids = [pid for c in cassettes for pid in (c.part_ids or [])]
+    return Cassette(
+        id='+'.join(c.id for c in cassettes),
+        name=' + '.join(c.name for c in cassettes),
+        owner_id=cassettes[0].owner_id,
+        part_ids=part_ids,
+        assembled_sequence=seq,
+        level=cassettes[0].level,
+        parts_metadata=[m for c in cassettes for m in (c.parts_metadata or [])],
+    )
 
 
 def assemble_plasmid(
@@ -55,11 +105,21 @@ def assemble_plasmid(
     # Validate inputs
     if not cassettes:
         raise AssemblyError("At least one cassette is required for assembly")
-    
+
+    # A single-slot acceptor with several cassettes: chain them into one insert,
+    # sharing each internal 4 bp overhang once (true one-pot MoClo multigene).
+    available = backbone_slots(backbone)
+    if (len(cassettes) > 1 and len(available) == 1
+            and (slots is None or len(set(slots)) == 1)):
+        cassettes = [_chain_cassettes(cassettes)]
+        slots = [available[0]['slot_number']]
+        if orientations is not None:
+            orientations = ['forward']
+
     # Auto-assign slots if not provided
     if slots is None:
         slots = list(range(1, len(cassettes) + 1))
-    
+
     if len(slots) != len(cassettes):
         raise AssemblyError(f"Number of slots ({len(slots)}) must match number of cassettes ({len(cassettes)})")
     
@@ -102,23 +162,16 @@ def assemble_plasmid(
                     f"Cassette '{cassette.name}' is not compatible in {orientation} orientation at slot {slot}"
                 )
     
-    # Get backbone slots information
-    # Check if restriction_sites are already in slot format or need processing
-    if backbone.restriction_sites and 'slot_number' in backbone.restriction_sites[0]:
-        # Already in slot format
-        backbone_slots = backbone.restriction_sites
-    else:
-        # Need to process raw restriction site data
-        backbone_slots = identify_cassette_slots(backbone.restriction_sites)
-    
-    if not backbone_slots:
+    # Get backbone slots information (faithful Type IIS digest of the sequence)
+    bb_slots = backbone_slots(backbone)
+    if not bb_slots:
         raise AssemblyError(f"Backbone '{backbone.name}' has no valid insertion slots")
-    
+
     # Perform assembly with orientations
-    assembled_sequence = _assemble_sequence(backbone, cassettes, slots, backbone_slots, orientations)
-    
+    assembled_sequence = _assemble_sequence(backbone, cassettes, slots, bb_slots, orientations)
+
     # Merge features
-    merged_features = _merge_features(backbone, cassettes, slots, backbone_slots, orientations)
+    merged_features = _merge_features(backbone, cassettes, slots, bb_slots, orientations)
     
     # Generate name if not provided
     if name is None:
@@ -132,7 +185,7 @@ def assemble_plasmid(
     # Create metadata with cassette positions and orientations
     cassette_positions = []
     for cassette, slot, orientation in zip(cassettes, slots, orientations):
-        slot_info = next((s for s in backbone_slots if s['slot_number'] == slot), None)
+        slot_info = next((s for s in bb_slots if s['slot_number'] == slot), None)
         if slot_info:
             # Handle both slot formats
             if 'insertion_start' in slot_info:
@@ -718,21 +771,18 @@ def _determine_moclo_level(backbone: Backbone) -> int:
         except (ValueError, TypeError):
             pass
     
-    if not backbone.restriction_sites:
-        return 1  # Default to Level 1
-    
-    # Check which enzyme is used in the backbone
-    enzymes = set(site.get('enzyme', 'BsaI') for site in backbone.restriction_sites)
-    
-    if 'BsaI' in enzymes:
-        # BsaI backbone = Level 0 → Level 1 assembly
-        return 1
-    elif 'BpiI' in enzymes:
-        # BpiI backbone = Level 1 → Level 2 assembly
+    # Otherwise infer from the assembly enzyme (from the sequence if needed)
+    enzymes = set(site.get('enzyme', 'BsaI') for site in (backbone.restriction_sites or []))
+    if not enzymes:
+        enzymes = {s['enzyme'] for s in backbone_slots(backbone)}
+
+    if 'BpiI' in enzymes:
+        # BpiI backbone = Level 1 cassettes -> Level 2 plasmid
         return 2
-    else:
-        # Default or other enzymes
+    if 'BsaI' in enzymes or 'BsmBI' in enzymes:
+        # BsaI backbone = Level 0 parts -> Level 1 plasmid
         return 1
+    return 1
 
 
 def remove_restriction_sites(
@@ -784,30 +834,28 @@ def validate_assembly(
     # Check basic requirements
     if not cassettes:
         return False, "At least one cassette is required"
-    
-    if not backbone.restriction_sites:
-        return False, f"Backbone '{backbone.name}' has no restriction sites"
-    
-    # Check if restriction_sites are already in slot format or need processing
-    if 'slot_number' in backbone.restriction_sites[0]:
-        # Already in slot format
-        backbone_slots = backbone.restriction_sites
-    else:
-        # Need to process raw restriction site data
-        backbone_slots = identify_cassette_slots(backbone.restriction_sites)
-    
-    if not backbone_slots:
+
+    bb_slots = backbone_slots(backbone)
+    if not bb_slots:
         return False, f"Backbone '{backbone.name}' has no valid insertion slots"
-    
+
+    # A single-slot acceptor accepts a chain of cassettes as one insert.
+    if len(cassettes) > 1 and len(bb_slots) == 1 and (slots is None or len(set(slots)) == 1):
+        try:
+            cassettes = [_chain_cassettes(cassettes)]
+        except AssemblyError as e:
+            return False, str(e)
+        slots = [bb_slots[0]['slot_number']]
+
     # Auto-assign slots if needed
     if slots is None:
         slots = list(range(1, len(cassettes) + 1))
-    
+
     if len(slots) != len(cassettes):
         return False, f"Number of slots ({len(slots)}) must match number of cassettes ({len(cassettes)})"
-    
+
     # Check if all slots exist
-    available_slots = [s['slot_number'] for s in backbone_slots]
+    available_slots = [s['slot_number'] for s in bb_slots]
     for slot in slots:
         if slot not in available_slots:
             return False, f"Slot {slot} does not exist in backbone (available: {available_slots})"
@@ -857,23 +905,26 @@ def simulate_assembly(
             'cassette_positions': []
         }
     
+    bb_slots = backbone_slots(backbone)
+
+    # A single-slot acceptor accepts a chain of cassettes as one insert.
+    if len(cassettes) > 1 and len(bb_slots) == 1 and (slots is None or len(set(slots)) == 1):
+        try:
+            cassettes = [_chain_cassettes(cassettes)]
+        except AssemblyError as e:
+            return {'success': False, 'error': str(e), 'expected_length': 0,
+                    'feature_count': 0, 'cassette_positions': []}
+        slots = [bb_slots[0]['slot_number']]
+
     # Calculate expected size
     if slots is None:
         slots = list(range(1, len(cassettes) + 1))
-    
-    # Check if restriction_sites are already in slot format or need processing
-    if 'slot_number' in backbone.restriction_sites[0]:
-        # Already in slot format
-        backbone_slots = backbone.restriction_sites
-    else:
-        # Need to process raw restriction site data
-        backbone_slots = identify_cassette_slots(backbone.restriction_sites)
-    
+
     final_size = len(backbone.sequence)
     cassette_positions = []
-    
+
     # Handle simplified slot format
-    if backbone_slots and 'insertion_start' not in backbone_slots[0]:
+    if bb_slots and 'insertion_start' not in bb_slots[0]:
         # Simplified calculation
         for cassette, slot in zip(cassettes, slots):
             # Add cassette length (minus overhangs)
@@ -887,7 +938,7 @@ def simulate_assembly(
     else:
         # Detailed calculation with insertion positions
         for cassette, slot in zip(cassettes, slots):
-            slot_info = next((s for s in backbone_slots if s['slot_number'] == slot), None)
+            slot_info = next((s for s in bb_slots if s['slot_number'] == slot), None)
             if slot_info:
                 # Remove the insertion region
                 final_size -= slot_info['insertion_length']
