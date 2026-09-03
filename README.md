@@ -96,7 +96,7 @@ The Admin dashboard shows the running version and checks GitHub for newer releas
 
 This backs up the databases, pulls the new image, health-checks it, and rolls back automatically if the new version is unhealthy.
 
-**Automatic updates** — enable once and the container keeps itself current (checks hourly):
+**Automatic updates** — enable once and the container keeps itself current (checks weekly):
 
 ```bash
 SECRET_KEY=$(openssl rand -hex 32) \
