@@ -9,6 +9,66 @@ let selectedParts = [];
 let searchQuery = '';
 
 /**
+ * Reverse complement a DNA/overhang string.
+ */
+function reverseComplement(seq) {
+    if (!seq) return seq;
+    const comp = { A: 'T', T: 'A', C: 'G', G: 'C', N: 'N' };
+    return seq.toUpperCase().split('').reverse().map(b => comp[b] || b).join('');
+}
+
+/**
+ * Overhangs a part presents to the assembly in a given orientation.
+ * Returns { fivePrime, threePrime }.
+ * A reverse-oriented part is reverse-complemented, so its stored 3' becomes the
+ * leading 5' fusion site and its stored 5' becomes the trailing 3'.
+ */
+function presentedOverhangs(part, orientation) {
+    if (orientation === 'reverse') {
+        return {
+            fivePrime: reverseComplement(part.overhang_3prime),
+            threePrime: reverseComplement(part.overhang_5prime)
+        };
+    }
+    return { fivePrime: part.overhang_5prime, threePrime: part.overhang_3prime };
+}
+
+/**
+ * Determine whether part2 can follow part1 (placed in part1Orientation), and in
+ * which orientation. Returns 'forward', 'reverse', or null.
+ */
+function orientationToFollow(part1, part2, part1Orientation) {
+    const junction = presentedOverhangs(part1, part1Orientation || 'forward').threePrime;
+    for (const orientation of ['forward', 'reverse']) {
+        if (presentedOverhangs(part2, orientation).fivePrime === junction) {
+            return orientation;
+        }
+    }
+    return null;
+}
+
+/**
+ * Resolve orientation for each selected part. First part anchors forward.
+ * Returns an array of orientations, or null if the chain breaks.
+ */
+function resolveOrientations(parts) {
+    if (parts.length === 0) return [];
+    if (parts.length === 1) return ['forward'];
+    // The first part is a free anchor; a valid chain may need it reversed.
+    for (const anchor of ['forward', 'reverse']) {
+        const orientations = [anchor];
+        let ok = true;
+        for (let i = 1; i < parts.length; i++) {
+            const chosen = orientationToFollow(parts[i - 1], parts[i], orientations[i - 1]);
+            if (chosen === null) { ok = false; break; }
+            orientations.push(chosen);
+        }
+        if (ok) return orientations;
+    }
+    return null;
+}
+
+/**
  * Initialize the assembly interface
  */
 async function initAssembly() {
@@ -173,22 +233,17 @@ function getPartCompatibility(part) {
     }
 
     const lastPart = selectedParts[selectedParts.length - 1];
-    const isCompatible = lastPart.overhang_3prime === part.overhang_5prime;
+    // Orientation the last selected part is placed in (chain resolved from the start).
+    const orientations = resolveOrientations(selectedParts) || selectedParts.map(() => 'forward');
+    const lastOrientation = orientations[orientations.length - 1];
+    const chosen = orientationToFollow(lastPart, part, lastOrientation);
 
-    if (isCompatible) {
-        return {
-            status: 'compatible',
-            icon: '✓',
-            text: 'Compatible',
-            disabled: false
-        };
+    if (chosen === 'forward') {
+        return { status: 'compatible', icon: '✓', text: 'Compatible', disabled: false };
+    } else if (chosen === 'reverse') {
+        return { status: 'compatible', icon: '⇄', text: 'Compatible (reverse)', disabled: false };
     } else {
-        return {
-            status: 'incompatible',
-            icon: '✗',
-            text: 'Incompatible',
-            disabled: true
-        };
+        return { status: 'incompatible', icon: '✗', text: 'Incompatible', disabled: true };
     }
 }
 
@@ -202,11 +257,13 @@ function addPartToAssembly(part) {
         return;
     }
 
-    // Check compatibility if not first part
+    // Check compatibility if not first part (in either orientation)
     if (selectedParts.length > 0) {
         const lastPart = selectedParts[selectedParts.length - 1];
-        if (lastPart.overhang_3prime !== part.overhang_5prime) {
-            showFlashMessage('Part is not compatible with the last part in assembly', 'error');
+        const orientations = resolveOrientations(selectedParts) || selectedParts.map(() => 'forward');
+        const lastOrientation = orientations[orientations.length - 1];
+        if (orientationToFollow(lastPart, part, lastOrientation) === null) {
+            showFlashMessage('Part is not compatible with the last part in assembly (in either orientation)', 'error');
             return;
         }
     }
@@ -298,11 +355,22 @@ function renderAssemblyPreview() {
 
     // Show selected parts
     html += '<div class="selected-parts-list">';
+
+    // Orientation of each selected part (for display of presented overhangs).
+    const partOrientations = validation.orientations
+        || resolveOrientations(selectedParts)
+        || selectedParts.map(() => 'forward');
     
     selectedParts.forEach((part, index) => {
         const isError = validation.incompatiblePair && 
                        (validation.incompatiblePair[0] === index || 
                         validation.incompatiblePair[1] === index);
+
+        const orientation = partOrientations[index] || 'forward';
+        const presented = presentedOverhangs(part, orientation);
+        const orientBadge = orientation === 'reverse'
+            ? '<span class="type-badge" title="Placed in reverse orientation" style="background:#6b46c1;color:#fff;">⇄ Reverse</span>'
+            : '';
         
         html += `
             <div class="selected-part ${isError ? 'error' : ''}">
@@ -312,13 +380,14 @@ function renderAssemblyPreview() {
                     <div class="selected-part-overhangs">
                         <div class="overhang-display">
                             <span class="label">5':</span>
-                            <span class="value">${part.overhang_5prime}</span>
+                            <span class="value">${presented.fivePrime}</span>
                         </div>
                         <div class="overhang-display">
                             <span class="label">3':</span>
-                            <span class="value">${part.overhang_3prime}</span>
+                            <span class="value">${presented.threePrime}</span>
                         </div>
                         <span class="type-badge type-${part.part_type.toLowerCase()}">${formatPartType(part.part_type)}</span>
+                        ${orientBadge}
                     </div>
                 </div>
                 <div class="part-actions">
@@ -335,15 +404,18 @@ function renderAssemblyPreview() {
             </div>
         `;
 
-        // Add junction indicator between parts
+        // Add junction indicator between parts (orientation-aware)
         if (index < selectedParts.length - 1) {
             const nextPart = selectedParts[index + 1];
-            const compatible = part.overhang_3prime === nextPart.overhang_5prime;
-            
+            const thisPresented3 = presented.threePrime;
+            const nextOrientation = partOrientations[index + 1] || 'forward';
+            const nextPresented5 = presentedOverhangs(nextPart, nextOrientation).fivePrime;
+            const compatible = thisPresented3 === nextPresented5;
+
             html += `
                 <div class="junction-indicator ${compatible ? 'compatible' : 'incompatible'}">
                     <span class="junction-text">
-                        ${compatible ? '✓ Compatible junction' : '✗ Incompatible: ' + part.overhang_3prime + ' ≠ ' + nextPart.overhang_5prime}
+                        ${compatible ? '✓ Compatible junction (' + thisPresented3 + ')' : '✗ Incompatible: ' + thisPresented3 + ' ≠ ' + nextPresented5}
                     </span>
                 </div>
             `;
@@ -425,24 +497,36 @@ function validateAssembly() {
         };
     }
 
-    // Check each adjacent pair
+    // Resolve orientations for the whole chain (first part is a free anchor,
+    // tried in both orientations). Each part may be placed forward or
+    // reverse-complemented to make its fusion site match.
+    const orientations = resolveOrientations(selectedParts);
+    if (orientations) {
+        return { valid: true, error: '', incompatiblePair: null, orientations };
+    }
+
+    // Report the first failing junction using a forward-anchor walk.
+    const walk = ['forward'];
     for (let i = 0; i < selectedParts.length - 1; i++) {
         const part1 = selectedParts[i];
         const part2 = selectedParts[i + 1];
-
-        if (part1.overhang_3prime !== part2.overhang_5prime) {
+        const chosen = orientationToFollow(part1, part2, walk[i]);
+        if (chosen === null) {
+            const presented3 = presentedOverhangs(part1, walk[i]).threePrime;
             return {
                 valid: false,
-                error: `Parts at positions ${i + 1} and ${i + 2} have incompatible overhangs: ${part1.overhang_3prime} ≠ ${part2.overhang_5prime}`,
-                incompatiblePair: [i, i + 1]
+                error: `Parts at positions ${i + 1} and ${i + 2} have incompatible overhangs: ${presented3} matches neither ${part2.overhang_5prime} nor rc(${part2.overhang_3prime})`,
+                incompatiblePair: [i, i + 1],
+                orientations: null
             };
         }
+        walk.push(chosen);
     }
-
     return {
-        valid: true,
-        error: '',
-        incompatiblePair: null
+        valid: false,
+        error: 'Parts cannot be assembled into a contiguous chain in any orientation',
+        incompatiblePair: null,
+        orientations: null
     };
 }
 

@@ -9,6 +9,17 @@ from datetime import datetime
 from app.models.parts_database import get_parts_database
 
 
+_COMPLEMENT = {'A': 'T', 'T': 'A', 'C': 'G', 'G': 'C', 'N': 'N'}
+
+
+def _rc(seq: str) -> str:
+    """Reverse complement a short overhang string (defined locally to avoid a
+    circular import with the compatibility service)."""
+    if not seq:
+        return seq
+    return ''.join(_COMPLEMENT.get(b, b) for b in reversed(seq.upper()))
+
+
 class Part:
     """Part model representing a DNA sequence element in the MoClo library."""
     
@@ -369,8 +380,11 @@ class Part:
     @staticmethod
     def find_compatible_before(part: 'Part') -> List['Part']:
         """
-        Find all parts that can be placed before the given part.
-        A part can be placed before if its 3' overhang matches the target's 5' overhang.
+        Find all parts that can be placed before the given part, in either orientation.
+        A candidate can precede the target if the 3' overhang it PRESENTS equals the
+        target's 5' overhang. A candidate presents its 3' overhang as either its
+        stored overhang_3prime (forward) or rc(overhang_5prime) (reverse), so
+        rc(overhang_5prime) == target.5'  <=>  overhang_5prime == rc(target.5').
         
         Args:
             part: Target part to find compatible parts for
@@ -378,16 +392,18 @@ class Part:
         Returns:
             List of Part instances that can be placed before the target
         """
+        target_5 = (part.overhang_5prime or '').upper()
+        target_5_rc = _rc(target_5)
         db = get_parts_database()
         with db.get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute(
                 """
                 SELECT * FROM parts 
-                WHERE overhang_3prime = ? AND id != ?
+                WHERE (overhang_3prime = ? OR overhang_5prime = ?) AND id != ?
                 ORDER BY name
                 """,
-                (part.overhang_5prime, part.id)
+                (target_5, target_5_rc, part.id)
             )
             rows = cursor.fetchall()
             
@@ -396,8 +412,11 @@ class Part:
     @staticmethod
     def find_compatible_after(part: 'Part') -> List['Part']:
         """
-        Find all parts that can be placed after the given part.
-        A part can be placed after if its 5' overhang matches the target's 3' overhang.
+        Find all parts that can be placed after the given part, in either orientation.
+        A candidate can follow the target if the 5' overhang it PRESENTS equals the
+        target's 3' overhang. A candidate presents its 5' overhang as either its
+        stored overhang_5prime (forward) or rc(overhang_3prime) (reverse), so
+        rc(overhang_3prime) == target.3'  <=>  overhang_3prime == rc(target.3').
         
         Args:
             part: Target part to find compatible parts for
@@ -405,16 +424,18 @@ class Part:
         Returns:
             List of Part instances that can be placed after the target
         """
+        target_3 = (part.overhang_3prime or '').upper()
+        target_3_rc = _rc(target_3)
         db = get_parts_database()
         with db.get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute(
                 """
                 SELECT * FROM parts 
-                WHERE overhang_5prime = ? AND id != ?
+                WHERE (overhang_5prime = ? OR overhang_3prime = ?) AND id != ?
                 ORDER BY name
                 """,
-                (part.overhang_3prime, part.id)
+                (target_3, target_3_rc, part.id)
             )
             rows = cursor.fetchall()
             

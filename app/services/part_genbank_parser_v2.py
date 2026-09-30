@@ -169,6 +169,21 @@ def parse_part_genbank(file_content: str, preferred_enzyme: str = None) -> Dict[
             else:
                 # Circular - wraps around
                 part_sequence = full_sequence[part_start_with_oh:] + full_sequence[:part_end_with_oh]
+
+        # Prefer authoritative overhangs declared in the GenBank qualifiers.
+        # The site-based computation above only picks the FIRST forward and first
+        # reverse recognition site, so a part with an internal recognition site
+        # (common in Level 1 constructs, e.g. an internal BpiI site) can yield the
+        # wrong 4bp overhangs that never match a neighbouring part. When the file
+        # declares /overhang_5prime and /overhang_3prime, those are ground truth.
+        # (The annotation-fallback branch already sourced its overhangs from the
+        # qualifiers, so only override in the site-based case.)
+        overhang_source = 'annotation_qualifiers' if annotation_fallback else 'restriction_sites'
+        if not annotation_fallback:
+            ann_override = _overhangs_from_qualifiers(record)
+            if ann_override is not None:
+                overhang_5prime, overhang_3prime, _declared_level = ann_override
+                overhang_source = 'declared_qualifiers'
         
         # Extract metadata from GenBank record
         name = record.id or record.name or 'Unknown'
@@ -201,6 +216,7 @@ def parse_part_genbank(file_content: str, preferred_enzyme: str = None) -> Dict[
             'intron_annotations': intron_annotations,
             'bsai_sites_found': len(forward_sites) + len(reverse_sites),
             'enzyme_detected': enzyme,
+            'overhang_source': overhang_source,
             'level': level,
             'is_circular': part_start_with_oh >= part_end_with_oh,
             # Plasmid-specific fields
@@ -222,12 +238,20 @@ def parse_part_genbank(file_content: str, preferred_enzyme: str = None) -> Dict[
 
 
 def _overhangs_from_qualifiers(record):
-    """Read /overhang_5prime, /overhang_3prime and /moclo_level from any feature.
+    """Read /overhang_5prime, /overhang_3prime and /moclo_level from a feature.
 
-    Returns (overhang_5prime, overhang_3prime, level) or None. Used when a .gb
-    has no Type IIS sites, for example a part or cassette exported by this tool.
+    Returns (overhang_5prime, overhang_3prime, level) or None. Used both as a
+    fallback when a .gb has no Type IIS sites and to override the site-based
+    overhangs when a part declares them explicitly.
+
+    A Level 1 construct may carry overhang qualifiers on BOTH the whole-part
+    feature AND its internal Level 0 sub-part features. The whole-part overhangs
+    are the ones that matter for assembly, so we choose the feature spanning the
+    largest region rather than the first one encountered (which is order- and
+    tooling-dependent).
     """
     valid = set('ACGT')
+    best = None  # (span_length, oh5, oh3, level)
     for feat in record.features:
         q = feat.qualifiers
         v5 = q.get('overhang_5prime') or q.get('overhang_5') or q.get('oh5')
@@ -245,8 +269,15 @@ def _overhangs_from_qualifiers(record):
             if key in q and q[key]:
                 lvl = str(q[key][0]).strip()
                 break
-        return oh5, oh3, (lvl or '0')
-    return None
+        try:
+            span = int(feat.location.end) - int(feat.location.start)
+        except (TypeError, ValueError):
+            span = 0
+        if best is None or span > best[0]:
+            best = (span, oh5, oh3, (lvl or '0'))
+    if best is None:
+        return None
+    return best[1], best[2], best[3]
 
 
 def _extract_part_features(record) -> list:

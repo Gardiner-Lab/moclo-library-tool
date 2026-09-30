@@ -5,6 +5,36 @@ All notable changes to the MoClo Library Tool project will be documented in this
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.9.0] - 2026-09-30
+
+### Added
+- Orientation-aware assembly. Level 1 transcription units cloned into a
+  reverse-orientation position acceptor (for example pICH47802, "Position 1
+  reverse") are now recognised as compatible and are reverse-complemented into
+  the assembled construct. Compatibility is checked in both orientations, the
+  first part is treated as a free anchor (either orientation), and each part's
+  chosen orientation is recorded in the cassette's part metadata
+  (`orientation`, plus the presented and stored overhangs).
+- `overhang_source` field in the part upload response, indicating whether the
+  4bp overhangs came from the GenBank `/overhang_*` qualifiers or were computed
+  from restriction sites.
+
+### Changed
+- Part GenBank upload now prefers the `/overhang_5prime` and `/overhang_3prime`
+  qualifiers as the authoritative overhangs, even when Type IIS sites are
+  present. The previous site-based computation used only the first forward and
+  first reverse site, so a construct with an internal recognition site (common
+  in Level 1 cassettes) could get the wrong 4bp overhangs that never matched a
+  neighbouring part. When several features carry overhang qualifiers, the
+  whole-part feature (largest span) is used.
+- `Part.find_compatible_before` / `find_compatible_after` now also match
+  reverse-complement overhangs so reverse-orientation partners are found.
+
+### Fixed
+- Level 1 cassettes with an internal BpiI site (e.g. a gRNA construct) no longer
+  get mis-read overhangs on upload, so they chain correctly into a Level 2
+  assembly.
+
 ## [1.8.0] - 2026-09-02
 
 ### Added

@@ -8,12 +8,28 @@ validate assemblies, and generate appropriate error messages for invalid assembl
 from typing import List, Dict, Any, Optional
 from app.models.part import Part
 from app.models.cassette import Cassette
-from app.services.compatibility import validate_assembly
+from app.services.compatibility import validate_assembly, reverse_complement
 
 
 class AssemblyError(Exception):
     """Exception raised when assembly validation fails."""
     pass
+
+
+def oriented_part_sequence(part: Part, orientation: str) -> str:
+    """
+    Return a part's sequence as it appears in the assembled construct for the
+    given orientation.
+
+    A part stored forward includes its 5' overhang at the start and 3' overhang
+    at the end. When placed in reverse orientation, the entire part (including
+    its overhangs) is reverse-complemented, so its stored 3' overhang becomes the
+    leading 5' fusion site in the construct and vice versa.
+    """
+    seq = (part.sequence or '').upper()
+    if orientation == 'reverse':
+        return reverse_complement(seq)
+    return seq
 
 
 def assemble_parts(parts: List[Part]) -> str:
@@ -60,20 +76,21 @@ def assemble_parts(parts: List[Part]) -> str:
     
     if not validation['valid']:
         raise AssemblyError(validation['error'])
+
+    orientations = validation.get('orientations') or ['forward'] * len(parts)
     
-    # Start with the first part's full sequence (already includes its 5' and 3' overhangs)
-    assembled_sequence = parts[0].sequence
+    # Start with the first part's oriented sequence (includes its terminal overhangs)
+    assembled_sequence = oriented_part_sequence(parts[0], orientations[0])
     
     # Add each subsequent part, overlapping the shared 4bp overhang scar.
-    # The previous part already ends with the shared overhang (its 3' overhang),
-    # and this part's sequence begins with that same overhang (its 5' overhang).
-    # We strip this part's leading overhang so the scar is not duplicated.
+    # The previous part already ends with the shared overhang, and this part's
+    # oriented sequence begins with that same overhang. We strip this part's
+    # leading overhang so the scar is not duplicated. A reverse-oriented part is
+    # reverse-complemented first, so the stripping still removes the shared 5'
+    # fusion site it now presents.
     for i in range(1, len(parts)):
-        part = parts[i]
-        # Strip this part's leading 4bp 5' overhang, which is the shared scar
-        # already contributed by the previous part's 3' overhang. This prevents
-        # the sticky-end junction from being duplicated in the ligated product.
-        assembled_sequence += part.sequence[4:]
+        oriented_seq = oriented_part_sequence(parts[i], orientations[i])
+        assembled_sequence += oriented_seq[4:]
     
     return assembled_sequence
 
@@ -118,10 +135,15 @@ def create_cassette(
     
     # Determine MoClo level from parts
     cassette_level = _determine_cassette_level(parts)
+
+    # Resolve the orientation each part takes in the assembly so downstream
+    # metadata/positions reflect the reverse-complemented sequence where needed.
+    from app.services.compatibility import resolve_orientations
+    orientations = resolve_orientations(parts) or ['forward'] * len(parts)
     
     # Capture part metadata snapshot at assembly time
     # This preserves type, name, overhangs, intron info even if parts are later modified/deleted
-    parts_metadata = _capture_parts_metadata(parts, assembled_sequence)
+    parts_metadata = _capture_parts_metadata(parts, assembled_sequence, orientations)
     
     # Analyze translation for coding sequences
     from app.services.translation import analyze_coding_sequence, get_part_boundaries_from_cassette
@@ -170,7 +192,9 @@ def recompute_cassette_translation(cassette) -> Optional[Dict[str, Any]]:
     if not parts:
         return None
 
-    parts_metadata = _capture_parts_metadata(parts, cassette.assembled_sequence)
+    from app.services.compatibility import resolve_orientations
+    orientations = resolve_orientations(parts) or ['forward'] * len(parts)
+    parts_metadata = _capture_parts_metadata(parts, cassette.assembled_sequence, orientations)
     boundaries = get_part_boundaries_from_cassette(parts, cassette.assembled_sequence)
     translation = analyze_coding_sequence(cassette.assembled_sequence, boundaries)
     cassette.update_analysis(translation_data=translation, parts_metadata=parts_metadata)
@@ -209,7 +233,11 @@ def _determine_cassette_level(parts: List[Part]) -> str:
     return str(max_part_level + 1)
 
 
-def _capture_parts_metadata(parts: List[Part], assembled_sequence: str) -> List[Dict[str, Any]]:
+def _capture_parts_metadata(
+    parts: List[Part],
+    assembled_sequence: str,
+    orientations: Optional[List[str]] = None
+) -> List[Dict[str, Any]]:
     """
     Capture a snapshot of part metadata at assembly time.
     
@@ -230,11 +258,18 @@ def _capture_parts_metadata(parts: List[Part], assembled_sequence: str) -> List[
     import json
     import re
     from app.services.translation import translate_sequence, find_start_codons
+    from app.services.compatibility import oriented_overhangs
+
+    if orientations is None:
+        orientations = ['forward'] * len(parts)
     
     metadata = []
     current_pos = 0
     
     for i, part in enumerate(parts):
+        orientation = orientations[i] if i < len(orientations) else 'forward'
+        presented_5, presented_3 = oriented_overhangs(part, orientation)
+
         # Calculate position in assembled sequence.
         # The assembled sequence overlaps the shared 4bp overhang between parts,
         # so each part after the first contributes its length minus the 4bp
@@ -251,8 +286,11 @@ def _capture_parts_metadata(parts: List[Part], assembled_sequence: str) -> List[
             'part_id': part.id,
             'part_name': part.name,
             'part_type': part.part_type,
-            'overhang_5prime': part.overhang_5prime,
-            'overhang_3prime': part.overhang_3prime,
+            'orientation': orientation,
+            'overhang_5prime': presented_5,
+            'overhang_3prime': presented_3,
+            'stored_overhang_5prime': part.overhang_5prime,
+            'stored_overhang_3prime': part.overhang_3prime,
             'sequence_length': len(part.sequence),
             'position_start': part_start,
             'position_end': part_end,
@@ -268,14 +306,17 @@ def _capture_parts_metadata(parts: List[Part], assembled_sequence: str) -> List[
         # For coding parts (a plain CDS or an expression cassette), record the
         # translation of the part's own coding sequence, spliced when the part
         # carries introns, so a construct can report per-part protein output.
+        # A reverse-placed coding part is transcribed from its reverse-complement
+        # strand in the assembled construct, so translate the oriented sequence.
         if entry['is_coding']:
+            coding_seq = oriented_part_sequence(part, orientation)
             try:
                 from app.services.translation import (
                     analyze_coding_sequence,
                     get_part_boundaries_from_cassette,
                 )
-                pb = get_part_boundaries_from_cassette([part], part.sequence)
-                t = analyze_coding_sequence(part.sequence, pb)
+                pb = get_part_boundaries_from_cassette([part], coding_seq)
+                t = analyze_coding_sequence(coding_seq, pb)
                 protein = t.get('protein_sequence_spliced') or t.get('protein_sequence')
                 entry['coding_translation'] = {
                     'protein_sequence': protein,
@@ -287,7 +328,7 @@ def _capture_parts_metadata(parts: List[Part], assembled_sequence: str) -> List[
                 if not t.get('has_coding'):
                     entry['coding_translation']['warning'] = 'No ATG start codon found in coding sequence'
             except Exception:  # noqa: BLE001
-                part_seq = part.sequence.upper()
+                part_seq = coding_seq.upper()
                 start_codons = find_start_codons(part_seq)
                 if start_codons:
                     protein = translate_sequence(part_seq, start_codons[0])
@@ -455,17 +496,22 @@ def get_assembly_preview(parts: List[Part]) -> Dict[str, Any]:
             'junctions': []
         }
     
-    # Generate junction information
+    # Generate junction information, respecting resolved orientations.
+    from app.services.compatibility import resolve_orientations, oriented_overhangs
+    orientations = resolve_orientations(parts) or ['forward'] * len(parts)
     junctions = []
     for i in range(len(parts) - 1):
         part1 = parts[i]
         part2 = parts[i + 1]
+        junction_overhang = oriented_overhangs(part1, orientations[i])[1]
         junctions.append({
             'part1_name': part1.name,
             'part1_id': part1.id,
+            'part1_orientation': orientations[i],
             'part2_name': part2.name,
             'part2_id': part2.id,
-            'overhang': part1.overhang_3prime,
+            'part2_orientation': orientations[i + 1],
+            'overhang': junction_overhang,
             'position': i
         })
     
