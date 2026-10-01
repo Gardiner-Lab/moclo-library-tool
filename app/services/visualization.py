@@ -54,7 +54,8 @@ def generate_part_svg(part: Part, width: int = 200, height: int = 80) -> str:
     
     # Start building SVG
     svg_parts = [
-        f'<svg width="{width}" height="{height}" xmlns="http://www.w3.org/2000/svg">',
+        f'<svg width="{width}" height="{height}" viewBox="0 0 {width} {height}" '
+        f'preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg">',
         f'  <!-- Part: {part.name} ({part.part_type}) -->'
     ]
     
@@ -243,6 +244,70 @@ def _darken_color(hex_color: str, factor: float = 0.3) -> str:
     return f'#{r:02x}{g:02x}{b:02x}'
 
 
+def _fit_text_lines(text: str, box_width: float, max_lines: int, base_font: int):
+    """
+    Fit a label inside a box by choosing a font size and wrapping it into lines.
+
+    Strategy: starting at base_font and shrinking to a readable floor, estimate
+    how many characters fit per line (monospace-ish ~0.6*font px per char) and
+    try to wrap the text so it fits in <= max_lines. Wrapping prefers word
+    boundaries but hard-splits long unbroken tokens (e.g. "peaxi162Scf00973...")
+    by character so they never overflow. If nothing fits even at the floor font,
+    the last line is ellipsized.
+
+    Returns (font_size, [lines]).
+    """
+    text = (text or '').strip()
+    if not text:
+        return base_font, ['']
+
+    MIN_FONT = 7
+    for font in range(base_font, MIN_FONT - 1, -1):
+        chars_per_line = max(1, int(box_width / (font * 0.6)))
+        lines = _wrap_tokens(text, chars_per_line)
+        if len(lines) <= max_lines:
+            return font, lines
+
+    # Floor font: wrap and hard-truncate to max_lines with an ellipsis.
+    chars_per_line = max(1, int(box_width / (MIN_FONT * 0.6)))
+    lines = _wrap_tokens(text, chars_per_line)
+    if len(lines) > max_lines:
+        lines = lines[:max_lines]
+        last = lines[-1]
+        if len(last) > chars_per_line:
+            last = last[:max(0, chars_per_line - 1)]
+        lines[-1] = last.rstrip() + '…'
+    return MIN_FONT, lines
+
+
+def _wrap_tokens(text: str, chars_per_line: int):
+    """
+    Wrap text to a max characters-per-line, splitting on spaces but also
+    hard-breaking any single token longer than chars_per_line.
+    """
+    words = text.split()
+    lines = []
+    current = ''
+    for word in words:
+        # Hard-split a token that is itself longer than a line.
+        while len(word) > chars_per_line:
+            if current:
+                lines.append(current)
+                current = ''
+            lines.append(word[:chars_per_line])
+            word = word[chars_per_line:]
+        if not current:
+            current = word
+        elif len(current) + 1 + len(word) <= chars_per_line:
+            current += ' ' + word
+        else:
+            lines.append(current)
+            current = word
+    if current:
+        lines.append(current)
+    return lines or ['']
+
+
 def generate_cassette_svg(
     parts: List[Part], width: int = 800, height: int = 120
 ) -> str:
@@ -267,23 +332,58 @@ def generate_cassette_svg(
     """
     if not parts:
         return '<svg width="100" height="50" xmlns="http://www.w3.org/2000/svg"><text x="10" y="25">Empty cassette</text></svg>'
+
+    # Resolve the orientation of each part (forward / reverse). A reverse-oriented
+    # cassette is reverse-complemented in the final construct, so it presents the
+    # reverse complement of its stored overhangs (and they swap ends). Using the
+    # presented overhangs makes the junction compatibility and the labels correct
+    # for reverse parts instead of falsely showing "Incompatible".
+    from app.services.compatibility import resolve_orientations, oriented_overhangs
+    orientations = resolve_orientations(parts) or ['forward'] * len(parts)
+    # Precompute the (5', 3') overhang each part presents in its orientation.
+    presented = [oriented_overhangs(p, orientations[i]) for i, p in enumerate(parts)]
     
-    # Calculate dimensions
+    # Calculate dimensions.
+    # The requested width/height act as minimums: the box width adapts to the
+    # longest part name so names fit cleanly instead of overflowing, and the
+    # height grows if names need to wrap onto multiple lines.
     padding = 20
     label_height = 20
-    scar_width = 30  # Wider to accommodate horizontal text (4 letters)
-    rect_height = height - (2 * label_height) - (2 * padding)
-    rect_y = label_height + padding
-    
-    # Calculate part widths (distribute evenly, accounting for scars)
+    scar_width = 30  # Wide enough for the 4-letter overhang label
+
     num_scars = len(parts) - 1
     total_scar_width = num_scars * scar_width
-    available_width = width - (2 * padding) - total_scar_width
-    part_width = available_width / len(parts)
-    
-    # Start building SVG
+
+    # Per-part box width: wide enough for the longest name at the base font,
+    # clamped to a sensible range so one huge name doesn't make an enormous SVG
+    # (the text fitter will shrink / wrap / ellipsize beyond this).
+    BASE_FONT = 12
+    CHAR_W = BASE_FONT * 0.6          # ~px per char at the base font
+    MIN_PART_W = 110
+    MAX_PART_W = 240
+    longest = max((len(p.name) for p in parts), default=0)
+    # Aim to fit the longest name across ~2 lines at the base font.
+    desired_part_w = (longest * CHAR_W) / 2 + 16
+    part_width = max(MIN_PART_W, min(MAX_PART_W, desired_part_w))
+
+    # Final SVG width grows with content but never shrinks below the requested
+    # minimum.
+    content_width = (2 * padding) + total_scar_width + part_width * len(parts)
+    width = max(width, int(round(content_width)))
+
+    # Height: allow up to 3 wrapped lines of name text comfortably.
+    MAX_NAME_LINES = 3
+    name_block_h = MAX_NAME_LINES * (BASE_FONT + 3)
+    rect_height = max(height - (2 * label_height) - (2 * padding), name_block_h + 20)
+    height = max(height, rect_height + (2 * label_height) + (2 * padding))
+    rect_y = label_height + padding
+
+    # Start building SVG. The viewBox makes the drawing intrinsically scalable,
+    # so when displayed with width:100% (e.g. in the cassette detail modal) the
+    # whole cassette scales to fit instead of being clipped at its natural size.
     svg_parts = [
-        f'<svg width="{width}" height="{height}" xmlns="http://www.w3.org/2000/svg">',
+        f'<svg width="{width}" height="{height}" viewBox="0 0 {width} {height}" '
+        f'preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg">',
         f'  <!-- Cassette with {len(parts)} parts and {num_scars} overhang scars -->'
     ]
     
@@ -300,6 +400,23 @@ def generate_cassette_svg(
             f'width="{part_width}" height="{rect_height}" '
             f'fill="{color}" stroke="#333" stroke-width="2" rx="3"/>'
         )
+
+        # Insert-direction arrow (triangle) in the top-left of the part, showing
+        # whether this cassette is placed forward (points right) or reverse
+        # (points left) in the final construct.
+        orientation = orientations[i] if i < len(orientations) else 'forward'
+        _ax = part_x + 8
+        _ay = rect_y + 10
+        if orientation == 'reverse':
+            arrow_pts = f'{_ax + 8},{_ay - 5} {_ax + 8},{_ay + 5} {_ax},{_ay}'
+            arrow_title = 'Reverse orientation'
+        else:
+            arrow_pts = f'{_ax},{_ay - 5} {_ax},{_ay + 5} {_ax + 8},{_ay}'
+            arrow_title = 'Forward orientation'
+        svg_parts.append(
+            f'  <polygon points="{arrow_pts}" fill="white" stroke="#333" '
+            f'stroke-width="0.5" opacity="0.9"><title>{arrow_title}</title></polygon>'
+        )
         
         # Add chevrons for Coding and Promoter types
         if part.part_type in CHEVRON_TYPES:
@@ -308,85 +425,31 @@ def generate_cassette_svg(
             )
             svg_parts.extend(chevrons)
         
-        # Add part name - always show full name with adaptive sizing
-        part_name = part.name
+        # Add part name, fitted to the box: shrink font and wrap across up to
+        # MAX_NAME_LINES lines (hard-splitting long unbroken tokens), ellipsizing
+        # only as a last resort. Keeps names inside their box and readable.
         text_x = part_x + (part_width / 2)
-        text_y = rect_y + (rect_height / 2) + 5
-        
-        # Calculate appropriate font size based on name length and part width
-        # Rough estimate: each character needs about 7 pixels at font-size 12
-        chars_per_line = int(part_width / 7)
-        
-        if len(part_name) <= chars_per_line:
-            # Name fits in one line at normal size
-            font_size = 12
+        inner_w = part_width - 10  # leave a little horizontal padding
+        font_size, lines = _fit_text_lines(part.name, inner_w, MAX_NAME_LINES, BASE_FONT)
+        line_height = font_size + 3
+        center_y = rect_y + (rect_height / 2) + font_size / 3
+        start_y = center_y - ((len(lines) - 1) * line_height / 2)
+        for line_idx, line in enumerate(lines):
+            line_y = start_y + (line_idx * line_height)
             svg_parts.append(
-                f'  <text x="{text_x}" y="{text_y}" '
+                f'  <text x="{text_x}" y="{line_y}" '
                 f'text-anchor="middle" font-family="Arial, sans-serif" '
                 f'font-size="{font_size}" font-weight="bold" fill="white">'
-                f'{escape_xml(part_name)}</text>'
+                f'{escape_xml(line)}</text>'
             )
-        else:
-            # Name is too long - try smaller font first
-            font_size = max(8, int(12 * chars_per_line / len(part_name)))
-            chars_per_line_small = int(part_width / (font_size * 0.6))
-            
-            if len(part_name) <= chars_per_line_small:
-                # Fits with smaller font
-                svg_parts.append(
-                    f'  <text x="{text_x}" y="{text_y}" '
-                    f'text-anchor="middle" font-family="Arial, sans-serif" '
-                    f'font-size="{font_size}" font-weight="bold" fill="white">'
-                    f'{escape_xml(part_name)}</text>'
-                )
-            else:
-                # Need to wrap text into multiple lines
-                words = part_name.split()
-                lines = []
-                current_line = []
-                current_length = 0
-                
-                for word in words:
-                    word_length = len(word)
-                    if current_length + word_length + len(current_line) <= chars_per_line_small:
-                        current_line.append(word)
-                        current_length += word_length
-                    else:
-                        if current_line:
-                            lines.append(' '.join(current_line))
-                        current_line = [word]
-                        current_length = word_length
-                
-                if current_line:
-                    lines.append(' '.join(current_line))
-                
-                # Allow up to 3 lines for very long names
-                if len(lines) > 3:
-                    lines = lines[:3]
-                    # Show ellipsis only if really necessary
-                    if len(lines[2]) > chars_per_line_small:
-                        lines[2] = lines[2][:chars_per_line_small-3] + '...'
-                
-                # Draw multi-line text
-                line_height = font_size + 2
-                start_y = text_y - ((len(lines) - 1) * line_height / 2)
-                
-                for line_idx, line in enumerate(lines):
-                    line_y = start_y + (line_idx * line_height)
-                    svg_parts.append(
-                        f'  <text x="{text_x}" y="{line_y}" '
-                        f'text-anchor="middle" font-family="Arial, sans-serif" '
-                        f'font-size="{font_size}" font-weight="bold" fill="white">'
-                        f'{escape_xml(line)}</text>'
-                    )
         
-        # Add overhang labels
+        # Add overhang labels (use the overhang the part PRESENTS in its orientation)
         if i == 0:
-            # First part: show 5' overhang at the start
+            # First part: show presented 5' overhang at the start
             svg_parts.append(
                 f'  <text x="{part_x + part_width / 2}" y="{label_height}" '
                 f'text-anchor="middle" font-family="monospace" font-size="11" fill="#333">'
-                f"5'-{part.overhang_5prime}</text>"
+                f"5'-{presented[i][0]}</text>"
             )
         
         # Move to next position (after this part)
@@ -397,13 +460,18 @@ def generate_cassette_svg(
             next_part = parts[i + 1]
             scar_x = current_x
             
-            # Check compatibility: current part's 3' overhang should match next part's 5' overhang
-            is_compatible = (part.overhang_3prime == next_part.overhang_5prime)
+            # Orientation-aware compatibility: this part's PRESENTED 3' overhang
+            # should match the next part's PRESENTED 5' overhang. The scar label
+            # shows the presented junction overhang.
+            this_presented_3 = presented[i][1]
+            next_presented_5 = presented[i + 1][0]
+            is_compatible = (this_presented_3 == next_presented_5)
+            scar_overhang = this_presented_3
             
             # Draw scar rectangle
             scar_color = '#FFD700' if is_compatible else '#FF6B6B'  # Gold for compatible, red for incompatible
             svg_parts.append(
-                f'  <!-- Overhang scar: {part.overhang_3prime} -->'
+                f'  <!-- Overhang scar: {scar_overhang} -->'
             )
             svg_parts.append(
                 f'  <rect x="{scar_x}" y="{rect_y}" '
@@ -428,7 +496,7 @@ def generate_cassette_svg(
                 f'  <text x="{scar_center_x}" y="{scar_center_y}" '
                 f'text-anchor="middle" font-family="monospace" font-size="10" '
                 f'fill="#000" font-weight="bold">'
-                f'{part.overhang_3prime}</text>'
+                f'{scar_overhang}</text>'
             )
             
             # Add compatibility indicator below
@@ -455,12 +523,12 @@ def generate_cassette_svg(
             # Move past the scar
             current_x += scar_width
         
-        # Last part: show 3' overhang at the end
+        # Last part: show presented 3' overhang at the end
         if i == len(parts) - 1:
             svg_parts.append(
                 f'  <text x="{part_x + part_width / 2}" y="{height - 5}" '
                 f'text-anchor="middle" font-family="monospace" font-size="11" fill="#333">'
-                f"{part.overhang_3prime}-3'</text>"
+                f"{presented[i][1]}-3'</text>"
             )
     
     svg_parts.append('</svg>')
@@ -526,7 +594,8 @@ def generate_part_features_svg(features: List[Dict[str, Any]], total_length: int
     scale = draw_width / total_length if total_length > 0 else 1
     
     svg_parts = [
-        f'<svg width="{width}" height="{height}" xmlns="http://www.w3.org/2000/svg">',
+        f'<svg width="{width}" height="{height}" viewBox="0 0 {width} {height}" '
+        f'preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg">',
         f'  <!-- Part features visualization: {len(part_features)} features, {total_length} bp -->',
         # Background line
         f'  <rect x="{padding}" y="{rect_y + rect_height/2 - 2}" width="{draw_width}" height="4" fill="#ddd" rx="2"/>',

@@ -917,6 +917,37 @@ a.btn-secondary:active {
     margin-bottom: 0.5rem;
 }
 
+/* MoClo assembly strategy table (plasmid detail) */
+.strategy-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.875rem;
+    margin-top: 0.5rem;
+}
+.strategy-table th,
+.strategy-table td {
+    text-align: left;
+    padding: 0.4rem 0.6rem;
+    border-bottom: 1px solid var(--border-color);
+    vertical-align: top;
+}
+.strategy-table th {
+    font-weight: 600;
+    color: var(--text-secondary);
+    font-size: 0.8rem;
+}
+.strategy-table code {
+    font-size: 0.8rem;
+}
+.strategy-role {
+    display: inline-block;
+    font-size: 0.72rem;
+    padding: 0.1rem 0.45rem;
+    border-radius: 1rem;
+}
+.strategy-role-vector { background: #e0e7ff; color: #3730a3; }
+.strategy-role-insert { background: #dcfce7; color: #166534; }
+
 .protein-sequence {
     background-color: #f0f9ff;
     color: #1e40af;

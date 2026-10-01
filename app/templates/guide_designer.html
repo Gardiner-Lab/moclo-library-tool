@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}CRISPR Guide Designer - MoClo Library Tool{% endblock %}
+{% block title %}CRISPR Designer - MoClo Library Tool{% endblock %}
 
 {% block extra_css %}
 <style>
@@ -60,18 +60,37 @@
     .gd-dg { font-size: 0.8rem; color: var(--text-secondary); }
     .gd-hidden { display: none; }
     .gd-pill { display:inline-block; font-size:0.72rem; padding:0.1rem 0.45rem; border-radius:1rem; background:#e0e7ff; color:#3730a3; margin-left:0.4rem; }
+    .gd-role-tag { display:inline-block; font-size:0.72rem; padding:0.1rem 0.45rem; border-radius:1rem; }
+    .gd-role-selected { background:#dcfce7; color:#166534; }
+    .gd-role-auto { background:#fef3c7; color:#92400e; }
+
+    .gd-partpick { border:1px solid var(--border-color); border-radius:0.375rem; padding:0.5rem; }
+    .gd-partpick input.gd-partsearch { width:100%; font-size:0.85rem; margin-bottom:0.4rem; }
+    .gd-partpick-results { max-height:160px; overflow:auto; }
+    .gd-partpick-opt { padding:0.3rem 0.5rem; border-radius:0.25rem; cursor:pointer; font-size:0.85rem; display:flex; justify-content:space-between; gap:0.5rem; }
+    .gd-partpick-opt:hover { background:var(--bg-color,#f1f5f9); }
+    .gd-partpick-opt .oh { font-family:monospace; color:var(--text-secondary); font-size:0.78rem; }
+    .gd-chosen { display:flex; align-items:center; gap:0.5rem; flex-wrap:wrap; margin-top:0.3rem; }
+    .gd-chosen-tag { display:inline-flex; align-items:center; gap:0.35rem; background:#dcfce7; color:#166534; border-radius:1rem; padding:0.15rem 0.6rem; font-size:0.82rem; }
+    .gd-chosen-tag .x { cursor:pointer; font-weight:700; }
 </style>
 {% endblock %}
 
 {% block content %}
 <div class="gd-container">
     <div class="gd-header">
-        <h1>🎯 CRISPR Guide Designer</h1>
+        <h1>🎯 CRISPR Designer</h1>
         <p class="gd-subtitle">
             Enter your 20&nbsp;bp guide sequence(s) and auto-generate a full Golden Gate cloning
             strategy for the polycistronic tRNA-sgRNA system, based on the
             <a href="https://doi.org/10.1186/s12870-020-02388-2" target="_blank" rel="noopener">
             Hahn&nbsp;et&nbsp;al. (2020) plant genome-editing toolkit</a>.
+        </p>
+        <p class="gd-subtitle" style="font-size:0.85rem;">
+            The MoClo Level&nbsp;1 acceptor and Level&nbsp;2 vectors are from the MoClo system of
+            <a href="https://doi.org/10.1371/journal.pone.0016765" target="_blank" rel="noopener">
+            Weber&nbsp;et&nbsp;al. (2011), PLoS&nbsp;ONE 6(2):e16765</a>
+            (Addgene MoClo Toolkit, kit&nbsp;#1000000044).
         </p>
     </div>
 
@@ -98,7 +117,37 @@
         <div id="gdGuidesList" class="gd-guides-list"></div>
         <div style="margin-top: 0.75rem; display: flex; gap: 0.5rem;">
             <button id="gdAddGuide" class="btn btn-secondary">+ Add guide</button>
-            <button id="gdDesign" class="btn btn-success">Generate cloning strategy</button>
+        </div>
+    </div>
+
+    <!-- Level 2 construct: required Cas + resistance Level 1 parts, plus optional others -->
+    <div class="gd-panel">
+        <h2 style="margin-top:0;">Level 2 construct parts</h2>
+        <p class="gd-subtitle">
+            The guide cassette fills <strong>Position&nbsp;<span id="gdGuidePos">2</span></strong>
+            (its Level&nbsp;1 acceptor, chosen above). Select the required Cas nuclease and
+            resistance Level&nbsp;1 parts from your library, and optionally add other Level&nbsp;1 parts.
+        </p>
+
+        <div class="gd-form-row">
+            <div class="form-group" style="flex:1;">
+                <label>Cas nuclease (Level 1) <span style="color:var(--error-color,#dc2626)">*</span></label>
+                <div id="gdCasPick" class="gd-partpick" data-role="cas"></div>
+            </div>
+            <div class="form-group" style="flex:1;">
+                <label>Resistance / marker (Level 1) <span style="color:var(--error-color,#dc2626)">*</span></label>
+                <div id="gdResPick" class="gd-partpick" data-role="resistance"></div>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label>Other Level 1 parts (optional)</label>
+            <div id="gdOtherPick" class="gd-partpick" data-role="other" data-multi="1"></div>
+        </div>
+
+        <div style="margin-top:0.75rem; display:flex; gap:0.5rem; align-items:center;">
+            <button id="gdDesign" class="btn btn-success" disabled>Generate cloning strategy</button>
+            <span id="gdGate" class="gd-dg">Select a Cas part and a resistance part to enable.</span>
         </div>
     </div>
 
@@ -107,7 +156,7 @@
 {% endblock %}
 
 {% block extra_js %}
-<script src="{{ url_for('static', filename='js/guide_designer.js') }}?v=1.0"></script>
+<script src="{{ url_for('static', filename='js/guide_designer.js') }}?v={{ app_version }}"></script>
 <script>
     document.addEventListener('DOMContentLoaded', () => { initGuideDesigner(); });
 </script>

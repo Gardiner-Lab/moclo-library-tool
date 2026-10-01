@@ -73,6 +73,7 @@
 <div class="dash-tabs">
   <button class="dash-tab active" data-tab="account">👤 My Account</button>
   <button class="dash-tab" data-tab="parts">🧩 My Parts</button>
+  <button class="dash-tab" data-tab="saved">⭐ Saved</button>
 </div>
 
 <!-- ── ACCOUNT ── -->
@@ -108,6 +109,21 @@
   <table class="dash-table">
     <thead><tr><th>Name</th><th>Type</th><th>Lab Source</th><th>Uploaded</th><th>Actions</th></tr></thead>
     <tbody id="parts-tbody">
+      <tr><td colspan="5" class="empty-msg">Loading…</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- ── SAVED ── -->
+<div id="tab-saved" class="dash-section">
+  <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:1rem;">
+    <h2 style="margin:0">Saved Constructs &amp; Plasmids <span class="count-badge" id="saved-count">0</span></h2>
+  </div>
+  <p class="hint" style="margin-top:-0.5rem;">Items you saved from the CRISPR Designer or a plasmid.
+     Open a saved reaction to pre-fill the reaction-mix calculator.</p>
+  <table class="dash-table">
+    <thead><tr><th>Title</th><th>Type</th><th>Saved</th><th>Reactions</th><th>Actions</th></tr></thead>
+    <tbody id="saved-tbody">
       <tr><td colspan="5" class="empty-msg">Loading…</td></tr>
     </tbody>
   </table>
@@ -157,6 +173,7 @@ document.querySelectorAll('.dash-tab').forEach(btn => {
     document.getElementById('tab-' + name).classList.add('active');
     btn.classList.add('active');
     if (name === 'parts') loadParts();
+    if (name === 'saved') loadSaved();
   });
 });
 
@@ -295,6 +312,113 @@ async function deletePart(id) {
   const data = await apiFetch(`${API}/parts/${id}`, { method: 'DELETE' });
   if (data.error) { alert(data.error); return; }
   loadParts();
+}
+
+// ── SAVED ITEMS ──────────────────────────────────────────────────────────────
+function escHtml(s) {
+  const d = document.createElement('div');
+  d.textContent = s == null ? '' : String(s);
+  return d.innerHTML;
+}
+
+async function loadSaved() {
+  const data = await apiFetch(`${API}/saved`);
+  const items = data.items || [];
+  document.getElementById('saved-count').textContent = items.length;
+  const tbody = document.getElementById('saved-tbody');
+  tbody.innerHTML = '';
+  if (items.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="5" class="empty-msg">You have not saved anything yet. '
+      + 'Use “Save to dashboard” in the CRISPR Designer or on a plasmid.</td></tr>';
+    return;
+  }
+  window._savedItems = {};
+  items.forEach(it => {
+    window._savedItems[it.id] = it;
+    const reactions = (it.summary && it.summary.reactions) || [];
+    const tr = document.createElement('tr');
+
+    // Reaction buttons (one per level) that open the calculator.
+    const rxWrap = document.createElement('div');
+    rxWrap.style.cssText = 'display:flex; gap:0.35rem; flex-wrap:wrap;';
+    reactions.forEach((rx, idx) => {
+      const b = document.createElement('button');
+      b.className = 'btn-sm btn-primary';
+      b.textContent = (rx.label || ('Reaction ' + (idx + 1))) + ' →';
+      b.title = 'Open ' + (rx.label || 'reaction') + ' in the reaction calculator';
+      b.addEventListener('click', () => openSavedReaction(it, idx));
+      rxWrap.appendChild(b);
+    });
+    if (reactions.length === 0) {
+      rxWrap.innerHTML = '<span class="hint">—</span>';
+    }
+
+    const actions = document.createElement('div');
+    actions.style.cssText = 'display:flex; gap:0.35rem; flex-wrap:wrap;';
+
+    // "View protocol" regenerates the full Guide Designer output read-only.
+    // Only for construct items that stored their design plan.
+    if (it.item_type === 'construct' && it.summary && it.summary.plan) {
+      const viewBtn = document.createElement('button');
+      viewBtn.className = 'btn-sm btn-primary';
+      viewBtn.textContent = 'View protocol';
+      viewBtn.title = 'Regenerate the full CRISPR Designer protocol (read-only)';
+      viewBtn.addEventListener('click', () => openSavedProtocol(it));
+      actions.appendChild(viewBtn);
+    }
+
+    const delBtn = document.createElement('button');
+    delBtn.className = 'btn-sm btn-danger';
+    delBtn.textContent = 'Delete';
+    delBtn.addEventListener('click', () => {
+      if (confirm(`Delete saved item "${it.title}"?`)) deleteSaved(it.id);
+    });
+    actions.appendChild(delBtn);
+
+    tr.innerHTML = `
+      <td class="truncate" title="${escHtml(it.title)}">${escHtml(it.title)}</td>
+      <td>${escHtml(it.item_type)}</td>
+      <td>${it.created_at ? it.created_at.slice(0, 10) : '—'}</td>
+      <td></td>
+      <td></td>`;
+    tr.children[3].appendChild(rxWrap);
+    tr.children[4].appendChild(actions);
+    tbody.appendChild(tr);
+  });
+}
+
+function openSavedReaction(item, rxIndex) {
+  const reactions = (item.summary && item.summary.reactions) || [];
+  const rx = reactions[rxIndex];
+  if (!rx) return;
+  const payload = {
+    source: 'dashboard',
+    plasmid_name: item.title + ' — ' + (rx.label || 'reaction'),
+    level: rx.level || '2',
+    enzyme: rx.enzyme || '',
+    fragments: (rx.fragments || []).map(f => ({
+      name: f.name, size: f.size || 0, role: f.role === 'vector' ? 'vector' : 'insert',
+    })),
+  };
+  try {
+    sessionStorage.setItem('mocloCalculatorPrefill', JSON.stringify(payload));
+  } catch (e) { /* ignore */ }
+  window.location.href = '/protocol#calculator';
+}
+
+function openSavedProtocol(item) {
+  // Hand the saved construct summary to the Guide Designer, which regenerates
+  // the full protocol read-only (records already exist, so no create buttons).
+  try {
+    sessionStorage.setItem('gdSavedConstruct', JSON.stringify(item.summary || {}));
+  } catch (e) { /* ignore */ }
+  window.location.href = '/crispr-designer';
+}
+
+async function deleteSaved(id) {
+  const data = await apiFetch(`${API}/saved/${id}`, { method: 'DELETE' });
+  if (data.error) { alert(data.error); return; }
+  loadSaved();
 }
 </script>
 {% endblock %}

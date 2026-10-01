@@ -358,7 +358,21 @@ def _capture_parts_metadata(
         
         if intron_annotations:
             entry['intron_annotations'] = intron_annotations
-        
+
+        # Extract a Level 0 sub-part breakdown from comments if present. The
+        # Guide Designer writes a SUBPARTS: [...] block on the Level 1 guide
+        # cassette so its promoter + tRNA-sgRNA modules propagate as the Level 0
+        # provenance of this unit (same shape as this metadata list).
+        if hasattr(part, 'comments') and part.comments and 'SUBPARTS:' in part.comments:
+            sp_match = re.search(r'SUBPARTS:\s*(\[.*\])', part.comments, re.DOTALL)
+            if sp_match:
+                try:
+                    sub_parts = json.loads(sp_match.group(1))
+                    if isinstance(sub_parts, list) and sub_parts:
+                        entry['sub_parts'] = sub_parts
+                except json.JSONDecodeError:
+                    pass
+
         # Mark intron parts explicitly
         if part.part_type == 'NonCodingIntron':
             entry['is_intron'] = True

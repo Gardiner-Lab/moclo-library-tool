@@ -35,6 +35,90 @@ from app.services.backbone_compatibility import find_compatible_backbones
 cassettes_bp = Blueprint('cassettes', __name__)
 
 
+def _build_per_unit_translation(cassette):
+    """
+    Build per-Level-1-unit translation analysis for a Level 2+ cassette.
+
+    Instead of translating the whole multi-unit assembly as a single ORF (which
+    is meaningless for a multigene construct), report translation PER Level 1
+    unit, labelled by the part name.
+
+    A translation is only shown when the component part carries a TRUSTWORTHY
+    stored translation. Translation is only reliable for a part that was
+    assembled from Level 0 parts inside this tool (where the coding region is
+    known); it is NOT re-derived here by translating the whole stored module,
+    which would be wrong for GenBank-uploaded modules and meaningless for parts
+    that are "Coding" but not actually translated (e.g. a gRNA). The stored
+    translation, when present, lives in the part's comments as a
+    "TRANSLATION_DATA: {json}" block (written at assembly time). Units without
+    such data are reported as not analysed.
+
+    Returns:
+        {
+            'per_unit': True,
+            'units': [
+                {'part_id', 'part_name', 'part_type', 'level',
+                 'analyzed': bool, 'translation': {...}|None}, ...
+            ],
+            'coding_unit_count': int
+        }
+    """
+    import json
+    import re
+
+    units = []
+    coding_count = 0
+    for part_id in (cassette.part_ids or []):
+        part = Part.get_by_id(part_id)
+        if part is None:
+            # Part was deleted; show the id so the unit is still accounted for.
+            units.append({
+                'part_id': part_id,
+                'part_name': part_id,
+                'part_type': None,
+                'level': None,
+                'analyzed': False,
+                'translation': None,
+            })
+            continue
+
+        unit = {
+            'part_id': part.id,
+            'part_name': part.name,
+            'part_type': part.part_type,
+            'level': part.level,
+            'analyzed': False,
+            'translation': None,
+        }
+
+        # Use ONLY a stored, trustworthy translation (from in-tool Level 0
+        # assembly), persisted in the part's comments. Do not re-translate the
+        # module here.
+        stored = None
+        comments = getattr(part, 'comments', None) or ''
+        match = re.search(r'TRANSLATION_DATA:\s*(\{.*?\})\s*(?:$|\n)', comments, re.DOTALL)
+        if match:
+            try:
+                stored = json.loads(match.group(1))
+            except (json.JSONDecodeError, ValueError):
+                stored = None
+
+        if stored and stored.get('has_coding') and (
+            stored.get('protein_sequence_spliced') or stored.get('protein_sequence')
+        ):
+            unit['analyzed'] = True
+            unit['translation'] = stored
+            coding_count += 1
+
+        units.append(unit)
+
+    return {
+        'per_unit': True,
+        'units': units,
+        'coding_unit_count': coding_count,
+    }
+
+
 @cassettes_bp.route('', methods=['GET'])
 @require_auth
 def list_cassettes(user):
@@ -144,22 +228,38 @@ def get_cassette(user, cassette, cassette_id):
                 parts.append(part.to_dict())
         
         cassette_data['parts'] = parts
-        
-        # Add translation analysis for coding sequences
-        from app.services.translation import analyze_coding_sequence, get_part_boundaries_from_cassette
-        from app.services.assembly import disassemble_cassette
-        
+
+        # Translation analysis.
+        #
+        # A Level 2+ cassette is made of several Level 1 transcription units, each
+        # with its own reading frame, so a single whole-sequence ORF analysis is
+        # meaningless. For Level 2+ we instead report translation PER Level 1 unit,
+        # carrying forward whatever translation each component already has. If a
+        # unit has no translation, we say so rather than inventing one.
+        #
+        # For Level 0/1 (a single transcription unit) we keep the existing
+        # whole-sequence ORF analysis.
         try:
-            cassette_parts = disassemble_cassette(cassette)
-            part_boundaries = get_part_boundaries_from_cassette(cassette_parts, cassette.assembled_sequence)
-            translation_analysis = analyze_coding_sequence(cassette.assembled_sequence, part_boundaries)
-            cassette_data['translation_analysis'] = translation_analysis
-        except Exception as trans_error:
-            # Don't fail the whole request if translation analysis fails
-            cassette_data['translation_analysis'] = {
-                'error': str(trans_error),
-                'has_coding': False
-            }
+            level_int = int(cassette.level) if cassette.level else 1
+        except (TypeError, ValueError):
+            level_int = 1
+
+        if level_int >= 2:
+            cassette_data['translation_analysis'] = _build_per_unit_translation(cassette)
+        else:
+            from app.services.translation import analyze_coding_sequence, get_part_boundaries_from_cassette
+            from app.services.assembly import disassemble_cassette
+            try:
+                cassette_parts = disassemble_cassette(cassette)
+                part_boundaries = get_part_boundaries_from_cassette(cassette_parts, cassette.assembled_sequence)
+                translation_analysis = analyze_coding_sequence(cassette.assembled_sequence, part_boundaries)
+                cassette_data['translation_analysis'] = translation_analysis
+            except Exception as trans_error:
+                # Don't fail the whole request if translation analysis fails
+                cassette_data['translation_analysis'] = {
+                    'error': str(trans_error),
+                    'has_coding': False
+                }
         
         return jsonify(cassette_data), 200
         
@@ -483,6 +583,54 @@ def export_image(user, cassette, cassette_id):
     except Exception as e:
         return jsonify({
             'error': 'Failed to generate image export',
+            'message': str(e)
+        }), 500
+
+
+@cassettes_bp.route('/<cassette_id>/export/svg', methods=['GET'])
+@require_cassette_ownership
+def export_svg(user, cassette, cassette_id):
+    """
+    Export a cassette as an SVG (vector) image.
+
+    SVG is resolution-independent and is produced directly from the cassette
+    visualization (no rasterisation), so it is crisp at any size and does not
+    depend on the Cairo/cairosvg system libraries.
+
+    Path Parameters:
+        cassette_id: Cassette ID
+
+    Response (200 OK):
+        Content-Type: image/svg+xml
+        Content-Disposition: attachment; filename="<cassette_name>.svg"
+    """
+    try:
+        from app.services.visualization import generate_cassette_svg
+
+        # Reconstruct the ordered parts (same as the PNG/visualization paths).
+        parts = []
+        for part_id in cassette.part_ids:
+            part = Part.get_by_id(part_id)
+            if part:
+                parts.append(part)
+        if not parts:
+            return jsonify({'error': 'Cassette has no parts to visualize'}), 400
+
+        svg_content = generate_cassette_svg(parts)
+
+        svg_bytes = BytesIO(svg_content.encode('utf-8'))
+        filename = f"{cassette.name.replace(' ', '_')}.svg"
+
+        return send_file(
+            svg_bytes,
+            mimetype='image/svg+xml',
+            as_attachment=True,
+            download_name=filename
+        )
+
+    except Exception as e:
+        return jsonify({
+            'error': 'Failed to generate SVG export',
             'message': str(e)
         }), 500
 

@@ -290,17 +290,32 @@ function showPlasmidModal(plasmid) {
             html += `
                 <div class="detail-item">
                     <span class="detail-label">Method:</span>
-                    <span class="detail-value">${plasmid.metadata.assembly_method}</span>
+                    <span class="detail-value">${escapeHtml(plasmid.metadata.assembly_method)}</span>
                 </div>
             `;
         }
-        
+
+        const strat = plasmid.metadata.moclo_strategy;
+        if (strat && strat.enzyme) {
+            html += `
+                <div class="detail-item">
+                    <span class="detail-label">Enzyme:</span>
+                    <span class="detail-value">${escapeHtml(strat.enzyme)}${strat.level_label ? ' · ' + escapeHtml(strat.level_label) : ''}</span>
+                </div>
+            `;
+        }
+
         html += `
                 </div>
             </div>
         `;
     }
-    
+
+    // MoClo assembly strategy — the full fragment breakdown (promoter + all
+    // Level 0 parts) with sizes and overhangs, for ALL plasmids. Rendered from
+    // metadata.moclo_strategy (preferred) or built from cassette_details.
+    html += renderMocloStrategy(plasmid);
+
     // Cassettes section with images
     if (plasmid.cassette_ids && plasmid.cassette_ids.length > 0) {
         html += `
@@ -437,6 +452,190 @@ async function loadPlasmidTranslation(plasmidId) {
         container.innerHTML =
             `<h3>Translation</h3><div class="error-message">Failed to analyse translation: ${escapeHtml(error.message)}</div>`;
     }
+}
+
+/**
+ * Build the flat MoClo strategy fragment list for a plasmid. Prefers the
+ * stored metadata.moclo_strategy; otherwise reconstructs it from
+ * metadata.cassette_details (expanding any captured Level 0 sub_parts) so older
+ * plasmids still show a full breakdown.
+ *
+ * Returns { enzyme, level_label, fragments: [{name,size,role,part_type,
+ *           overhang_5prime,overhang_3prime,source_vector,cassette_name}] } or null.
+ */
+function buildStrategyFragments(plasmid) {
+    const meta = plasmid.metadata || {};
+    if (meta.moclo_strategy && Array.isArray(meta.moclo_strategy.fragments) && meta.moclo_strategy.fragments.length) {
+        return meta.moclo_strategy;
+    }
+
+    // Fallback: reconstruct from cassette_details.
+    const details = meta.cassette_details;
+    if (!Array.isArray(details) || details.length === 0) return null;
+
+    const level = meta.moclo_level;
+    const enzyme = level === 2 ? 'BpiI' : 'BsaI';
+    const levelLabel = level === 2 ? 'Level 1 → Level 2' : 'Level 0 → Level 1';
+
+    const fragments = [];
+    if (meta.backbone_name) {
+        fragments.push({
+            name: meta.backbone_name, size: meta.backbone_size || 0, role: 'vector',
+            part_type: 'Backbone', source_vector: meta.backbone_plasmid_id || null,
+        });
+    }
+    details.forEach(d => {
+        (d.parts || []).forEach(p => {
+            const rows = (Array.isArray(p.sub_parts) && p.sub_parts.length) ? p.sub_parts : [p];
+            rows.forEach(r => {
+                fragments.push({
+                    name: r.part_name || 'Part',
+                    size: r.size || r.sequence_length || 0,
+                    role: 'insert',
+                    part_type: r.part_type || '',
+                    level: r.level,
+                    overhang_5prime: r.overhang_5prime,
+                    overhang_3prime: r.overhang_3prime,
+                    source_vector: r.source_vector,
+                    cassette_name: d.cassette_name,
+                });
+            });
+        });
+    });
+
+    if (fragments.length === 0) return null;
+    return { enzyme: enzyme, level_label: levelLabel, moclo_level: level, fragments: fragments };
+}
+
+/**
+ * Render the "MoClo Assembly Strategy" detail section for a plasmid: a table of
+ * every fragment (backbone + each Level 0 part) with type, size and overhangs,
+ * plus a button to pre-fill the protocol-page reaction calculator.
+ */
+function renderMocloStrategy(plasmid) {
+    const strat = buildStrategyFragments(plasmid);
+    if (!strat) return '';
+
+    const typeLabel = {
+        'Backbone': 'Backbone', 'Coding': 'Coding', 'NonCodingPromoter': 'Promoter',
+        'NonCodingTerminator': 'Terminator', 'NonCodingIntron': 'Intron',
+        'NonCodingOther': 'Other', 'ExpressionCassette': 'Expression cassette',
+    };
+
+    let rows = '';
+    strat.fragments.forEach(f => {
+        const roleTag = f.role === 'vector'
+            ? '<span class="strategy-role strategy-role-vector">vector</span>'
+            : '<span class="strategy-role strategy-role-insert">insert</span>';
+        const oh = (f.overhang_5prime || f.overhang_3prime)
+            ? `${escapeHtml(f.overhang_5prime || '—')} / ${escapeHtml(f.overhang_3prime || '—')}`
+            : '—';
+        const src = f.source_vector ? `<span class="text-muted"> · ${escapeHtml(f.source_vector)}</span>` : '';
+        rows += `
+            <tr>
+                <td>${escapeHtml(f.name)}${src}</td>
+                <td>${roleTag}</td>
+                <td>${escapeHtml(typeLabel[f.part_type] || f.part_type || '')}</td>
+                <td style="text-align:right;">${f.size ? f.size + ' bp' : '—'}</td>
+                <td><code>${oh}</code></td>
+            </tr>`;
+    });
+
+    const insertCount = strat.fragments.filter(f => f.role === 'insert').length;
+
+    // Stash the strategy on the plasmid so the calculator handoff can read it.
+    window._plasmidStrategies = window._plasmidStrategies || {};
+    window._plasmidStrategies[plasmid.id] = { strat: strat, name: plasmid.name };
+
+    return `
+        <div class="detail-section">
+            <h3>MoClo Assembly Strategy</h3>
+            <p class="text-muted" style="margin-top:-0.25rem;">
+                ${escapeHtml(strat.enzyme)} assembly${strat.level_label ? ' · ' + escapeHtml(strat.level_label) : ''}
+                — 1 acceptor vector + ${insertCount} insert fragment(s). Each part is supplied as its own plasmid;
+                sizes shown are the fragment/insert sizes.
+            </p>
+            <table class="strategy-table">
+                <thead>
+                    <tr><th>Fragment</th><th>Role</th><th>Type</th><th style="text-align:right;">Size</th><th>Overhangs (5'/3')</th></tr>
+                </thead>
+                <tbody>${rows}</tbody>
+            </table>
+            <div style="margin-top:0.75rem; display:flex; gap:0.5rem; flex-wrap:wrap; align-items:center;">
+                <button class="btn btn-primary"
+                        onclick="sendStrategyToCalculator('${plasmid.id}')">
+                    Send to reaction calculator →
+                </button>
+                <button class="btn btn-success"
+                        onclick="savePlasmidToDashboard('${plasmid.id}')">
+                    ★ Save to dashboard
+                </button>
+            </div>
+        </div>
+    `;
+}
+
+/**
+ * Save a plasmid (its MoClo strategy summary) to the user's dashboard so it can
+ * be revisited and re-opened in the reaction calculator later.
+ */
+async function savePlasmidToDashboard(plasmidId) {
+    const entry = (window._plasmidStrategies || {})[plasmidId];
+    if (!entry) return;
+    const strat = entry.strat;
+    const payload = {
+        item_type: 'plasmid',
+        ref_id: plasmidId,
+        title: entry.name || 'Plasmid',
+        summary: {
+            kind: 'plasmid',
+            reactions: [{
+                label: strat.level_label || ('Level ' + (strat.moclo_level || '')),
+                level: strat.moclo_level === 1 ? '1' : '2',
+                enzyme: strat.enzyme,
+                fragments: strat.fragments.map(f => ({
+                    name: f.name, size: f.size || 0,
+                    role: f.role === 'vector' ? 'vector' : 'insert',
+                })),
+            }],
+            records: { plasmid_id: plasmidId },
+        },
+    };
+    try {
+        await apiRequest('/api/me/saved', { method: 'POST', body: JSON.stringify(payload) });
+        showFlashMessage('Saved "' + (entry.name || 'plasmid') + '" to your dashboard.', 'success');
+    } catch (e) {
+        showFlashMessage(e.message || 'Failed to save to dashboard', 'error');
+    }
+}
+
+/**
+ * Hand the plasmid's MoClo strategy to the protocol-page reaction calculator.
+ * Stores a fragment list in sessionStorage and navigates to /protocol, which
+ * reads it and pre-fills the DNA fragment rows + reaction level.
+ */
+function sendStrategyToCalculator(plasmidId) {
+    const entry = (window._plasmidStrategies || {})[plasmidId];
+    if (!entry) return;
+    const strat = entry.strat;
+
+    const payload = {
+        source: 'plasmid',
+        plasmid_name: entry.name,
+        level: strat.moclo_level === 1 ? '1' : '2',
+        enzyme: strat.enzyme,
+        fragments: strat.fragments.map(f => ({
+            name: f.name,
+            size: f.size || 0,
+            role: f.role === 'vector' ? 'vector' : 'insert',
+        })),
+    };
+    try {
+        sessionStorage.setItem('mocloCalculatorPrefill', JSON.stringify(payload));
+    } catch (e) {
+        // sessionStorage may be unavailable; fall back to a query flag.
+    }
+    window.location.href = '/protocol#calculator';
 }
 
 /**

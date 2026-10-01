@@ -29,6 +29,7 @@ actual toolkit vectors.
 """
 
 import os
+import re as _re
 from typing import List, Dict, Any, Optional, Tuple
 
 from app.services.compatibility import reverse_complement
@@ -164,6 +165,19 @@ L1_ACCEPTORS = {
 # Endlinker for a single promoter-gRNA / tRNA-sgRNA unit at Level 2 (step 11).
 L2_SINGLE_UNIT_ENDLINKER = "pICH41766"
 
+# Canonical MoClo Level 2 position boundary overhangs (the BpiI fusion sites that
+# link Level 1 units in the Level 2 construct). Each Level 1 acceptor spans one
+# boundary pair; a unit in position N presents these as its 5'/3' fusion sites.
+L2_POSITION_OVERHANGS = {
+    1: ("TGCC", "GCAA"),
+    2: ("GCAA", "ACTA"),
+    3: ("ACTA", "TTAC"),
+    4: ("TTAC", "CAGA"),
+    5: ("CAGA", "TGTG"),
+    6: ("TGTG", "GAGC"),
+    7: ("GAGC", "TGCC"),
+}
+
 MAX_TRNA_GUIDES = 6
 
 # Candidate 3 bp binding pads, tried in this deterministic order. The first
@@ -253,10 +267,142 @@ def hairpin_dg(sequence: str, temp: float = 37.0) -> float:
     return min(float(value), 0.0)
 
 
+def _raw_hairpin_dg(sequence: str, temp: float) -> Optional[float]:
+    """
+    Raw seqfold folding free energy at a given temperature, without clamping.
+
+    Returns the ΔG (which may be positive) or None when no structure forms
+    (seqfold returns inf/NaN). Used for the melting-temperature scan, where we
+    need to see ΔG actually cross zero rather than being clamped at 0.
+    """
+    try:
+        from seqfold import dg
+    except ImportError:
+        return None
+    try:
+        value = dg(sequence.upper(), temp=temp)
+    except Exception:
+        return None
+    if value is None:
+        return None
+    try:
+        if value != value or value == float("inf"):
+            return None
+    except TypeError:
+        return None
+    return float(value)
+
+
+def hairpin_tm(sequence: str, lo: float = 10.0, hi: float = 95.0) -> Optional[float]:
+    """
+    Estimate the melting temperature (deg C) of the most stable hairpin / self
+    structure the single strand can form.
+
+    seqfold reports the folding free energy ΔG at a given temperature; a hairpin
+    is "melted" at the temperature where its ΔG rises to 0 (no longer favourable).
+    We scan from lo to hi degrees and return the temperature where ΔG crosses
+    zero (bisection-refined). Returns None if the structure is already unstable
+    at the low end (no meaningful Tm) i.e. there is no appreciable hairpin.
+
+    Args:
+        sequence: single-stranded oligo sequence
+        lo, hi: temperature search bounds in deg C
+
+    Returns:
+        Melting temperature in deg C (rounded to 1 dp), or None.
+    """
+    dg_lo = _raw_hairpin_dg(sequence, lo)
+    # If no structure (None) or already non-favourable (>=0) at the low temp,
+    # there is no hairpin to melt.
+    if dg_lo is None or dg_lo >= 0:
+        return None
+
+    dg_hi = _raw_hairpin_dg(sequence, hi)
+    # Still favourable even at the top of the range: report the upper bound.
+    if dg_hi is not None and dg_hi < 0:
+        return round(hi, 1)
+
+    # Bisection: find the temperature where ΔG crosses 0 (favourable -> not).
+    low, high = lo, hi
+    for _ in range(40):
+        mid = (low + high) / 2.0
+        dmid = _raw_hairpin_dg(sequence, mid)
+        # Treat "no structure" (None) or ΔG >= 0 as melted at mid.
+        if dmid is None or dmid >= 0:
+            high = mid
+        else:
+            low = mid
+        if high - low < 0.1:
+            break
+    return round((low + high) / 2.0, 1)
+
+
 def _creates_forbidden_site(sequence: str) -> bool:
     """True if the sequence contains any Type IIS recognition site we must avoid."""
     s = sequence.upper()
     return any(site in s for site in _FORBIDDEN_SITES)
+
+
+def _count_sites(sequence: str, site: str) -> int:
+    """Count occurrences of a recognition site on BOTH strands of a sequence."""
+    s = sequence.upper()
+    rc = reverse_complement(site)
+    # Count on the top strand; a palindromic site would be double-counted, but
+    # BpiI/BsaI sites are not palindromic so top + rc covers both strands.
+    n = s.count(site)
+    if rc != site:
+        n += s.count(rc)
+    return n
+
+
+def screen_assembled_oligo(top_strand: str) -> Dict[str, Any]:
+    """
+    Safety check that assembling the guide into the oligo did not introduce an
+    unintended Type IIS site.
+
+    A correctly designed tRNA-sgRNA oligo (top strand) carries EXACTLY two BpiI
+    sites — one GAAGAC near the 5' end and its reverse complement GTCTTC near the
+    3' end — which are the intended cloning sites, and ZERO BsaI sites. Any extra
+    BpiI site, or any BsaI site, means the guide (or a junction with the flanking
+    overhangs/pads) created a recognition sequence that would be cut during
+    Golden Gate assembly.
+
+    Returns {'ok': bool, 'bpii_count': int, 'bsai_count': int, 'errors': [...]}.
+    """
+    seq = (top_strand or "").upper()
+    bpii = _count_sites(seq, BPII_SITE)
+    bsai = _count_sites(seq, BSAI_SITE)
+    bsmbi = _count_sites(seq, BSMBI_SITE)
+
+    errors = []
+    # Exactly two intended BpiI sites (forward GAAGAC + reverse GTCTTC).
+    if bpii > 2:
+        errors.append(
+            f"{bpii} BpiI (GAAGAC) sites found in the assembled oligo; only the 2 "
+            f"intended cloning sites are allowed. The guide or a junction with the "
+            f"flanking sequence introduced an extra BpiI site that would be cut."
+        )
+    elif bpii < 2:
+        errors.append(
+            f"Only {bpii} BpiI site(s) found; the oligo must retain its 2 intended "
+            f"BpiI cloning sites."
+        )
+    if bsai > 0:
+        errors.append(
+            f"{bsai} BsaI (GGTCTC) site(s) found in the assembled oligo; the guide "
+            f"introduced a BsaI site that would be cut during Level 1 assembly."
+        )
+    if bsmbi > 0:
+        errors.append(
+            f"{bsmbi} BsmBI (CGTCTC) site(s) found in the assembled oligo."
+        )
+    return {
+        'ok': not errors,
+        'bpii_count': bpii,
+        'bsai_count': bsai,
+        'bsmbi_count': bsmbi,
+        'errors': errors,
+    }
 
 
 # --------------------------------------------------------------------------- #
@@ -354,6 +500,12 @@ def design_oligos(guide: str, overhang_5: str, overhang_3: str) -> Dict[str, Any
         f"{reverse_complement(spacer)}|{reverse_complement(BPII_SITE)}|{pad_right}"
     )
 
+    # Hairpin melting temperature for each strand (deg C), i.e. the temperature
+    # at which the predicted self-structure is no longer favourable. None when
+    # there is no appreciable hairpin.
+    diag["top_strand_tm"] = hairpin_tm(top)
+    diag["bottom_strand_tm"] = hairpin_tm(bottom)
+
     # Warn if even the best oligo has a notably stable structure.
     warnings = []
     strong = -9.0  # kcal/mol threshold for flagging a strong hairpin
@@ -368,6 +520,14 @@ def design_oligos(guide: str, overhang_5: str, overhang_3: str) -> Dict[str, Any
             f"(dG={diag['bottom_strand_dg']} kcal/mol); annealing may be affected."
         )
 
+    # Safety check: confirm assembling the guide into the oligo did not introduce
+    # an unintended BsaI/BpiI site (at the guide itself or at a junction with the
+    # flanking overhangs/pads). The guide was already screened in isolation; this
+    # catches sites created only in the assembled context.
+    site_check = screen_assembled_oligo(top)
+    for e in site_check['errors']:
+        warnings.append(e)
+
     return {
         "forward_oligo": top,
         "reverse_oligo": bottom,
@@ -380,6 +540,7 @@ def design_oligos(guide: str, overhang_5: str, overhang_3: str) -> Dict[str, Any
         "enzyme": "BpiI",
         "annotated_layout": annotated,
         "hairpin": diag,
+        "site_check": site_check,
         "warnings": warnings,
     }
 
@@ -489,18 +650,21 @@ def design_trna_sgrna_strategy(
         },
         "level2": {
             "description": (
-                "Combine the Level 1 tRNA-sgRNA unit with a Level 1 SpCas9 nuclease unit, a "
-                "Level 1 selectable-marker unit and the single-unit endlinker into a Level 2 "
-                "backbone via BpiI."
+                "Combine this Level 1 tRNA-sgRNA unit with the Level 1 units you select below "
+                "(a Cas nuclease unit and a selectable-marker unit are required; other Level 1 "
+                "units are optional) into a Level 2 acceptor backbone via BpiI. The designer "
+                "maps each chosen unit to its Level 2 position, auto-fills internal gaps with "
+                "dummy units and closes the array with the matching end-linker."
             ),
             "enzyme": "BpiI",
             "single_unit_endlinker": L2_SINGLE_UNIT_ENDLINKER,
             "required_units": [
-                "Level 1 SpCas9 nuclease transcription unit (e.g. pFH23/pFH66/pFH67)",
-                "Level 1 selectable-marker transcription unit (e.g. BAR / NPTII)",
-                f"This Level 1 tRNA-sgRNA unit ({l1_acceptor})",
-                f"Endlinker {L2_SINGLE_UNIT_ENDLINKER} (for a single guide-RNA Level 1 unit)",
-                "A Level 2 acceptor backbone",
+                "A Level 1 Cas nuclease transcription unit (choose from your library below)",
+                "A Level 1 selectable-marker transcription unit (choose from your library below)",
+                f"This Level 1 tRNA-sgRNA unit ({l1_acceptor}, Position {l1_position})",
+                "Any optional additional Level 1 units",
+                "Dummy units and the closing end-linker (added automatically to span the array)",
+                "A Level 2 acceptor backbone (e.g. pAGM4673)",
             ],
         },
         "reference": "Hahn et al. 2020, BMC Plant Biol 20:179 (doi:10.1186/s12870-020-02388-2)",
@@ -520,6 +684,114 @@ def _vector_gb_path(vector_name: str) -> str:
             f"(looked in {TOOLKIT_GB_DIR})."
         )
     return path
+
+
+def _vector_length(vector_name: str) -> Optional[int]:
+    """Length of a bundled toolkit vector (bp), or None if not available."""
+    try:
+        from Bio import SeqIO
+        rec = SeqIO.read(_vector_gb_path(vector_name), "genbank")
+        return len(str(rec.seq))
+    except Exception:  # noqa: BLE001
+        return None
+
+
+def _vector_sequence(vector_name: str) -> str:
+    """Raw sequence (upper-case) of a bundled toolkit vector, or '' if missing."""
+    try:
+        from Bio import SeqIO
+        rec = SeqIO.read(_vector_gb_path(vector_name), "genbank")
+        return str(rec.seq).upper()
+    except Exception:  # noqa: BLE001
+        return ''
+
+
+# Feature types worth carrying through from a bundled Level 0 module's own
+# GenBank annotation (the biologically meaningful parts — not the vector
+# backbone, enzyme sites, or lacZ dropout).
+_MODULE_KEEP_TYPES = {'promoter', 'terminator', 'tRNA', 'gRNA_Scaffold',
+                      'misc_RNA', 'regulatory', 'CDS'}
+
+
+def _released_bsai_insert(seq: str, raw_features: List[Dict[str, Any]]):
+    """
+    Given a circular Level 0 module sequence with a single divergent BsaI pair
+    (forward GGTCTC near the insert start, reverse GAGACC near the insert end),
+    return the RELEASED insert fragment and its features in insert-local coords.
+
+    BsaI GGTCTC(1/5): forward site at p leaves a 4 nt 5' overhang seq[p+7:p+11],
+    with the retained insert top strand starting at p+7. The reverse site
+    (GAGACC at q on the top strand) leaves the insert's right end; the insert top
+    strand ends at q-1 and its 3' fusion overhang (as read on the top strand) is
+    seq[q-5:q-1].
+
+    Returns dict {insert, left_oh, right_oh, features(local coords)} or None if a
+    clean single divergent pair is not found.
+    """
+    s = (seq or '').upper()
+    fwd = [m.start() for m in _re.finditer('GGTCTC', s)]
+    rev = [m.start() for m in _re.finditer('GAGACC', s)]
+    if len(fwd) != 1 or len(rev) != 1:
+        return None
+    p, q = fwd[0], rev[0]
+    if not (p + 11 <= q - 1):
+        return None
+    offset = p + 7
+    end = q - 1
+    insert = s[offset:end]
+    left_oh = s[p + 7:p + 11]
+    right_oh = s[q - 5:q - 1]
+    feats = []
+    for f in (raw_features or []):
+        try:
+            cs, ce = int(f['start']), int(f['end'])
+        except (TypeError, ValueError, KeyError):
+            continue
+        if cs >= offset and ce <= end:
+            feats.append({**f, 'start': cs - offset, 'end': ce - offset})
+    return {'insert': insert, 'left_oh': left_oh, 'right_oh': right_oh, 'features': feats}
+
+
+def _module_raw_features(vector_name: str) -> List[Dict[str, Any]]:
+    """Meaningful biological features of a bundled module in its OWN coords."""
+    return _extract_module_features(vector_name)
+
+
+def _extract_module_features(vector_name: str) -> List[Dict[str, Any]]:
+    """
+    Read a bundled Level 0 module's GenBank file and return its meaningful
+    biological features (promoter, poly-T terminator, tRNA, scaffold, ...) in the
+    module's own 0-based coordinates. Vector-backbone CDS (Sm/Sp, KanR, LacZ) and
+    enzyme/overhang features are skipped. Used to carry a part's REAL annotation
+    (e.g. the U6 promoter from pFH34, the poly-T terminator from pAK-EL-0x) into
+    the assembled Level 1 construct instead of synthesizing or searching for it.
+    """
+    try:
+        from Bio import SeqIO
+        rec = SeqIO.read(_vector_gb_path(vector_name), "genbank")
+    except Exception:  # noqa: BLE001
+        return []
+    out = []
+    for ft in rec.features:
+        q = ft.qualifiers
+        label = (q.get('label') or q.get('note') or [ft.type])[0] or ft.type
+        low = label.lower()
+        if ft.type not in _MODULE_KEEP_TYPES:
+            continue
+        # Skip vector-backbone selection/marker CDS carried on the module plasmid.
+        if ft.type == 'CDS' and any(k in low for k in ('lacz', 'sm/sp', 'spec', 'kanr', 'kan ', 'ampr', 'cat', 'cmr')):
+            continue
+        try:
+            s, e = int(ft.location.start), int(ft.location.end)
+        except (TypeError, ValueError):
+            continue
+        out.append({
+            'type': ft.type,
+            'label': label,
+            'start': s, 'end': e,
+            'strand': 1 if ft.location.strand in (None, 1) else -1,
+        })
+    return out
 
 
 def _find_insertion_boundaries(record, seq: str) -> Tuple[int, int]:
@@ -565,7 +837,8 @@ def _find_insertion_boundaries(record, seq: str) -> Tuple[int, int]:
     return tgca_before[1], gttt_after[0]
 
 
-def assemble_level0_module(vector_name: str, guide: str) -> Dict[str, Any]:
+def assemble_level0_module(vector_name: str, guide: str,
+                           promoter_label: Optional[str] = None) -> Dict[str, Any]:
     """
     Assemble the FULL Level 0 guide-cassette module: take the real toolkit
     acceptor vector, excise the lacZ placeholder, and splice in the guide so the
@@ -573,7 +846,12 @@ def assemble_level0_module(vector_name: str, guide: str) -> Dict[str, Any]:
     after the BpiI cut-ligation.
 
     Returns a dict with the complete assembled circular module sequence, the
-    guide's position within it, and simple feature annotations.
+    guide's position within it, and feature annotations. The real toolkit
+    annotations (tRNA, sgRNA scaffold, Pol III promoter, overhangs, start codon)
+    are carried through and remapped across the lacZ->guide splice, plus the
+    guide and a poly-T Pol III terminator are annotated — so a GenBank export of
+    the Level 1 construct shows the U6/U3 promoter and poly-T terminator as real
+    features rather than only in free-text notes.
     """
     from Bio import SeqIO  # local import; biopython is a project dependency
 
@@ -595,12 +873,59 @@ def assemble_level0_module(vector_name: str, guide: str) -> Dict[str, Any]:
 
     guide_start = len(left)
     guide_end = guide_start + len(guide)
+    # Position shift applied to everything downstream of the splice.
+    delta = len(guide) - (right_start - left_end)
 
-    features = [
-        {"type": "misc_feature", "label": "guide (protospacer)", "start": guide_start, "end": guide_end, "strand": 1},
-        {"type": "misc_feature", "label": "5' fusion site TGCA", "start": guide_start - 4, "end": guide_start, "strand": 1},
-        {"type": "misc_feature", "label": "3' fusion site (AAAC / GTTT)", "start": guide_end, "end": guide_end + 4, "strand": 1},
-    ]
+    # Feature types from the toolkit GB worth keeping as biological annotations
+    # (skip the removed lacZ, the vector-only rep/KanR/primer, and raw enzyme
+    # sites which we re-annotate ourselves where relevant).
+    _KEEP_TYPES = {'tRNA', 'gRNA_Scaffold', 'promoter', 'terminator',
+                   'Start_codon', 'start_codon', 'misc_RNA', 'regulatory'}
+
+    def _remap(s, e):
+        """Map an original-coordinate feature span across the splice."""
+        if e <= left_end:
+            return s, e                      # entirely before the insert
+        if s >= right_start:
+            return s + delta, e + delta      # entirely after the insert
+        return None                          # overlaps the excised lacZ -> drop
+
+    features = []
+    for ft in record.features:
+        q = ft.qualifiers
+        label = (q.get('label') or q.get('note') or [ft.type])[0]
+        if ft.type == 'CDS' and 'lacz' in (label or '').lower():
+            continue
+        if ft.type not in _KEEP_TYPES:
+            continue
+        try:
+            s, e = int(ft.location.start), int(ft.location.end)
+        except (TypeError, ValueError):
+            continue
+        mapped = _remap(s, e)
+        if mapped is None:
+            continue
+        ms, me = mapped
+        ftype = 'promoter' if ft.type == 'promoter' else (
+            'CDS' if 'codon' in ft.type.lower() else ft.type)
+        features.append({
+            'type': ft.type if ft.type != 'Start_codon' else 'misc_feature',
+            'label': label,
+            'start': ms, 'end': me,
+            'strand': 1 if ft.location.strand in (None, 1) else -1,
+        })
+
+    # Annotate the guide and the two fusion scars. The Pol III PROMOTER and the
+    # poly-T TERMINATOR are NOT synthesized/searched here — they live in their
+    # own Level 0 modules (the promoter module pFH3x and the end-linker pAK-EL),
+    # whose real GB annotations are carried through where those modules are
+    # assembled (see _extract_module_features / assemble_level1_guide_cassette).
+    features.append({"type": "misc_feature", "label": "guide (protospacer)",
+                     "start": guide_start, "end": guide_end, "strand": 1})
+    features.append({"type": "misc_feature", "label": "5' fusion site TGCA",
+                     "start": guide_start - 4, "end": guide_start, "strand": 1})
+    features.append({"type": "misc_feature", "label": "3' fusion site (AAAC / GTTT)",
+                     "start": guide_end, "end": guide_end + 4, "strand": 1})
 
     return {
         "vector": vector_name,
@@ -723,3 +1048,267 @@ def build_level0_part_payload(
         "oligos": oligos,
         "module_length": module["length"],
     }
+
+
+# --------------------------------------------------------------------------- #
+# Level 1 guide-cassette assembly (chain the Level 0 guide modules)
+# --------------------------------------------------------------------------- #
+
+def assemble_level1_guide_cassette(
+    guides: List[str],
+    promoter: str = "TaU3p",
+    backbone_flavor: str = "improved",
+    l1_acceptor: str = "pICH47742",
+) -> Dict[str, Any]:
+    """
+    Assemble the Level 1 tRNA-sgRNA guide cassette sequence by chaining the
+    per-position Level 0 guide modules (promoter + tRNA-sgRNA array), so it can
+    be stored as a single Level 1 Part for Level 2 assembly.
+
+    The chained sequence overlaps the shared 4bp fusion site between adjacent
+    Level 0 modules (each module after the first contributes its sequence minus
+    the leading shared overhang), mirroring assemble_parts. The resulting Level 1
+    cassette presents the fusion overhangs of its Level 2 acceptor position.
+
+    Returns a dict with the assembled sequence and the Level 2 fusion overhangs.
+    """
+    if l1_acceptor not in L1_ACCEPTORS:
+        raise GuideDesignError(f"Unknown Level 1 acceptor '{l1_acceptor}'.")
+    position = L1_ACCEPTORS[l1_acceptor]["position"]
+    o5, o3 = L2_POSITION_OVERHANGS[position]
+
+    # Build the Level 1 unit sequence BASE-EXACTLY by chaining the RELEASED BsaI
+    # inserts of the real Level 0 parts, in cloning order:
+    #   promoter module (pFH3x)  +  guide module(s) (pFH49/pAK00x, guide spliced
+    #   in)  +  end-linker (pAK-EL-0x).
+    # Adjacent inserts share their 4 bp fusion overhang (written once). Each
+    # part's real GenBank features (U6 promoter, tRNA, sgRNA scaffold, guide,
+    # poly-T terminator) are carried through at their true chained coordinates.
+    promoter_info = POL3_PROMOTERS.get(promoter, {})
+    promoter_vector = promoter_info.get('vector')
+    n_guides = len(guides)
+    endlinker_vector = TRNA_ENDLINKERS.get(n_guides) if n_guides < MAX_TRNA_GUIDES else None
+
+    # (role, vector, released-insert dict, display-name, module_length-or-None)
+    pieces = []
+
+    # Promoter module insert (from the raw promoter vector).
+    if promoter_vector:
+        pr = _released_bsai_insert(
+            _vector_sequence(promoter_vector), _module_raw_features(promoter_vector))
+        if pr:
+            pieces.append(('promoter', promoter_vector, pr,
+                           f"Pol III promoter module ({promoter_vector}, {promoter})", None))
+
+    # Guide module inserts (assembled module with guide spliced in).
+    for i, g in enumerate(guides):
+        pos = i + 1
+        vector = TRNA_POSITION1[promoter][backbone_flavor] if pos == 1 else TRNA_POSITION_MODULES.get(pos)
+        if vector is None:
+            raise GuideDesignError(f"No Level 0 module for array position {pos}.")
+        module = assemble_level0_module(vector, validate_guide(g, TRNA_GUIDE_LEN))
+        gi = _released_bsai_insert(module['assembled_sequence'], module.get('features'))
+        if gi is None:
+            raise GuideDesignError(
+                f"Could not release the BsaI insert from guide module {vector}.")
+        pieces.append(('guide', vector, gi,
+                       f"Level 0 tRNA-sgRNA module ({vector}, guide {pos})", module['length']))
+
+    # End-linker insert (closes arrays of <6 guides; carries the poly-T terminator).
+    if endlinker_vector:
+        el = _released_bsai_insert(
+            _vector_sequence(endlinker_vector), _module_raw_features(endlinker_vector))
+        if el:
+            pieces.append(('end-linker', endlinker_vector, el,
+                           f"End-linker ({endlinker_vector}, closes {n_guides}-guide array)", None))
+
+    if not pieces:
+        raise GuideDesignError("No Level 0 modules to assemble into a Level 1 unit.")
+
+    # Chain the inserts, sharing each internal 4 bp fusion overhang once, and
+    # carry each piece's features at the true chained coordinate.
+    chained = ''
+    features = []
+    sub_parts = []
+    for idx, (role, vector, ins, name, module_len) in enumerate(pieces):
+        shift = len(chained)
+        if idx == 0:
+            chained += ins['insert']
+        else:
+            chained += ins['insert'][4:]   # drop the shared leading 4bp overhang
+            shift -= 4                      # feature coord c in this insert -> shift + c
+        for f in (ins.get('features') or []):
+            try:
+                fs = int(f['start']) + shift
+                fe = int(f['end']) + shift
+            except (TypeError, ValueError, KeyError):
+                continue
+            if fe <= fs:
+                continue
+            label = f.get('label') or f.get('type') or 'feature'
+            if role == 'guide' and len(guides) > 1 and 'guide' in label.lower():
+                label = f"{label} (guide {idx})"
+            features.append({'type': f.get('type', 'misc_feature'), 'label': label,
+                             'start': max(0, fs), 'end': fe, 'strand': f.get('strand', 1),
+                             'source_vector': vector})
+
+        # Reaction fragment (sub_part): the reaction calculator needs the full
+        # source PLASMID size (you pipette the whole Level 0 plasmid).
+        plasmid_size = _vector_length(vector)
+        sub_parts.append({
+            'part_name': name,
+            'part_type': ('NonCodingPromoter' if role == 'promoter'
+                          else 'NonCodingOther' if role == 'end-linker' else 'Coding'),
+            'orientation': 'forward',
+            'overhang_5prime': ins['left_oh'],
+            'overhang_3prime': ins['right_oh'],
+            'sequence_length': len(ins['insert']),
+            'module_length': module_len if module_len is not None else len(ins['insert']),
+            'level': '0',
+            'source_vector': vector,
+            'size': plasmid_size,          # full source plasmid size (reaction calc)
+            'lab_source': 'Hahn/Nekrasov 2020 toolkit',
+            'contributor': 'guide-designer',
+            'description': {
+                'promoter': f"Pol III promoter module: {promoter_info.get('description', promoter)}",
+                'end-linker': f"tRNA-sgRNA array end-linker (poly-T terminator); closes a {n_guides}-guide array",
+            }.get(role, f"tRNA-sgRNA array module; {backbone_flavor} backbone"),
+            'is_coding': role == 'guide',
+            'role': role,
+            'array_position': idx,
+        })
+
+    return {
+        "sequence": chained,
+        "length": len(chained),
+        "overhang_5prime": o5,
+        "overhang_3prime": o3,
+        "position": position,
+        "l1_acceptor": l1_acceptor,
+        "promoter": promoter,
+        "backbone_flavor": backbone_flavor,
+        "guide_count": len(guides),
+        "sub_parts": sub_parts,
+        "features": features,
+    }
+
+
+# --------------------------------------------------------------------------- #
+# Position-aware Level 2 assembly (auto dummies + end-linker)
+# --------------------------------------------------------------------------- #
+
+def _part_l2_position(part) -> Optional[int]:
+    """
+    Map a part to its Level 2 position by matching its overhangs (in either
+    orientation) to the canonical position boundaries. Returns 1-7 or None.
+    """
+    o5 = (getattr(part, 'overhang_5prime', '') or '').upper()
+    o3 = (getattr(part, 'overhang_3prime', '') or '').upper()
+    for pos, (b5, b3) in L2_POSITION_OVERHANGS.items():
+        if (o5, o3) == (b5, b3):
+            return pos
+        # reverse orientation: presents rc(3')/rc(5')
+        if (reverse_complement(o3), reverse_complement(o5)) == (b5, b3):
+            return pos
+    return None
+
+
+def _part_plasmid_size(part) -> Optional[int]:
+    """
+    Best-estimate of the TOTAL PLASMID size a part is supplied in — the value the
+    reaction calculator needs (you pipette the whole plasmid; 1 mol plasmid =
+    1 mol insert). Prefer the part's stored `size` (set from the source plasmid),
+    then fall back to the stored sequence length plus a typical MoClo vector
+    backbone (~2500 bp) when only the insert/module sequence is known.
+    """
+    size = getattr(part, 'size', None)
+    try:
+        if size:
+            return int(size)
+    except (TypeError, ValueError):
+        pass
+    seq = getattr(part, 'sequence', None)
+    if seq:
+        n = len(seq)
+        # Small module/filler sequences (dummies, end-linkers) are supplied in a
+        # full vector; approximate the plasmid as insert + typical backbone.
+        return n if n >= 2000 else n + 2500
+    return None
+
+
+def plan_level2_components(selected_parts, fillers):
+    """
+    Build the ordered Level 2 component list (filling internal gaps with dummies
+    and closing with an end-linker) from the user's selected Level 1 parts.
+
+    Args:
+        selected_parts: list of Part objects the user chose (guide cassette, Cas,
+            resistance, others) — each must map to a Level 2 position.
+        fillers: dict with 'dummies' and 'endlinkers' -> {position: Part}.
+
+    Returns:
+        dict: {
+          'ordered': [Part, ...]  (positions filled 1..max, then end-linker),
+          'layout':  [{'position', 'part_name', 'role'}...],
+          'endlinker': Part or None,
+          'warnings': [...],
+          'error': str or None,
+        }
+    """
+    warnings = []
+    placed = {}  # position -> (part, role)
+
+    for part in selected_parts:
+        pos = _part_l2_position(part)
+        if pos is None:
+            return {'ordered': None, 'layout': None, 'endlinker': None, 'warnings': warnings,
+                    'error': (f"Part '{getattr(part, 'name', '?')}' "
+                              f"(overhangs {part.overhang_5prime}/{part.overhang_3prime}) does not map to a "
+                              f"standard Level 2 position; cannot place it automatically.")}
+        if pos in placed:
+            return {'ordered': None, 'layout': None, 'endlinker': None, 'warnings': warnings,
+                    'error': (f"Two parts map to Level 2 position {pos}: "
+                              f"'{placed[pos][0].name}' and '{part.name}'.")}
+        placed[pos] = (part, 'selected')
+
+    if not placed:
+        return {'ordered': None, 'layout': None, 'endlinker': None, 'warnings': warnings,
+                'error': 'No parts could be placed into Level 2 positions.'}
+
+    last_pos = max(placed)
+    dummies = fillers.get('dummies', {})
+
+    # Fill every position from 1..last_pos (position 1 must be present so the
+    # chain starts at TGCC for the universal acceptor).
+    layout = []
+    ordered = []
+    for pos in range(1, last_pos + 1):
+        if pos in placed:
+            part, role = placed[pos]
+        else:
+            part = dummies.get(pos)
+            role = 'dummy'
+            if part is None:
+                return {'ordered': None, 'layout': None, 'endlinker': None, 'warnings': warnings,
+                        'error': f"No dummy part available for empty Level 2 position {pos}."}
+            warnings.append(f"Auto-added dummy at position {pos}.")
+        ordered.append(part)
+        layout.append({'position': pos, 'part_name': part.name, 'role': role,
+                       'size': _part_plasmid_size(part),
+                       'insert_length': len(part.sequence) if getattr(part, 'sequence', None) else None})
+
+    # Close the ring with the end-linker whose 5' overhang matches the last
+    # position's 3' overhang (-> GGGA for the acceptor).
+    endlinkers = fillers.get('endlinkers', {})
+    endlinker = endlinkers.get(last_pos)
+    if endlinker is None:
+        return {'ordered': None, 'layout': None, 'endlinker': None, 'warnings': warnings,
+                'error': f"No end-linker available to close after position {last_pos}."}
+    ordered.append(endlinker)
+    layout.append({'position': f'{last_pos}+', 'part_name': endlinker.name, 'role': 'end-linker',
+                   'size': _part_plasmid_size(endlinker),
+                   'insert_length': len(endlinker.sequence) if getattr(endlinker, 'sequence', None) else None})
+    warnings.append(f"Auto-added {endlinker.name} to close the Level 2 ring (-> GGGA).")
+
+    return {'ordered': ordered, 'layout': layout, 'endlinker': endlinker,
+            'warnings': warnings, 'error': None}

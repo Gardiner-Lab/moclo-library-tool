@@ -128,8 +128,8 @@ function createCassetteCard(cassette) {
         <button class="btn-export" onclick="exportCassette('${cassette.id}', 'genbank')" title="Export as GenBank">
             📄 GenBank
         </button>
-        <button class="btn-export" onclick="exportCassette('${cassette.id}', 'image')" title="Export as Image">
-            🖼️ Image
+        <button class="btn-export" onclick="exportCassette('${cassette.id}', 'svg')" title="Export as SVG image">
+            🖼️ SVG
         </button>
         <button class="btn-delete" onclick="deleteCassette('${cassette.id}')" title="Delete cassette">
             🗑️
@@ -247,8 +247,66 @@ function renderCassetteDetail(cassette) {
         `;
     }
 
-    // Translation Analysis section (for coding sequences)
-    if (cassette.translation_analysis && cassette.translation_analysis.has_coding) {
+    // Translation Analysis section.
+    // Level 2+ cassettes report translation per Level 1 unit (per_unit); a
+    // whole-assembly ORF would be meaningless for a multigene construct.
+    if (cassette.translation_analysis && cassette.translation_analysis.per_unit) {
+        const units = cassette.translation_analysis.units || [];
+        html += `
+            <div class="detail-section">
+                <h3>Translation Analysis</h3>
+                <p class="detail-subtitle" style="color: var(--text-secondary); font-size: 0.875rem; margin-bottom: 0.75rem;">
+                    Per Level&nbsp;1 unit (this is a multigene Level&nbsp;${escapeHtml(String(cassette.level || '2'))} construct).
+                </p>
+        `;
+        units.forEach(unit => {
+            html += `
+                <div class="translation-unit" style="border:1px solid var(--border-color); border-radius:0.375rem; padding:0.75rem 1rem; margin-bottom:0.75rem;">
+                    <div class="translation-unit-title" style="font-weight:600; margin-bottom:0.35rem;">
+                        Translation analysis (${escapeHtml(unit.part_name)})
+                    </div>
+            `;
+            if (unit.analyzed && unit.translation) {
+                const t = unit.translation;
+                const protein = t.protein_sequence_spliced || t.protein_sequence || '';
+                if (t.requires_splicing) {
+                    html += `<div class="translation-item" style="font-size:0.8rem; color:#6b21a8;">🧬 Contains introns/exons — splicing required; protein shown is from genomic DNA.</div>`;
+                }
+                if (protein) {
+                    html += `
+                        <div class="translation-item">
+                            <div class="translation-label">Protein ${t.requires_splicing ? '(genomic, pre-splicing)' : ''}:</div>
+                            <div class="sequence-container">
+                                <pre class="sequence-display protein-sequence">${formatProteinSequence(protein)}</pre>
+                            </div>
+                            <div class="translation-meta">Length: ${protein.replace(/\*$/, '').length} amino acids</div>
+                        </div>
+                    `;
+                }
+                if (t.protein_sequence_spliced && t.protein_sequence_spliced !== t.protein_sequence) {
+                    html += `
+                        <div class="translation-item">
+                            <div class="translation-label">Spliced protein:</div>
+                            <div class="sequence-container">
+                                <pre class="sequence-display protein-sequence spliced">${formatProteinSequence(t.protein_sequence_spliced)}</pre>
+                            </div>
+                            <div class="translation-meta">Length: ${t.protein_sequence_spliced.replace(/\*$/, '').length} amino acids</div>
+                        </div>
+                    `;
+                }
+            } else {
+                html += `
+                    <div class="translation-item" style="color: var(--text-secondary); font-style: italic;">
+                        Translation analysis has not been done for this.
+                    </div>
+                `;
+            }
+            html += `</div>`;
+        });
+        html += `</div>`;
+    }
+    // Level 0/1: single transcription unit — whole-sequence ORF analysis.
+    else if (cassette.translation_analysis && cassette.translation_analysis.has_coding) {
         const trans = cassette.translation_analysis;
         html += `
             <div class="detail-section">
@@ -476,10 +534,20 @@ function renderCassetteDetail(cassette) {
         </div>
     `;
 
-    // Compatible Backbones section
+    // Compatible Backbones section. For a Level 2 cassette, the heading carries a
+    // nudge to add the backbone and create the final Plasmid (the next step),
+    // since a Level 2 is a finished multigene insert, not a reusable Part.
+    const addBackboneNudge = String(cassette.level) === '2'
+        ? `<a href="/plasmid-assembly?cassette=${encodeURIComponent(cassette.id)}"
+              class="btn btn-primary" title="Assemble into a Level 2 acceptor backbone to create the final plasmid">
+              🧬 Add backbone &amp; create plasmid</a>`
+        : '';
     html += `
         <div class="detail-section">
-            <h3>Compatible Backbones</h3>
+            <div style="display:flex; align-items:center; justify-content:space-between; gap:1rem; flex-wrap:wrap;">
+                <h3 style="margin:0;">Compatible Backbones</h3>
+                ${addBackboneNudge}
+            </div>
             <div id="compatibleBackbones">
                 <div class="loading-spinner">Loading compatible backbones...</div>
             </div>
@@ -495,8 +563,8 @@ function renderCassetteDetail(cassette) {
             <button class="btn btn-primary" onclick="exportCassette('${cassette.id}', 'genbank')">
                 📄 Export GenBank
             </button>
-            <button class="btn btn-primary" onclick="exportCassette('${cassette.id}', 'image')">
-                🖼️ Export Image
+            <button class="btn btn-primary" onclick="exportCassette('${cassette.id}', 'svg')">
+                🖼️ Export SVG
             </button>
             <button class="btn btn-danger" onclick="deleteCassetteFromDetail('${cassette.id}')">
                 🗑️ Delete Cassette

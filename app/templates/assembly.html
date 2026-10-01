@@ -437,7 +437,7 @@
 {% endblock %}
 
 {% block extra_js %}
-<script src="{{ url_for('static', filename='js/assembly.js') }}"></script>
+<script src="{{ url_for('static', filename='js/assembly.js') }}?v={{ app_version }}"></script>
 <script>
     // Initialize assembly interface when page loads
     document.addEventListener('DOMContentLoaded', () => {

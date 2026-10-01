@@ -5,6 +5,49 @@ All notable changes to the MoClo Library Tool project will be documented in this
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.11.0] - 2026-10-01
+
+### Added
+- CRISPR Designer (renamed from "Guide Designer"; now at `/crispr-designer`,
+  with `/guide-designer` redirecting for old bookmarks) expanded into a full
+  Level 2 construct builder:
+  - Pick the Cas nuclease and selectable-marker Level 1 units from the library,
+    plus optional extra units; the designer maps each to its Level 2 position,
+    auto-fills internal gaps with dummy units and closes the array with the
+    matching end-linker, then assembles the Level 2 plasmid into a chosen
+    acceptor (e.g. pAGM4673).
+  - Assemble the Level 1 guide plasmid into a selected Level 1 acceptor backbone,
+    producing a real Level 1 plasmid and a `<name>_L1` unit used for Level 2.
+  - Base-exact Level 1 construct: the promoter module, tRNA-sgRNA guide
+    module(s) and end-linker are spliced on their real BsaI fusion overhangs, so
+    the U6/U3 promoter and poly-T terminator are carried through as real GenBank
+    features (from the parts that contain them) at true coordinates.
+  - Hairpin melting temperature in the oligo readout, and a safety screen that
+    flags any BsaI/BpiI site introduced by a guide or an oligo junction.
+- Bundled MoClo filler parts (dummy units and end-linkers) seeded on startup
+  (`app/data/moclo_fillers/`), role-tagged so the assembler and designer select
+  them automatically.
+- Detailed MoClo assembly strategy on every plasmid detail (promoter + all
+  Level 0 parts with sizes, types and overhangs), with per-level (L0/L1/L2)
+  "Calculate reaction" buttons and a "Send to reaction calculator" hand-off that
+  pre-fills the protocol-page calculator using total plasmid sizes.
+- Save constructs and plasmids to a new dashboard "Saved" tab (reaction mixes
+  re-openable in the calculator), including a "View protocol" button that
+  regenerates the full CRISPR Designer protocol read-only.
+- Uploaded MoClo Level 1 acceptor vectors (Weber et al. 2011; Addgene MoClo
+  Toolkit kit #1000000044) with full metadata (position, orientation,
+  Carbenicillin/Ampicillin resistance), and referenced the Weber et al. 2011
+  paper on the designer page.
+
+### Fixed
+- Reaction-mix fragment sizes now use the total plasmid size of each part (not
+  the insert length), matching the fmol/ng calculation.
+- Plasmid GenBank export: features are stored as GenBank-readable annotations
+  rather than appended to the description; machine-readable provenance blocks are
+  stripped from the exported `/comment`.
+- Guide-designer plasmids now carry the full promoter + Level 0 part breakdown in
+  their assembly information, like a manually assembled plasmid.
+
 ## [1.10.2] - 2026-10-01
 
 ### Added

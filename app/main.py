@@ -2,7 +2,7 @@
 Main Flask application entry point.
 """
 
-APP_VERSION = '1.10.2'
+APP_VERSION = '1.11.0'
 
 from flask import Flask, render_template, session, redirect, url_for
 from flask_cors import CORS
@@ -54,6 +54,12 @@ def create_app():
     
     # Enable CORS with credentials support
     CORS(app, supports_credentials=True)
+
+    # Expose the app version to all templates so static assets can be
+    # cache-busted (?v={{ app_version }}) and bump automatically on each release.
+    @app.context_processor
+    def inject_app_version():
+        return {'app_version': APP_VERSION}
     
     # Register blueprints
     from app.api import auth_bp, parts_bp, cassettes_bp, visualize_bp, backbones_bp, plasmids_bp, admin_bp, guide_designer_bp
@@ -117,12 +123,17 @@ def create_app():
             return redirect(url_for('login_page'))
         return render_template('assembly.html')
     
-    @app.route('/guide-designer')
-    def guide_designer_page():
+    @app.route('/crispr-designer')
+    def crispr_designer_page():
         """CRISPR/Cas guide construct designer page."""
         if 'user_id' not in session:
             return redirect(url_for('login_page'))
         return render_template('guide_designer.html')
+
+    @app.route('/guide-designer')
+    def guide_designer_page():
+        """Backwards-compatible redirect for the old route name."""
+        return redirect(url_for('crispr_designer_page'))
     
     @app.route('/upload')
     def upload_page():

@@ -114,3 +114,60 @@ def delete_my_part(user, part_id):
 
     part.delete()
     return jsonify({'message': 'Part deleted'}), 200
+
+
+# ── Saved Items (dashboard bookmarks) ───────────────────────────────────────
+
+@user_dashboard_bp.route('/saved', methods=['GET'])
+@require_auth
+def list_saved_items(user):
+    """Return all dashboard items the current user has saved."""
+    from app.models.saved_item import SavedItem
+    items = SavedItem.get_by_user(user.id)
+    return jsonify({'items': [i.to_dict() for i in items], 'count': len(items)}), 200
+
+
+@user_dashboard_bp.route('/saved', methods=['POST'])
+@require_auth
+def create_saved_item(user):
+    """
+    Save an item (a construct or plasmid summary) to the user's dashboard.
+
+    Request Body:
+        {
+            "item_type": "construct" | "plasmid",
+            "title": "display name",
+            "summary": { ... arbitrary JSON (per-level reaction fragments, links) },
+            "ref_id": "optional id of the underlying plasmid/record"
+        }
+    """
+    from app.models.saved_item import SavedItem
+    data = request.get_json(silent=True) or {}
+    title = (data.get('title') or '').strip()
+    if not title:
+        return jsonify({'error': 'title is required'}), 400
+    try:
+        item = SavedItem.create(
+            user_id=user.id,
+            item_type=data.get('item_type', 'item'),
+            title=title,
+            summary=data.get('summary') or {},
+            ref_id=data.get('ref_id'),
+        )
+    except ValueError as e:
+        return jsonify({'error': str(e)}), 400
+    return jsonify({'item': item.to_dict(), 'message': 'Saved to dashboard'}), 201
+
+
+@user_dashboard_bp.route('/saved/<item_id>', methods=['DELETE'])
+@require_auth
+def delete_saved_item(user, item_id):
+    """Delete a saved dashboard item the current user owns."""
+    from app.models.saved_item import SavedItem
+    item = SavedItem.get_by_id(item_id)
+    if not item:
+        return jsonify({'error': 'Saved item not found'}), 404
+    if item.user_id != user.id:
+        return jsonify({'error': 'You can only delete your own saved items'}), 403
+    item.delete()
+    return jsonify({'message': 'Saved item deleted'}), 200

@@ -427,8 +427,8 @@
 {% endblock %}
 
 {% block extra_js %}
-<script src="{{ url_for('static', filename='js/parts.js') }}"></script>
-<script src="{{ url_for('static', filename='js/cassettes.js') }}"></script>
+<script src="{{ url_for('static', filename='js/parts.js') }}?v={{ app_version }}"></script>
+<script src="{{ url_for('static', filename='js/cassettes.js') }}?v={{ app_version }}"></script>
 <script>
     // Initialize cassettes page when DOM is ready
     document.addEventListener('DOMContentLoaded', () => {

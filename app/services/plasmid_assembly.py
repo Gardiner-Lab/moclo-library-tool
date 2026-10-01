@@ -237,7 +237,52 @@ def assemble_plasmid(
             detail['translation'] = cassette.translation_data
         cassette_details.append(detail)
     metadata['cassette_details'] = cassette_details
-    
+
+    # Build an explicit MoClo assembly strategy: the flat fragment list that
+    # the reaction-mix calculator consumes (backbone as the acceptor vector plus
+    # one insert per component part). For a Level 2 plasmid the component parts
+    # are the Level 1 units; where a unit carries a captured Level 0 breakdown
+    # (sub_parts, e.g. the Guide Designer's promoter + tRNA-sgRNA modules) it is
+    # expanded so the strategy shows the real Level 0 provenance.
+    strat_enzyme = 'BpiI' if moclo_level == 2 else 'BsaI'
+    strat_level_label = ('Level 1 \u2192 Level 2' if moclo_level == 2
+                         else 'Level 0 \u2192 Level 1')
+    strategy_fragments = [{
+        'name': backbone.name,
+        'size': backbone.size,
+        'role': 'vector',
+        'part_type': 'Backbone',
+        'overhang_5prime': getattr(backbone, 'overhang_5prime', None),
+        'overhang_3prime': getattr(backbone, 'overhang_3prime', None),
+        'source_vector': backbone.plasmid_id if hasattr(backbone, 'plasmid_id') else None,
+    }]
+    for cassette in cassettes:
+        for p in (cassette.parts_metadata or []):
+            # Skip pure structural fillers from the insert list is NOT done here:
+            # dummies/end-linkers are real plasmids the user pipettes, so they
+            # belong in the reaction. Expand captured Level 0 sub-parts.
+            sub = p.get('sub_parts')
+            rows = sub if sub else [p]
+            for r in rows:
+                size = r.get('size') or r.get('sequence_length') or 0
+                strategy_fragments.append({
+                    'name': r.get('part_name', 'Part'),
+                    'size': size,
+                    'role': 'insert',
+                    'part_type': r.get('part_type', ''),
+                    'level': r.get('level'),
+                    'overhang_5prime': r.get('overhang_5prime'),
+                    'overhang_3prime': r.get('overhang_3prime'),
+                    'source_vector': r.get('source_vector'),
+                    'cassette_name': cassette.name,
+                })
+    metadata['moclo_strategy'] = {
+        'enzyme': strat_enzyme,
+        'moclo_level': moclo_level,
+        'level_label': strat_level_label,
+        'fragments': strategy_fragments,
+    }
+
     # Analyze translation for the assembled plasmid (level-aware)
     from app.services.translation import analyze_plasmid_translation
     translation_result = analyze_plasmid_translation(
@@ -963,3 +1008,193 @@ def simulate_assembly(
         'feature_count': feature_count,
         'cassette_positions': cassette_positions
     }
+
+
+def assemble_level1_guide_plasmid(
+    backbone: Backbone,
+    array_sequence: str,
+    position: int,
+    name: str,
+    owner_id: str,
+    l2_overhang_5prime: str,
+    l2_overhang_3prime: str,
+    sub_parts: Optional[List[Dict[str, Any]]] = None,
+    guide_cassette_name: Optional[str] = None,
+    array_features: Optional[List[Dict[str, Any]]] = None,
+) -> FinalPlasmid:
+    """
+    Assemble a Level 1 guide plasmid by splicing a tRNA-sgRNA guide array into a
+    MoClo Level 1 acceptor backbone's cloning slot, and create the resulting
+    Level 1 Part (named '<name>_L1') that presents the canonical Level 2 position
+    fusion overhangs for the chosen position.
+
+    This is the pragmatic model: rather than simulate the full BsaI digest of the
+    circular Level 0 modules, we splice the already-assembled array body into the
+    acceptor's BsaI slot window (keeping the slot's 4 bp fusion scars), yielding
+    the circular Level 1 plasmid. The downstream Level 2 behaviour is driven by
+    the position's canonical BpiI fusion overhangs (TGCC/GCAA ... per the MoClo
+    standard), which we attach to the created Level 1 Part so the Level 2
+    assembler places the unit correctly.
+
+    Args:
+        backbone: the Level 1 acceptor backbone (uploaded pICH47xxx vector).
+        array_sequence: the assembled guide-array sequence to insert.
+        position: Level 2 position (1-7) this acceptor corresponds to.
+        name: base name for the plasmid / Level 1 part.
+        owner_id: owner id.
+        l2_overhang_5prime / l2_overhang_3prime: canonical Level 2 fusion
+            overhangs for `position` (from L2_POSITION_OVERHANGS).
+        sub_parts: optional Level 0 breakdown to carry onto the Level 1 part.
+        guide_cassette_name: optional source cassette name for lineage.
+
+    Returns:
+        The created Level 1 FinalPlasmid. Its metadata['created_part_id'] points
+        at the Level 1 Part to use for Level 2 assembly.
+
+    Raises:
+        AssemblyError: if the backbone has no usable BsaI cloning slot.
+    """
+    from app.models.part import Part
+
+    slots = backbone_slots(backbone)
+    bsa_slots = [s for s in slots if (s.get('enzyme') == 'BsaI')] or slots
+    if not bsa_slots:
+        raise AssemblyError(
+            f"Level 1 acceptor '{backbone.name}' has no usable cloning slot."
+        )
+    slot = bsa_slots[0]
+    start = slot.get('insertion_start')
+    end = slot.get('insertion_end')
+    bb = backbone.sequence or ''
+    if start is None or end is None or not bb or start >= end or end > len(bb):
+        raise AssemblyError(
+            f"Level 1 acceptor '{backbone.name}' has an unusable cloning slot window."
+        )
+
+    # Splice the array body into the acceptor dropout window. The retained
+    # backbone keeps its two 4 bp fusion-scar overhangs (slot_5/slot_3); the
+    # array body replaces the dropout between them.
+    body = (array_sequence or '').upper()
+    assembled = bb[:start] + body + bb[end:]
+
+    # Build GenBank-readable feature annotations for the Level 1 plasmid:
+    # (a) backbone features, with any feature after the splice shifted by the
+    #     length change (len(body) - dropout length), and features inside the
+    #     excised dropout window dropped;
+    # (b) the guide-array features, offset to the insertion start.
+    delta = len(body) - (end - start)
+    merged_features = []
+    for f in (backbone.features or []):
+        try:
+            fs = int(f.get('start', 0)); fe = int(f.get('end', 0))
+        except (TypeError, ValueError):
+            continue
+        if fe <= start:
+            merged_features.append(dict(f))                      # before the slot
+        elif fs >= end:
+            nf = dict(f); nf['start'] = fs + delta; nf['end'] = fe + delta
+            merged_features.append(nf)                           # after the slot
+        # features overlapping the excised dropout are removed (replaced by insert)
+    for f in (array_features or []):
+        try:
+            fs = int(f.get('start', 0)) + start
+            fe = int(f.get('end', 0)) + start
+        except (TypeError, ValueError):
+            continue
+        if fe <= fs:
+            continue
+        merged_features.append({
+            'type': f.get('type', 'misc_feature'),
+            'label': f.get('label') or f.get('type') or 'feature',
+            'start': fs, 'end': fe, 'strand': f.get('strand', 1),
+        })
+    merged_features.sort(key=lambda x: x.get('start', 0))
+
+    # Build the Level 1 plasmid metadata (mirrors assemble_plasmid shape so the
+    # plasmid detail view / strategy renderer work the same way).
+    moclo_level = 1
+    metadata = {
+        'backbone_name': backbone.name,
+        'backbone_id': backbone.id,
+        'backbone_plasmid_id': getattr(backbone, 'plasmid_id', None),
+        'backbone_size': backbone.size,
+        'cassette_names': [guide_cassette_name or name],
+        'assembly_method': 'MoClo Golden Gate (Level 0 -> Level 1, BsaI)',
+        'moclo_level': moclo_level,
+        'l2_position': position,
+    }
+
+    # FinalPlasmid.create requires a non-empty cassette_ids list. The guide array
+    # is a single spliced unit rather than a stored multi-part Cassette, so we
+    # reference a nominal id and carry the Level 0 breakdown via cassette_details
+    # (the shape the plasmid detail / strategy renderer consumes).
+    nominal_cassette_id = f"guide-array-pos{position}"
+    metadata['cassette_details'] = [{
+        'cassette_id': nominal_cassette_id,
+        'cassette_name': (guide_cassette_name or name),
+        'cassette_level': '1',
+        'parts': sub_parts or [],
+    }]
+
+    plasmid = FinalPlasmid.create(
+        name=name,
+        owner_id=owner_id,
+        backbone_id=backbone.id,
+        cassette_ids=[nominal_cassette_id],
+        assembled_sequence=assembled,
+        features=merged_features,
+        metadata=metadata,
+    )
+
+    # Create the Level 1 Part that represents this unit for Level 2 assembly.
+    # It presents the canonical Level 2 position fusion overhangs. Biological
+    # annotations are stored as GenBank-readable `features` (NOT appended to the
+    # description); the SUBPARTS block is structured provenance for the assembly
+    # strategy, not prose.
+    # Short human-readable lineage note, plus a structured SUBPARTS block so the
+    # Level 2 assembly strategy can expand this unit's Level 0 provenance
+    # (promoter + tRNA-sgRNA modules). The SUBPARTS block is stripped from the
+    # GenBank /comment qualifier on export, so it does not clutter the file; the
+    # biological annotations live in `features` instead.
+    import json as _json
+    comments = f"MoClo Level 1 guide unit (position {position}). Assembled into {backbone.name}."
+    if sub_parts:
+        comments += f"\nSUBPARTS: {_json.dumps(sub_parts)}"
+
+    # The _L1 part's features are the array features (relative to the part's own
+    # sequence). The part sequence is the whole L1 plasmid, so the array features
+    # sit at the insertion start, same as in the plasmid.
+    part_features = [
+        {'type': f.get('type', 'misc_feature'),
+         'label': f.get('label') or f.get('type') or 'feature',
+         'start': int(f.get('start', 0)) + start,
+         'end': int(f.get('end', 0)) + start,
+         'strand': f.get('strand', 1)}
+        for f in (array_features or [])
+        if int(f.get('end', 0)) > int(f.get('start', 0))
+    ]
+
+    part_name = f"{name}_L1"
+    try:
+        l1_part = Part.create(
+            name=part_name,
+            part_type='Coding',
+            sequence=assembled,
+            overhang_5prime=l2_overhang_5prime,
+            overhang_3prime=l2_overhang_3prime,
+            lab_source=f"Assembled from {backbone.name}",
+            contributor=owner_id,
+            description=f"Level 1 tRNA-sgRNA guide unit (position {position})",
+            level='1',
+            unit='gRNA-array',
+            comments=comments,
+            plasmid_id=plasmid.id,
+            features=part_features,
+        )
+        plasmid.metadata['created_part_id'] = l1_part.id
+        plasmid.update()
+    except Exception as e:  # noqa: BLE001
+        import logging
+        logging.warning(f"Failed to create Level 1 part from guide plasmid: {e}")
+
+    return plasmid

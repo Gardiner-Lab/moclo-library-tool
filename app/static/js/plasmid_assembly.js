@@ -5,6 +5,7 @@
 
 let backbones = [];
 let cassettes = [];
+let pendingCassetteId = null;  // cassette to auto-select once compatible list loads
 let selectedBackbone = null;
 let selectedCassettes = [];
 let cassetteOrientations = [];  // Track orientation for each cassette
@@ -21,28 +22,18 @@ async function initPlasmidAssembly() {
     
     await loadBackbones();
     
+    // Remember a cassette to auto-select once compatible cassettes are loaded
+    // for whichever backbone the user picks (the link from a Level 2 cassette
+    // passes only ?cassette=, letting the user choose the acceptor backbone).
+    if (cassetteId) {
+        pendingCassetteId = cassetteId;
+    }
+
     // If backbone ID is provided, auto-select it
     if (backboneId) {
         const backbone = backbones.find(b => b.id === backboneId);
         if (backbone) {
             await selectBackbone(backbone);
-            
-            // If cassette ID is also provided, auto-select it after cassettes load
-            if (cassetteId) {
-                // Wait for cassettes to load
-                const maxWait = 50; // 5 seconds max
-                let attempts = 0;
-                const checkCassettes = setInterval(() => {
-                    attempts++;
-                    if (cassettes.length > 0 || attempts >= maxWait) {
-                        clearInterval(checkCassettes);
-                        const cassette = cassettes.find(c => c.id === cassetteId);
-                        if (cassette) {
-                            toggleCassette(cassette);
-                        }
-                    }
-                }, 100);
-            }
         }
     }
 }
@@ -134,6 +125,16 @@ async function loadCompatibleCassettes() {
             compatibility: item.compatibility
         }));
         renderCassettes();
+
+        // Auto-select a cassette requested via ?cassette= once it appears in the
+        // compatible list for the chosen backbone.
+        if (pendingCassetteId) {
+            const pending = cassettes.find(c => c.id === pendingCassetteId);
+            if (pending && !selectedCassettes.some(c => c.id === pending.id)) {
+                toggleCassette(pending);
+                pendingCassetteId = null;
+            }
+        }
     } catch (error) {
         container.innerHTML = `
             <div class="error-state">
@@ -828,11 +829,91 @@ function renderAssemblyResult(result, bbConc, partData) {
             <strong>Thermal cycling:</strong> 60 cycles of 37°C (10 min) / 22°C (10 min), then 37°C (10 min), 65°C (20 min), hold 12°C.
         </div>
 
-        <div style="display: flex; gap: 0.75rem; margin-top: 1.5rem;">
+        <div style="display: flex; gap: 0.75rem; margin-top: 1.5rem; flex-wrap: wrap; align-items: center;">
+            <button class="btn btn-success" id="saveAssemblyDashboard" style="flex: 1;">★ Save to dashboard</button>
             <a href="/plasmids" class="btn btn-primary" style="flex: 1; text-align: center;">View All Plasmids</a>
             <button class="btn btn-secondary" onclick="resetAndClose()" style="flex: 1;">Create Another</button>
         </div>
+        <div id="saveAssemblyMsg" style="font-size: 0.85rem; color: var(--text-secondary); margin-top: 0.5rem;"></div>
     `;
+
+    // Wire the Save-to-dashboard button: store the plasmid + this reaction
+    // (plasmid-size fragments) so the user can revisit it and re-open the mix.
+    const saveBtn = document.getElementById('saveAssemblyDashboard');
+    if (saveBtn) {
+        saveBtn.addEventListener('click', () => saveManualAssemblyToDashboard(result, enzyme, levelLabel, saveBtn));
+    }
+}
+
+/**
+ * Save a manually-assembled plasmid (and its reaction fragment list) to the
+ * user's dashboard. Mirrors the Guide Designer / plasmid-detail save so it shows
+ * up in the dashboard "Saved" tab and can be re-opened in the calculator.
+ */
+async function saveManualAssemblyToDashboard(result, enzyme, levelLabel, btn) {
+    const plasmid = result.plasmid || result;
+    const plasmidName = plasmid.name || result.name || 'Plasmid';
+    const level = enzyme === 'BpiI' ? '2' : '1';
+
+    // Build the reaction fragment list using PLASMID sizes (what the calculator
+    // needs): backbone as the acceptor vector + each Level 0/1 part as an insert.
+    const fragments = [];
+    if (selectedBackbone) {
+        fragments.push({
+            name: selectedBackbone.name,
+            size: selectedBackbone.size || 0,
+            role: 'vector',
+        });
+    }
+    (selectedCassettes || []).forEach(cassette => {
+        const parts = cassette.parts_metadata || [];
+        if (parts.length) {
+            parts.forEach(part => {
+                const plasmidSize = part.size
+                    || ((part.sequence_length || part.length || 0) >= 2000
+                        ? (part.sequence_length || part.length)
+                        : (part.sequence_length || part.length || 0) + 2500);
+                fragments.push({
+                    name: part.part_name || 'Part',
+                    size: plasmidSize,
+                    role: 'insert',
+                });
+            });
+        } else {
+            const cl = cassette.length || (cassette.assembled_sequence ? cassette.assembled_sequence.length : 0);
+            fragments.push({ name: cassette.name, size: cl >= 2000 ? cl : cl + 2500, role: 'insert' });
+        }
+    });
+
+    const summary = {
+        kind: 'plasmid',
+        reactions: [{
+            label: levelLabel || ('Level ' + level),
+            level: level,
+            enzyme: enzyme,
+            fragments: fragments,
+        }],
+        records: { plasmid_id: plasmid.id || null },
+    };
+    const msg = document.getElementById('saveAssemblyMsg');
+    try {
+        if (btn) btn.disabled = true;
+        await apiRequest('/api/me/saved', {
+            method: 'POST',
+            body: JSON.stringify({
+                item_type: 'plasmid',
+                title: plasmidName,
+                ref_id: plasmid.id || null,
+                summary: summary,
+            }),
+        });
+        if (msg) msg.textContent = 'Saved to your dashboard.';
+        showFlashMessage('Saved "' + plasmidName + '" to your dashboard.', 'success');
+    } catch (e) {
+        showFlashMessage(e.message || 'Failed to save to dashboard', 'error');
+    } finally {
+        if (btn) btn.disabled = false;
+    }
 }
 
 /**

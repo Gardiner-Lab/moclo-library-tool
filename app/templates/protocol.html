@@ -756,6 +756,7 @@
                         </p>
                     </div>
                 </details>
+                <div id="calcPrefillBanner" class="info-box" style="display:none; background:#eff6ff; border-color:#bfdbfe; color:#1e40af; margin-bottom:1rem;"></div>
                 <div id="dnaFragments">
                     <div class="dna-fragment-row">
                         <div class="frag-field">
@@ -1920,18 +1921,23 @@
 {% block extra_js %}
 <script>
     // Reaction Mix Calculator
-    function addFragment() {
+    function addFragment(prefill) {
+        prefill = prefill || {};
         const container = document.getElementById('dnaFragments');
         const row = document.createElement('div');
         row.className = 'dna-fragment-row';
+        const name = prefill.name != null ? String(prefill.name) : '';
+        const size = (prefill.size != null && prefill.size > 0) ? prefill.size : '';
+        const insertSel = prefill.role === 'vector' ? '' : ' selected';
+        const vectorSel = prefill.role === 'vector' ? ' selected' : '';
         row.innerHTML = `
             <div class="frag-field">
                 <label>Name</label>
-                <input type="text" class="frag-name" value="" placeholder="Part name">
+                <input type="text" class="frag-name" value="${escapeAttr(name)}" placeholder="Part name">
             </div>
             <div class="frag-field">
                 <label>Size (bp)</label>
-                <input type="number" class="frag-size" value="" min="100" placeholder="bp">
+                <input type="number" class="frag-size" value="${size}" min="100" placeholder="bp">
             </div>
             <div class="frag-field">
                 <label>Concentration (ng/µL)</label>
@@ -1940,13 +1946,65 @@
             <div class="frag-field">
                 <label>Role</label>
                 <select class="frag-role">
-                    <option value="insert">Insert/Part</option>
-                    <option value="vector">Vector/Backbone</option>
+                    <option value="insert"${insertSel}>Insert/Part</option>
+                    <option value="vector"${vectorSel}>Vector/Backbone</option>
                 </select>
             </div>
             <button class="btn-remove-frag" onclick="removeFragment(this)" title="Remove">&times;</button>
         `;
         container.appendChild(row);
+    }
+
+    function escapeAttr(s) {
+        return String(s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
+
+    /**
+     * If the user clicked "Send to reaction calculator" on a plasmid, a payload
+     * is waiting in sessionStorage. Replace the default fragment rows with the
+     * plasmid's backbone + Level 0 parts and set the assembly level, so the
+     * calculator reflects the real construct (user still enters concentrations).
+     */
+    function prefillCalculatorFromPlasmid() {
+        let raw;
+        try {
+            raw = sessionStorage.getItem('mocloCalculatorPrefill');
+        } catch (e) {
+            return;
+        }
+        if (!raw) return;
+        try {
+            sessionStorage.removeItem('mocloCalculatorPrefill');
+        } catch (e) { /* ignore */ }
+
+        let payload;
+        try {
+            payload = JSON.parse(raw);
+        } catch (e) {
+            return;
+        }
+        if (!payload || !Array.isArray(payload.fragments) || payload.fragments.length === 0) return;
+
+        // Set the assembly level (controls enzyme BsaI/BpiI).
+        const levelSel = document.getElementById('calcLevel');
+        if (levelSel && payload.level) levelSel.value = payload.level;
+
+        // Clear existing default rows and add one per fragment.
+        const container = document.getElementById('dnaFragments');
+        container.innerHTML = '';
+        payload.fragments.forEach(f => addFragment(f));
+
+        // Show a banner noting where the data came from.
+        const banner = document.getElementById('calcPrefillBanner');
+        if (banner) {
+            banner.style.display = 'block';
+            banner.innerHTML = 'Loaded <strong>' + escapeAttr(payload.plasmid_name || 'plasmid') +
+                '</strong> (' + escapeAttr(payload.enzyme || '') + '). Enter your measured DNA concentrations, then calculate.';
+        }
+
+        // Scroll the calculator into view.
+        const calcSection = document.querySelector('.calculator-container');
+        if (calcSection) calcSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
 
     function removeFragment(btn) {
@@ -2088,6 +2146,9 @@
                 document.body.style.overflow = 'auto';
             }
         });
+
+        // If a plasmid handed us a fragment list, pre-fill the calculator.
+        prefillCalculatorFromPlasmid();
     });
 </script>
 {% endblock %}

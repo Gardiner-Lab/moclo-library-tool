@@ -382,6 +382,73 @@ def _ensure_default_admin():
         logger.warning(f"Could not create default admin user: {e}")
 
 
+def _ensure_moclo_fillers():
+    """
+    Ensure the MoClo filler parts (dummies and end-linkers) always exist in the
+    parts library, seeding them from the bundled app/data/moclo_fillers manifest.
+
+    Dummies fill empty internal Level 2 positions; end-linkers close the Level 2
+    ring to the GGGA acceptor overhang. They are stored as Level 1 Parts tagged
+    with a role in the `unit` field ('Dummy' / 'EndLinker') so the assembler and
+    the Guide Designer can select them automatically. This runs on every startup
+    and is idempotent (a filler is only created if a part with the same name does
+    not already exist).
+    """
+    import os
+    import json as _json
+    from app.models.part import Part
+
+    base = os.path.join(os.path.dirname(__file__), 'data', 'moclo_fillers')
+    manifest_path = os.path.join(base, 'manifest.json')
+    if not os.path.exists(manifest_path):
+        logger.info("MoClo fillers manifest not found; skipping filler seeding")
+        return
+
+    try:
+        manifest = _json.load(open(manifest_path, encoding='utf-8'))
+    except Exception as e:  # noqa: BLE001
+        logger.warning(f"Could not read MoClo fillers manifest: {e}")
+        return
+
+    try:
+        existing = {p.name for p in Part.get_all()}
+    except Exception as e:  # noqa: BLE001
+        logger.warning(f"Could not list parts for filler seeding: {e}")
+        return
+
+    created = 0
+    for entry in (manifest.get('dummies', []) + manifest.get('endlinkers', [])):
+        name = entry.get('name')
+        if not name or name in existing:
+            continue
+        seq_path = os.path.join(base, entry.get('sequence_file', ''))
+        if not os.path.exists(seq_path):
+            continue
+        sequence = open(seq_path, encoding='utf-8').read().strip().upper()
+        try:
+            Part.create(
+                name=name,
+                part_type=entry.get('part_type', 'NonCodingOther'),
+                sequence=sequence,
+                overhang_5prime=entry['overhang_5prime'],
+                overhang_3prime=entry['overhang_3prime'],
+                lab_source='MoClo toolkit',
+                contributor='system',
+                description=f"MoClo {entry.get('unit', 'filler')} (Level 2 position {entry.get('position')})",
+                level=entry.get('level', '1'),
+                unit=entry.get('unit'),
+                plasmid_id=entry.get('plasmid_id'),
+            )
+            created += 1
+        except Exception as e:  # noqa: BLE001
+            logger.warning(f"Could not seed filler '{name}': {e}")
+
+    if created:
+        logger.info(f"Seeded {created} MoClo filler part(s) (dummies/end-linkers)")
+    else:
+        logger.info("MoClo filler parts already present")
+
+
 def initialize_with_seed_data(db_path: str, seed_file: Optional[str] = None):
     """
     Initialize the database and optionally load seed data.
@@ -441,6 +508,9 @@ def initialize_with_seed_data(db_path: str, seed_file: Optional[str] = None):
     
     # Always ensure a default admin user exists (even on updates)
     _ensure_default_admin()
+
+    # Always ensure the MoClo filler parts (dummies + end-linkers) exist
+    _ensure_moclo_fillers()
     
     logger.info("Database initialization complete")
 

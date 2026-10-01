@@ -337,17 +337,31 @@ def format_genbank_output(
     Returns:
         GenBank formatted string
     """
+    import re as _re
     from Bio.Seq import Seq
     from Bio.SeqRecord import SeqRecord
     from Bio.SeqFeature import SeqFeature, FeatureLocation
-    
+
+    # The GenBank LOCUS identifier (record.name) must be a single token: no
+    # spaces, and reasonably short. BioPython's writer errors on a name with
+    # spaces. Sanitise it to a safe locus id (spaces -> underscores, drop other
+    # unsafe chars, cap length) while keeping the full, human-readable name in
+    # the DESCRIPTION / DEFINITION line.
+    locus_id = _re.sub(r'[^A-Za-z0-9_.-]', '', (name or 'sequence').replace(' ', '_'))
+    locus_id = (locus_id or 'sequence')[:20]
+
+    # Preserve the full name in the description if it isn't already there.
+    full_description = description or ''
+    if name and name not in full_description:
+        full_description = f"{name} - {full_description}".rstrip(' -') if full_description else name
+
     # Create sequence record
     seq_obj = Seq(sequence)
     record = SeqRecord(
         seq_obj,
-        id=name,
-        name=name,
-        description=description
+        id=locus_id,
+        name=locus_id,
+        description=full_description
     )
     
     # Set topology

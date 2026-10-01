@@ -437,7 +437,7 @@
 {% endblock %}
 
 {% block extra_js %}
-<script src="{{ url_for('static', filename='js/plasmid_assembly.js') }}"></script>
+<script src="{{ url_for('static', filename='js/plasmid_assembly.js') }}?v={{ app_version }}"></script>
 <script>
     document.addEventListener('DOMContentLoaded', () => {
         initPlasmidAssembly();

@@ -484,8 +484,11 @@ def generate_part_genbank(part: Part) -> str:
     
     # Add comments as a qualifier (assembly lineage, etc.)
     if hasattr(part, 'comments') and part.comments:
-        # Strip any PART_FEATURES JSON from old-format comments
-        comment_text = part.comments.split('\n\nPART_FEATURES:')[0].strip()
+        # Strip machine-readable JSON blocks (old PART_FEATURES, and the SUBPARTS
+        # Level 0 provenance used by the assembly-strategy renderer) from the
+        # human-readable GenBank /comment so they do not clutter the file.
+        comment_text = part.comments.split('\n\nPART_FEATURES:')[0]
+        comment_text = re.split(r'\n?SUBPARTS:', comment_text)[0].strip()
         if comment_text:
             features_lines.append(f'                     /comment="{comment_text}"')
     

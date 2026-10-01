@@ -165,7 +165,22 @@ class Database:
                     FOREIGN KEY (backbone_id) REFERENCES backbones(id)
                 )
             """)
-            
+
+            # Create saved_items table (user dashboard bookmarks: saved
+            # constructs / plasmids + per-level reaction summaries to revisit).
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS saved_items (
+                    id TEXT PRIMARY KEY,
+                    user_id TEXT NOT NULL,
+                    item_type TEXT NOT NULL,
+                    ref_id TEXT,
+                    title TEXT NOT NULL,
+                    summary TEXT,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (user_id) REFERENCES users(id)
+                )
+            """)
+
             # Create indexes for performance
             self._create_indexes(cursor)
             
@@ -205,6 +220,23 @@ class Database:
             cursor.execute("ALTER TABLE parts ADD COLUMN features TEXT")
         except Exception:
             pass  # Column already exists
+
+        # Create saved_items table on existing databases that predate it.
+        try:
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS saved_items (
+                    id TEXT PRIMARY KEY,
+                    user_id TEXT NOT NULL,
+                    item_type TEXT NOT NULL,
+                    ref_id TEXT,
+                    title TEXT NOT NULL,
+                    summary TEXT,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (user_id) REFERENCES users(id)
+                )
+            """)
+        except Exception:
+            pass
 
     def _create_indexes(self, cursor):
         """
@@ -254,6 +286,15 @@ class Database:
             CREATE INDEX IF NOT EXISTS idx_final_plasmids_backbone 
             ON final_plasmids(backbone_id)
         """)
+
+        # Index for saved_items table - per-user lookup
+        try:
+            cursor.execute("""
+                CREATE INDEX IF NOT EXISTS idx_saved_items_user
+                ON saved_items(user_id)
+            """)
+        except Exception:
+            pass
     
     def drop_all_tables(self):
         """

@@ -155,6 +155,37 @@ def upload_backbone(user):
                  or compute_slot_overhangs(sequence)
                  or identify_cassette_slots(sites))
 
+        # Guard: a MoClo dummy or end-linker is structurally indistinguishable
+        # from a 1-slot backbone (both are small plasmids with a convergent Type
+        # IIS pair), so they can be mis-filed as backbones. Detect the tell-tale
+        # fusion overhangs and ask the user to confirm, unless they override with
+        # confirm_backbone=true. End-linkers close the Level 2 ring to GGGA;
+        # dummies carry a standard position boundary pair.
+        if request.form.get('confirm_backbone', '').lower() != 'true' and slots:
+            _s0 = slots[0]
+            _o5 = (_s0.get('expected_overhang_5prime') or _s0.get('overhang_5prime') or '').upper()
+            _o3 = (_s0.get('expected_overhang_3prime') or _s0.get('overhang_3prime') or '').upper()
+            _POS = {('TGCC', 'GCAA'), ('GCAA', 'ACTA'), ('ACTA', 'TTAC'), ('TTAC', 'CAGA'),
+                    ('CAGA', 'TGTG'), ('TGTG', 'GAGC'), ('GAGC', 'TGCC')}
+            looks_like_endlinker = 'GGGA' in (_o5, _o3)
+            looks_like_dummy = (_o5, _o3) in _POS
+            if looks_like_endlinker or looks_like_dummy:
+                role = 'end-linker' if looks_like_endlinker else 'dummy'
+                return jsonify({
+                    'error': 'This looks like a MoClo filler, not a backbone',
+                    'message': (
+                        f"The uploaded sequence has {role} fusion overhangs "
+                        f"({_o5}/{_o3}). Dummies and end-linkers are Level 1 filler "
+                        f"PARTS (used to fill empty Level 2 positions / close the "
+                        f"assembly), not destination backbones."
+                    ),
+                    'detected_role': role,
+                    'suggestion': (
+                        "Upload it as a Part (it will be tagged automatically), or "
+                        "re-submit with confirm_backbone=true if it really is a backbone."
+                    ),
+                }), 409
+
         # Persist the resolved slots (each carries slot_number and its fusion
         # overhangs) so Backbone.cassette_slots counts them correctly and the
         # assembly engine can read them back.
