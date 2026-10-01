@@ -368,13 +368,18 @@ function renderAssemblyPreview() {
 
         const orientation = partOrientations[index] || 'forward';
         const presented = presentedOverhangs(part, orientation);
+        // Direction arrow showing the insert orientation in the final construct.
+        const arrow = orientation === 'reverse'
+            ? '<span class="insert-arrow reverse" title="Insert cloned in reverse orientation">◀</span>'
+            : '<span class="insert-arrow forward" title="Insert cloned in forward orientation">▶</span>';
         const orientBadge = orientation === 'reverse'
-            ? '<span class="type-badge" title="Placed in reverse orientation" style="background:#6b46c1;color:#fff;">⇄ Reverse</span>'
+            ? '<span class="type-badge" title="Placed in reverse orientation" style="background:#6b46c1;color:#fff;">◀ Reverse</span>'
             : '';
         
         html += `
             <div class="selected-part ${isError ? 'error' : ''}">
                 <div class="part-order">${index + 1}</div>
+                <div class="insert-direction ${orientation}">${arrow}</div>
                 <div class="selected-part-info">
                     <div class="selected-part-name">${part.name}</div>
                     <div class="selected-part-overhangs">
@@ -404,13 +409,29 @@ function renderAssemblyPreview() {
             </div>
         `;
 
-        // Add junction indicator between parts (orientation-aware)
+        // Add junction indicator between parts.
+        // Judge the junction orientation-aware. When the whole chain resolves,
+        // use the resolved orientations (the actual junction overhang). When it
+        // doesn't (e.g. an incomplete build with gaps), fall back to a pairwise
+        // check: this part (in its shown orientation) can be followed by the
+        // next part in SOME orientation. This avoids falsely flagging a
+        // reverse-oriented part's junction as "incompatible".
         if (index < selectedParts.length - 1) {
             const nextPart = selectedParts[index + 1];
             const thisPresented3 = presented.threePrime;
-            const nextOrientation = partOrientations[index + 1] || 'forward';
-            const nextPresented5 = presentedOverhangs(nextPart, nextOrientation).fivePrime;
-            const compatible = thisPresented3 === nextPresented5;
+
+            let compatible, nextPresented5;
+            if (validation.orientations) {
+                const nextOrientation = partOrientations[index + 1] || 'forward';
+                nextPresented5 = presentedOverhangs(nextPart, nextOrientation).fivePrime;
+                compatible = thisPresented3 === nextPresented5;
+            } else {
+                const follow = orientationToFollow(part, nextPart, orientation);
+                compatible = follow !== null;
+                nextPresented5 = compatible
+                    ? presentedOverhangs(nextPart, follow).fivePrime
+                    : presentedOverhangs(nextPart, 'forward').fivePrime;
+            }
 
             html += `
                 <div class="junction-indicator ${compatible ? 'compatible' : 'incompatible'}">
