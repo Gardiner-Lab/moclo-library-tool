@@ -232,19 +232,21 @@ function getPartCompatibility(part) {
         };
     }
 
-    const lastPart = selectedParts[selectedParts.length - 1];
-    // Orientation the last selected part is placed in (chain resolved from the start).
-    const orientations = resolveOrientations(selectedParts) || selectedParts.map(() => 'forward');
-    const lastOrientation = orientations[orientations.length - 1];
-    const chosen = orientationToFollow(lastPart, part, lastOrientation);
-
-    if (chosen === 'forward') {
-        return { status: 'compatible', icon: '✓', text: 'Compatible', disabled: false };
-    } else if (chosen === 'reverse') {
-        return { status: 'compatible', icon: '⇄', text: 'Compatible (reverse)', disabled: false };
-    } else {
+    // A candidate is compatible if appending it still yields a resolvable chain.
+    // We re-resolve the WHOLE chain (not just the last junction) because the
+    // first part is a free anchor: adding a part can require the already-placed
+    // parts to flip orientation (e.g. a Position-1 reverse cassette presents its
+    // canonical overhangs only when the chain is anchored reverse). Freezing the
+    // last part's orientation too early would wrongly hide valid partners.
+    const candidateChain = resolveOrientations([...selectedParts, part]);
+    if (!candidateChain) {
         return { status: 'incompatible', icon: '✗', text: 'Incompatible', disabled: true };
     }
+    const candidateOrientation = candidateChain[candidateChain.length - 1];
+    if (candidateOrientation === 'reverse') {
+        return { status: 'compatible', icon: '⇄', text: 'Compatible (reverse)', disabled: false };
+    }
+    return { status: 'compatible', icon: '✓', text: 'Compatible', disabled: false };
 }
 
 /**
@@ -257,12 +259,10 @@ function addPartToAssembly(part) {
         return;
     }
 
-    // Check compatibility if not first part (in either orientation)
+    // Check compatibility if not first part. Re-resolve the whole chain so the
+    // anchor can flip if needed (matches getPartCompatibility).
     if (selectedParts.length > 0) {
-        const lastPart = selectedParts[selectedParts.length - 1];
-        const orientations = resolveOrientations(selectedParts) || selectedParts.map(() => 'forward');
-        const lastOrientation = orientations[orientations.length - 1];
-        if (orientationToFollow(lastPart, part, lastOrientation) === null) {
+        if (!resolveOrientations([...selectedParts, part])) {
             showFlashMessage('Part is not compatible with the last part in assembly (in either orientation)', 'error');
             return;
         }

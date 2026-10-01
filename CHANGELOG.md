@@ -5,6 +5,16 @@ All notable changes to the MoClo Library Tool project will be documented in this
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.10.1] - 2026-10-01
+
+### Fixed
+- Cassette assembly part picker now shows reverse-orientation partners. When the
+  first selected part is a reverse-oriented cassette (e.g. a Position 1 reverse
+  acceptor like pICH47802), the picker previously froze the anchor in forward
+  orientation and only offered forward-matching parts, hiding valid partners.
+  The picker now re-resolves the whole chain (allowing the anchor to flip), so
+  compatible reverse-oriented parts are correctly offered and marked.
+
 ## [1.10.0] - 2026-09-30
 
 ### Added
