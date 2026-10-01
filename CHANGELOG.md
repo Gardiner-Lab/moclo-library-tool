@@ -5,6 +5,17 @@ All notable changes to the MoClo Library Tool project will be documented in this
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.11.1] - 2026-10-01
+
+### Fixed
+- MoClo filler parts (dummy units and end-linkers) are now seeded on the normal
+  application startup path. They were only seeded inside
+  `initialize_with_seed_data` (used when a seed file is present), so a standard
+  deployment never created them — which left the CRISPR Designer Level 2 build
+  unable to auto-fill internal positions or close the array. `create_app` now
+  calls `_ensure_moclo_fillers()` alongside the default-admin and demo-backbone
+  seeding (idempotent).
+
 ## [1.11.0] - 2026-10-01
 
 ### Added

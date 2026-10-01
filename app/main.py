@@ -2,7 +2,7 @@
 Main Flask application entry point.
 """
 
-APP_VERSION = '1.11.0'
+APP_VERSION = '1.11.1'
 
 from flask import Flask, render_template, session, redirect, url_for
 from flask_cors import CORS
@@ -48,9 +48,15 @@ def create_app():
         parts_db_path = os.environ.get('PARTS_DATABASE_PATH', '/data/parts.db')
         initialize_parts_database(parts_db_path)
         if not skip_seed:
-            from app.init_db import _ensure_default_admin, _ensure_demo_backbones
+            from app.init_db import (
+                _ensure_default_admin, _ensure_demo_backbones, _ensure_moclo_fillers,
+            )
             _ensure_default_admin()
             _ensure_demo_backbones()
+            # Always ensure the MoClo filler parts (dummies + end-linkers) exist,
+            # so Level 2 assembly can auto-fill gaps and close the array. This is
+            # idempotent (creates a filler only if its named part is missing).
+            _ensure_moclo_fillers()
     
     # Enable CORS with credentials support
     CORS(app, supports_credentials=True)
