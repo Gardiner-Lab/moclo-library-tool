@@ -5,6 +5,33 @@ All notable changes to the MoClo Library Tool project will be documented in this
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.10.0] - 2026-09-30
+
+### Added
+- CRISPR Guide Designer page (`/guide-designer`). Enter one or more 20 bp guide
+  sequences and auto-generate a full Golden Gate cloning strategy for the
+  polycistronic tRNA-sgRNA system of the Hahn et al. (2020) plant genome-editing
+  MoClo toolkit:
+  - Level -1 oligos to order, each guide flanked by the toolkit fusion overhangs
+    (TGCA / AAAC) and a BpiI site with an independent, hairpin-optimised 3 bp
+    binding pad per end (hairpin free energy via `seqfold`).
+  - Position-specific Level 0 acceptor modules, Pol III promoter, endlinker, and
+    the Level 1 (into pICH47742 by default) and Level 2 assembly steps.
+- "Generate Level 0 cassette part(s)" action that assembles the full Level 0
+  module (the real toolkit acceptor vector with the guide spliced into the lacZ
+  site) and saves each as a Part (level 0, unit gRNA). The part stores the
+  complete assembled module sequence plus the MoClo cloning strategy and oligo
+  annealing protocol (heat block to 100 C, then cool to room temperature).
+- Bundled the toolkit Level 0 vector GenBank sequences (`app/data/toolkit_gb/`)
+  so module assembly works offline. These files are from Hahn et al. 2020
+  (Figshare, CC BY 4.0); attribution retained in `ATTRIBUTION.md`.
+- `seqfold` dependency for nucleic-acid secondary-structure (hairpin) analysis.
+
+### Changed
+- Admin dashboard: the automatic-updates panel now states that Watchtower checks
+  weekly (previously said hourly), matching the actual `--interval 604800`
+  configuration.
+
 ## [1.9.0] - 2026-09-30
 
 ### Added

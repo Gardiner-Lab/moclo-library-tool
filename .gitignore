@@ -50,8 +50,8 @@ htmlcov/
 *.sqlite
 *.sqlite3
 
-# Data directory
-data/
+# Data directory (top-level runtime volume only; app/data ships bundled sequences)
+/data/
 
 # Environment variables
 .env

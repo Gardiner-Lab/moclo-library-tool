@@ -2,7 +2,7 @@
 Main Flask application entry point.
 """
 
-APP_VERSION = '1.9.0'
+APP_VERSION = '1.10.0'
 
 from flask import Flask, render_template, session, redirect, url_for
 from flask_cors import CORS
@@ -56,7 +56,7 @@ def create_app():
     CORS(app, supports_credentials=True)
     
     # Register blueprints
-    from app.api import auth_bp, parts_bp, cassettes_bp, visualize_bp, backbones_bp, plasmids_bp, admin_bp
+    from app.api import auth_bp, parts_bp, cassettes_bp, visualize_bp, backbones_bp, plasmids_bp, admin_bp, guide_designer_bp
     from app.api.user_dashboard import user_dashboard_bp
     app.register_blueprint(auth_bp, url_prefix='/api/auth')
     app.register_blueprint(parts_bp, url_prefix='/api/parts')
@@ -65,6 +65,7 @@ def create_app():
     app.register_blueprint(backbones_bp, url_prefix='/api/backbones')
     app.register_blueprint(plasmids_bp, url_prefix='/api/plasmids')
     app.register_blueprint(admin_bp, url_prefix='/api/admin')
+    app.register_blueprint(guide_designer_bp, url_prefix='/api/guide-designer')
     app.register_blueprint(user_dashboard_bp, url_prefix='/api/me')
     
     # Web interface routes
@@ -115,6 +116,13 @@ def create_app():
         if 'user_id' not in session:
             return redirect(url_for('login_page'))
         return render_template('assembly.html')
+    
+    @app.route('/guide-designer')
+    def guide_designer_page():
+        """CRISPR/Cas guide construct designer page."""
+        if 'user_id' not in session:
+            return redirect(url_for('login_page'))
+        return render_template('guide_designer.html')
     
     @app.route('/upload')
     def upload_page():

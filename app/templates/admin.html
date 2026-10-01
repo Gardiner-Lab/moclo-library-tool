@@ -270,7 +270,7 @@ async function checkForUpdate() {
         Backs up the databases, pulls the new image, health-checks, and rolls back automatically if the new version is unhealthy. Your parts, cassettes and plasmids are preserved.
       </p>
       <hr style="margin:0.75rem 0; border:none; border-top:1px solid #cbd5e1;">
-      <strong>Automatic updates</strong> &mdash; enable once, then it keeps itself current (hourly):
+      <strong>Automatic updates</strong> &mdash; enable once, then it keeps itself current (checks weekly):
       ${cmdBox(auto)}
       ${data.release_notes ? `<p style="margin:0.5rem 0 0; font-size:0.8rem;"><a href="${data.release_notes}" target="_blank" rel="noopener">Release notes for v${data.latest_version} &rarr;</a></p>` : ''}
     `;

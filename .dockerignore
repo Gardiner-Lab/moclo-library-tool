@@ -34,6 +34,8 @@ htmlcov/
 docs/
 *.md
 !README.md
+# Keep bundled toolkit attribution note (needed inside the image)
+!app/data/toolkit_gb/ATTRIBUTION.md
 
 # Test files
 tests/
@@ -43,8 +45,8 @@ manual_*.py
 verify_*.py
 check_*.py
 
-# Data
-data/
+# Data (top-level runtime volume only; keep app/data/ which ships toolkit sequences)
+/data/
 
 # Environment
 .env

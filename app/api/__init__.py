@@ -10,6 +10,7 @@ from .visualize import visualize_bp
 from .backbones import backbones_bp
 from .plasmids import plasmids_bp
 from .admin import admin_bp
+from .guide_designer import guide_designer_bp
 
 __all__ = [
     'auth_bp',
@@ -18,5 +19,6 @@ __all__ = [
     'visualize_bp',
     'backbones_bp',
     'plasmids_bp',
-    'admin_bp'
+    'admin_bp',
+    'guide_designer_bp'
 ]

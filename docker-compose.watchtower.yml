@@ -9,8 +9,8 @@
 #   SECRET_KEY=$(openssl rand -hex 32) \
 #     docker compose -f docker-compose.prod.yml -f docker-compose.watchtower.yml up -d
 #
-# It checks weekly by default. For a fixed nightly window instead, change the
-# command to:  --cleanup --schedule "0 0 4 * * *" moclo-library-tool
+# It checks weekly by default (--interval 604800). For a fixed nightly window
+# instead, change the command to:  --cleanup --schedule "0 0 4 * * *" moclo-library-tool
 #
 # To stop auto-updates:  docker rm -f moclo-watchtower
 

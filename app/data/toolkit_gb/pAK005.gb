@@ -1,0 +1,134 @@
+LOCUS       pAK005                  2604 bp    DNA     circular     30-MAY-2019
+DEFINITION  Subcloning of sgRNA protospacer/ tRNA-gRNA system with improved
+            gRNA backbone/ Position 5.
+ACCESSION   urn.local...m-aj37jvy
+KEYWORDS    .
+SOURCE      
+  ORGANISM  
+            .
+FEATURES             Location/Qualifiers
+     misc_feature    66..71
+                     /Recognition_pattern="GGTCTC(1/5)"
+                     /annotation_group="GGTCTC"
+                     /label="BsaI"
+                     /note="Geneious type: restriction site"
+     gRNA_Scaffold   73..96
+                     /created_by="hahnf"
+                     /label="improved sgRNA backbone (part)"
+     overhang        73..76
+                     /created_by="koroleva"
+                     /label="GAAA"
+     tRNA            97..173
+                     /created_by="hahnf"
+                     /label="tRNA Glycine"
+     overhang        170..173
+                     /created_by="koroleva"
+                     /label="TGCA"
+     misc_feature    complement(176..181)
+                     /Recognition_pattern="GAAGAC(2/6)"
+                     /annotation_group="GAAGAC"
+                     /label="BpiI"
+                     /note="Geneious type: restriction site"
+     CDS             182..759
+                     /created_by="koroleva"
+                     /label="LacZ"
+     misc_feature    760..765
+                     /Recognition_pattern="GAAGAC(2/6)"
+                     /annotation_group="GAAGAC"
+                     /label="BpiI"
+                     /note="Geneious type: restriction site"
+     gRNA_Scaffold   768..838
+                     /created_by="hahnf"
+                     /label="improved sgRNA backbone (part)"
+     overhang        768..771
+                     /created_by="koroleva"
+                     /label="GTTT"
+     overhang        835..838
+                     /created_by="koroleva"
+                     /label="AGTG"
+     misc_feature    complement(840..845)
+                     /Recognition_pattern="GGTCTC(1/5)"
+                     /annotation_group="GGTCTC"
+                     /label="BsaI"
+                     /note="Geneious type: restriction site"
+     rep_origin      complement(901..1515)
+                     /vntifkey=21
+                     /X-Transferred_From="pAK-EL-01; pAK-EL-02; pAK-EL-03;
+                     pAK-EL-04; pAK-EL-05"
+                     /X-Transferred_Similarity="100.00%"
+                     /Transferred_From="pAK-EL-01, pAK-EL-02, pAK-EL-03,
+                     pAK-EL-04, pAK-EL-05, pAK007 in pUC57-Kan-mini, pAK008 in
+                     pUC57-Kan-mini, pAK009 in pUC57-Kan-mini, pAK010 in
+                     pUC57-Kan-mini, pAK011 in pUC57-Kan-mini, pAK012 in
+                     pUC57-Kan-mini"
+                     /Transferred_Similarity="100.00%"
+                     /label="rep(pMB1)"
+     CDS             complement(1682..2491)
+                     /vntifkey=21
+                     /X-Transferred_From="pAK-EL-01; pAK-EL-02; pAK-EL-03;
+                     pAK-EL-04; pAK-EL-05"
+                     /X-Transferred_Similarity="100.00%"
+                     /Transferred_From="pAK-EL-01, pAK-EL-02, pAK-EL-03,
+                     pAK-EL-04, pAK-EL-05, pAK007 in pUC57-Kan-mini, pAK008 in
+                     pUC57-Kan-mini, pAK009 in pUC57-Kan-mini, pAK010 in
+                     pUC57-Kan-mini, pAK011 in pUC57-Kan-mini, pAK012 in
+                     pUC57-Kan-mini"
+                     /Transferred_Similarity="100.00%"
+                     /label="KanR"
+     primer_bind     2562..2585
+                     /Mismatches=0
+                     /%GC="33.3"
+                     /Hairpin_Tm="None"
+                     /Self_Dimer_Tm="None"
+                     /Tm="56.0"
+                     /annotation_group="1295624007652761dad34d-a9ce-4a67-87ed-9
+                     e0cd62a53a8"
+                     /Sequence="GCAATGTAACATCAGAGATTTTGA"
+                     /created_by="primer3"
+                     /label="FH32"
+ORIGIN      
+        1 tcgcgcgttt cggtgatgac ggtgaaaacc tctgacacat gcagctcccg gacgtcattg
+       61 tcgatggtct cagaaaaagt ggcaccgagt cggtgcaaca aagcaccagt ggtctagtgg
+      121 tagaatagta ccctgccacg gtacagaccc gggttcgatt cccggctggt gcattgtctt
+      181 cgcagctggc acgacaggtt tcccgactgg aaagcgggca gtgagcgcaa cgcaattaat
+      241 gtgagttagc tcactcatta ggcaccccag gctttacact ttatgcttcc ggctcgtatg
+      301 ttgtgtggaa ttgtgagcgg ataacaattt cacacaggaa acagctatga ccatgattac
+      361 gccaagcttg catgcctgca ggtcgactct agaggatccc cgggtaccga gctcgaattc
+      421 actggccgtc gttttacaac gtcgtgactg ggaaaaccct ggcgttaccc aacttaatcg
+      481 ccttgcagca catccccctt tcgccagctg gcgtaatagc gaagaggccc gcaccgatcg
+      541 cccttcccaa cagttgcgca gcctgaatgg cgaatggcgc ctgatgcggt attttctcct
+      601 tacgcatctg tgcggtattt cacaccgcat atggtgcact ctcagtacaa tctgctctga
+      661 tgccgcatag ttaagccagc cccgacaccc gccaacaccc gctgacgcgc cctgacgggc
+      721 ttgtctgctc ccggcatccg cttacagaca agctgtgacg aagacaagtt tcagagctat
+      781 gctggaaaca gcatagcaag ttgaaataag gctagtccgt tatcaacttg aaaaagtgtg
+      841 agaccatcat tgtcacatgt gagcaaaagg ccagcaaaag gccaggaacc gtaaaaaggc
+      901 cgcgttgctg gcgtttttcc ataggctccg cccccctgac gagcatcaca aaaatcgacg
+      961 ctcaagtcag aggtggcgaa acccgacagg actataaaga taccaggcgt ttccccctgg
+     1021 aagctccctc gtgcgctctc ctgttccgac cctgccgctt accggatacc tgtccgcctt
+     1081 tctcccttcg ggaagcgtgg cgctttctca tagctcacgc tgtaggtatc tcagttcggt
+     1141 gtaggtcgtt cgctccaagc tgggctgtgt gcacgaaccc cccgttcagc ccgaccgctg
+     1201 cgccttatcc ggtaactatc gtcttgagtc caacccggta agacacgact tatcgccact
+     1261 ggcagcagcc actggtaaca ggattagcag agcgaggtat gtaggcggtg ctacagagtt
+     1321 cttgaagtgg tggcctaact acggctacac tagaagaaca gtatttggta tctgcgctct
+     1381 gctgaagcca gttaccttcg gaaaaagagt tggtagctct tgatccggca aacaaaccac
+     1441 cgctggtagc ggtggttttt ttgtttgcaa gcagcagatt acgcgcagaa aaaaaggatc
+     1501 tcaagaagat cctttgatct tttctacggg gtctgacgct cagtggaacg aaaactcacg
+     1561 ttaagggatt ttggtcatga gattatcaaa aaggatcttc acctagatcc ttttaaatta
+     1621 aaaatgaagt tttaaatcaa gcccaatctg aataatgtta caaccaatta accaattctg
+     1681 attagaaaaa ctcatcgagc atcaaatgaa actgcaattt attcatatca ggattatcaa
+     1741 taccatattt ttgaaaaagc cgtttctgta atgaaggaga aaactcaccg aggcagttcc
+     1801 ataggatggc aagatcctgg tatcggtctg cgattccgac tcgtccaaca tcaatacaac
+     1861 ctattaattt cccctcgtca aaaataaggt tatcaagtga gaaatcacca tgagtgacga
+     1921 ctgaatccgg tgagaatggc aaaagtttat gcatttcttt ccagacttgt tcaacaggcc
+     1981 agccattacg ctcgtcatca aaatcactcg catcaaccaa accgttattc attcgtgatt
+     2041 gcgcctgagc gagacgaaat acgcgatcgc tgttaaaagg acaattacaa acaggaatcg
+     2101 aatgcaaccg gcgcaggaac actgccagcg catcaacaat attttcacct gaatcaggat
+     2161 attcttctaa tacctggaat gctgtttttc cggggatcgc agtggtgagt aaccatgcat
+     2221 catcaggagt acggataaaa tgcttgatgg tcggaagagg cataaattcc gtcagccagt
+     2281 ttagtctgac catctcatct gtaacatcat tggcaacgct acctttgcca tgtttcagaa
+     2341 acaactctgg cgcatcgggc ttcccataca agcgatagat tgtcgcacct gattgcccga
+     2401 cattatcgcg agcccattta tacccatata aatcagcatc catgttggaa tttaatcgcg
+     2461 gcctcgacgt ttcccgttga atatggctca taacacccct tgtattactg tttatgtaag
+     2521 cagacagttt tattgttcat gatgatatat ttttatcttg tgcaatgtaa catcagagat
+     2581 tttgagacac gggccagagc tgca
+//

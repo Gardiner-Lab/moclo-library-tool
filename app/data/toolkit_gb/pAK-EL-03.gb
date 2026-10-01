@@ -1,0 +1,72 @@
+LOCUS       pAK-EL-03               2570 bp    DNA     circular     08-APR-2019
+DEFINITION  Endlinker for tRNA system.
+ACCESSION   urn.local...1cr-abnc7t5
+KEYWORDS    .
+SOURCE      
+  ORGANISM  
+            .
+FEATURES             Location/Qualifiers
+     gRNA_Scaffold   409..438
+                     /created_by="hahnf"
+                     /label="sgRNA backbone (part)"
+     overhang        409..412
+                     /created_by="koroleva"
+                     /label="CAAC"
+     terminator      439..450
+                     /created_by="hahnf"
+                     /modified_by="hahnf"
+                     /label="Poly-T terminator"
+     overhang        451..454
+                     /created_by="koroleva"
+                     /label="CGCT"
+     rep_origin      complement(867..1481)
+                     /vntifkey=21
+                     /label="rep(pMB1)"
+     CDS             complement(1648..2457)
+                     /vntifkey=21
+                     /label="KanR"
+ORIGIN      
+        1 tcgcgcgttt cggtgatgac ggtgaaaacc tctgacacat gcagctcccg gagacggtca
+       61 cagcttgtct gtaagcggat gccgggagca gacaagcccg tcagggcgcg tcagcgggtg
+      121 ttggcgggtg tcggggctgg cttaactatg cggcatcaga gcagattgta ctgagagtgc
+      181 accatatgcg gtgtgaaata ccgcacagat gcgtaaggag aaaataccgc atcaggcgcc
+      241 attcgccatt caggctgcgc aactgttggg aagggcgatc ggtgcgggcc tcttcgctat
+      301 tacgccagct ggcgaaaggg ggatgtgctg caaggcgatt aagttgggta acgccagggt
+      361 tttcccagtc acgacgttgt aaaacgacgg ccagagaatt cggtctcaca acttgaaaaa
+      421 gtggcaccga gtcggtgctt tttttttttt cgcttgagac caagcttggt gtaatcatgg
+      481 tcatagctgt ttcctgtgtg aaattgttat ccgctcacaa ttccacacaa catacgagcc
+      541 ggaagcataa agtgtaaagc ctggggtgcc taatgagtga gctaactcac attaattgcg
+      601 ttgcgctcac tgcccgcttt ccagtcggga aacctgtcgt gccagctgca ttaatgaatc
+      661 ggccaacgcg cggggagagg cggtttgcgt attgggcgct cttccgcttc ctcgctcact
+      721 gactcgctgc gctcggtcgt tcggctgcgg cgagcggtat cagctcactc aaaggcggta
+      781 atacggttat ccacagaatc aggggataac gcaggaaaga acatgtgagc aaaaggccag
+      841 caaaaggcca ggaaccgtaa aaaggccgcg ttgctggcgt ttttccatag gctccgcccc
+      901 cctgacgagc atcacaaaaa tcgacgctca agtcagaggt ggcgaaaccc gacaggacta
+      961 taaagatacc aggcgtttcc ccctggaagc tccctcgtgc gctctcctgt tccgaccctg
+     1021 ccgcttaccg gatacctgtc cgcctttctc ccttcgggaa gcgtggcgct ttctcatagc
+     1081 tcacgctgta ggtatctcag ttcggtgtag gtcgttcgct ccaagctggg ctgtgtgcac
+     1141 gaaccccccg ttcagcccga ccgctgcgcc ttatccggta actatcgtct tgagtccaac
+     1201 ccggtaagac acgacttatc gccactggca gcagccactg gtaacaggat tagcagagcg
+     1261 aggtatgtag gcggtgctac agagttcttg aagtggtggc ctaactacgg ctacactaga
+     1321 agaacagtat ttggtatctg cgctctgctg aagccagtta ccttcggaaa aagagttggt
+     1381 agctcttgat ccggcaaaca aaccaccgct ggtagcggtg gtttttttgt ttgcaagcag
+     1441 cagattacgc gcagaaaaaa aggatctcaa gaagatcctt tgatcttttc tacggggtct
+     1501 gacgctcagt ggaacgaaaa ctcacgttaa gggattttgg tcatgagatt atcaaaaagg
+     1561 atcttcacct agatcctttt aaattaaaaa tgaagtttta aatcaagccc aatctgaata
+     1621 atgttacaac caattaacca attctgatta gaaaaactca tcgagcatca aatgaaactg
+     1681 caatttattc atatcaggat tatcaatacc atatttttga aaaagccgtt tctgtaatga
+     1741 aggagaaaac tcaccgaggc agttccatag gatggcaaga tcctggtatc ggtctgcgat
+     1801 tccgactcgt ccaacatcaa tacaacctat taatttcccc tcgtcaaaaa taaggttatc
+     1861 aagtgagaaa tcaccatgag tgacgactga atccggtgag aatggcaaaa gtttatgcat
+     1921 ttctttccag acttgttcaa caggccagcc attacgctcg tcatcaaaat cactcgcatc
+     1981 aaccaaaccg ttattcattc gtgattgcgc ctgagcgaga cgaaatacgc gatcgctgtt
+     2041 aaaaggacaa ttacaaacag gaatcgaatg caaccggcgc aggaacactg ccagcgcatc
+     2101 aacaatattt tcacctgaat caggatattc ttctaatacc tggaatgctg tttttccggg
+     2161 gatcgcagtg gtgagtaacc atgcatcatc aggagtacgg ataaaatgct tgatggtcgg
+     2221 aagaggcata aattccgtca gccagtttag tctgaccatc tcatctgtaa catcattggc
+     2281 aacgctacct ttgccatgtt tcagaaacaa ctctggcgca tcgggcttcc catacaagcg
+     2341 atagattgtc gcacctgatt gcccgacatt atcgcgagcc catttatacc catataaatc
+     2401 agcatccatg ttggaattta atcgcggcct cgacgtttcc cgttgaatat ggctcataac
+     2461 accccttgta ttactgttta tgtaagcaga cagttttatt gttcatgatg atatattttt
+     2521 atcttgtgca atgtaacatc agagattttg agacacgggc cagagctgca
+//

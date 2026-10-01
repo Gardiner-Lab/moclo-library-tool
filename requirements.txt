@@ -19,6 +19,8 @@ cairosvg==2.7.1
 
 # Bioinformatics
 biopython==1.81
+# Nucleic acid folding (hairpin/self-dimer dG for oligo design) - pure Python, no C toolchain
+seqfold==0.10.2
 
 # Utilities
 python-dotenv==1.0.0

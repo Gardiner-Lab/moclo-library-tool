@@ -1,0 +1,114 @@
+{% extends "base.html" %}
+
+{% block title %}CRISPR Guide Designer - MoClo Library Tool{% endblock %}
+
+{% block extra_css %}
+<style>
+    .gd-container { max-width: 1200px; margin: 0 auto; }
+    .gd-header { margin-bottom: 1.5rem; }
+    .gd-subtitle { color: var(--text-secondary); }
+
+    .gd-panel {
+        background-color: var(--card-bg);
+        border: 1px solid var(--border-color);
+        border-radius: 0.5rem;
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+    }
+
+    .gd-form-row { display: flex; flex-wrap: wrap; gap: 1rem; margin-bottom: 1rem; }
+    .gd-form-row .form-group { flex: 1; min-width: 200px; margin-bottom: 0; }
+
+    .gd-guides-list { display: flex; flex-direction: column; gap: 0.5rem; }
+    .gd-guide-row { display: flex; align-items: center; gap: 0.5rem; }
+    .gd-guide-row .pos-badge {
+        flex: 0 0 auto; width: 2rem; height: 2rem; border-radius: 50%;
+        background: var(--primary-color, #2563eb); color: #fff;
+        display: flex; align-items: center; justify-content: center; font-weight: 600;
+    }
+    .gd-guide-row input {
+        flex: 1; font-family: monospace; letter-spacing: 0.05em; text-transform: uppercase;
+    }
+    .gd-guide-row .valid-mark { flex: 0 0 auto; width: 1.5rem; text-align: center; font-weight: 700; }
+    .gd-guide-row .valid-mark.ok { color: var(--success-color, #16a34a); }
+    .gd-guide-row .valid-mark.bad { color: var(--error-color, #dc2626); }
+
+    .gd-oligo-block {
+        border: 1px solid var(--border-color); border-radius: 0.375rem;
+        padding: 1rem; margin-bottom: 1rem; background: var(--bg-color, #fafafa);
+    }
+    .gd-oligo-title { font-weight: 600; margin-bottom: 0.5rem; }
+    .gd-mono {
+        font-family: monospace; word-break: break-all; background: #0f172a; color: #e2e8f0;
+        padding: 0.5rem 0.75rem; border-radius: 0.25rem; display: block; margin: 0.25rem 0;
+        font-size: 0.85rem;
+    }
+    .gd-layout { font-family: monospace; font-size: 0.8rem; color: var(--text-secondary); word-break: break-all; }
+    .gd-copy-btn {
+        font-size: 0.75rem; padding: 0.15rem 0.5rem; margin-left: 0.5rem; cursor: pointer;
+        border: 1px solid var(--border-color); border-radius: 0.25rem; background: transparent;
+    }
+    .gd-step { border-left: 3px solid var(--primary-color, #2563eb); padding-left: 1rem; margin-bottom: 1.25rem; }
+    .gd-step h3 { margin: 0 0 0.25rem 0; }
+    .gd-enzyme-tag {
+        display: inline-block; font-size: 0.7rem; font-weight: 600; padding: 0.1rem 0.4rem;
+        border-radius: 0.25rem; background: #ede9fe; color: #6b21a8; margin-left: 0.5rem;
+    }
+    .gd-module-table { width: 100%; border-collapse: collapse; margin-top: 0.5rem; font-size: 0.9rem; }
+    .gd-module-table th, .gd-module-table td { text-align: left; padding: 0.4rem 0.6rem; border-bottom: 1px solid var(--border-color); }
+    .gd-warn { color: var(--error-color, #dc2626); font-size: 0.85rem; margin-top: 0.25rem; }
+    .gd-dg { font-size: 0.8rem; color: var(--text-secondary); }
+    .gd-hidden { display: none; }
+    .gd-pill { display:inline-block; font-size:0.72rem; padding:0.1rem 0.45rem; border-radius:1rem; background:#e0e7ff; color:#3730a3; margin-left:0.4rem; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="gd-container">
+    <div class="gd-header">
+        <h1>🎯 CRISPR Guide Designer</h1>
+        <p class="gd-subtitle">
+            Enter your 20&nbsp;bp guide sequence(s) and auto-generate a full Golden Gate cloning
+            strategy for the polycistronic tRNA-sgRNA system, based on the
+            <a href="https://doi.org/10.1186/s12870-020-02388-2" target="_blank" rel="noopener">
+            Hahn&nbsp;et&nbsp;al. (2020) plant genome-editing toolkit</a>.
+        </p>
+    </div>
+
+    <div class="gd-panel">
+        <div class="gd-form-row">
+            <div class="form-group">
+                <label for="gdPromoter">Pol III promoter</label>
+                <select id="gdPromoter" class="form-control"></select>
+            </div>
+            <div class="form-group">
+                <label for="gdBackbone">sgRNA backbone</label>
+                <select id="gdBackbone" class="form-control">
+                    <option value="improved">Improved (recommended)</option>
+                    <option value="classic">Classic</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="gdL1Acceptor">Level 1 acceptor (position)</label>
+                <select id="gdL1Acceptor" class="form-control"></select>
+            </div>
+        </div>
+
+        <label>Guide sequences <span class="gd-dg">(20&nbsp;bp each, no BpiI/GAAGAC or BsaI/GGTCTC sites; up to 6)</span></label>
+        <div id="gdGuidesList" class="gd-guides-list"></div>
+        <div style="margin-top: 0.75rem; display: flex; gap: 0.5rem;">
+            <button id="gdAddGuide" class="btn btn-secondary">+ Add guide</button>
+            <button id="gdDesign" class="btn btn-success">Generate cloning strategy</button>
+        </div>
+    </div>
+
+    <div id="gdResults" class="gd-hidden"></div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/guide_designer.js') }}?v=1.0"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', () => { initGuideDesigner(); });
+</script>
+{% endblock %}
