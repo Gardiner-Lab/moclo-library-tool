@@ -530,10 +530,18 @@ function renderMocloStrategy(plasmid) {
         const oh = (f.overhang_5prime || f.overhang_3prime)
             ? `${escapeHtml(f.overhang_5prime || '—')} / ${escapeHtml(f.overhang_3prime || '—')}`
             : '—';
-        const src = f.source_vector ? `<span class="text-muted"> · ${escapeHtml(f.source_vector)}</span>` : '';
+        // Append the source plasmid id in parentheses after the name when it is
+        // a meaningful id (not a UUID record-link) and not already in the name,
+        // e.g. "zCas9 unit (pICH47802)".
+        const rawPid = f.source_vector || f.plasmid_id;
+        const isUuid = rawPid && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(rawPid));
+        const pid = (rawPid && !isUuid) ? String(rawPid) : null;
+        const nameWithPid = (pid && !String(f.name || '').toLowerCase().includes(pid.toLowerCase()))
+            ? `${escapeHtml(f.name)} <span class="text-muted">(${escapeHtml(pid)})</span>`
+            : escapeHtml(f.name);
         rows += `
             <tr>
-                <td>${escapeHtml(f.name)}${src}</td>
+                <td>${nameWithPid}</td>
                 <td>${roleTag}</td>
                 <td>${escapeHtml(typeLabel[f.part_type] || f.part_type || '')}</td>
                 <td style="text-align:right;">${f.size ? f.size + ' bp' : '—'}</td>

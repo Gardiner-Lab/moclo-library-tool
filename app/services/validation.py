@@ -231,35 +231,30 @@ def check_internal_restriction_sites(sequence: str) -> None:
     
     seq_upper = sequence.upper()
     
+    def _find_all(sites):
+        found = []
+        for site in sites:
+            pos = 0
+            while True:
+                pos = seq_upper.find(site, pos)
+                if pos == -1:
+                    break
+                found.append((pos, site))
+                pos += 1
+        return found
+    
     # BsaI recognition sites (forward and reverse complement)
-    bsai_sites = ['GGTCTC', 'GAGACC']
-    
+    bsai_positions = _find_all(['GGTCTC', 'GAGACC'])
     # BpiI recognition sites (forward and reverse complement)
-    bpii_sites = ['GAAGAC', 'GTCTTC']
+    bpii_positions = _find_all(['GAAGAC', 'GTCTTC'])
+    # BsmBI / Esp3I recognition sites (forward and reverse complement).
+    # BsmBI is NOT used by the traditional plant MoClo system (BsaI + BpiI); it
+    # only matters for BsmBI/Esp3I-based Golden Gate assembly (e.g. MoClo-YTK,
+    # Loop). So its presence is reported for the user's awareness, not blocked.
+    bsmbi_positions = _find_all(['CGTCTC', 'GAGACG'])
     
-    # Check for BsaI sites
-    bsai_positions = []
-    for site in bsai_sites:
-        pos = 0
-        while True:
-            pos = seq_upper.find(site, pos)
-            if pos == -1:
-                break
-            bsai_positions.append((pos, site))
-            pos += 1
-    
-    # Check for BpiI sites
-    bpii_positions = []
-    for site in bpii_sites:
-        pos = 0
-        while True:
-            pos = seq_upper.find(site, pos)
-            if pos == -1:
-                break
-            bpii_positions.append((pos, site))
-            pos += 1
-    
-    # Build error message if sites found
+    # Build error message if BsaI/BpiI sites found. These are the enzymes used by
+    # traditional MoClo, so internal sites DO break assembly and must block.
     errors = []
     
     if bsai_positions:
@@ -274,7 +269,75 @@ def check_internal_restriction_sites(sequence: str) -> None:
         error_msg = "Part contains internal restriction sites that will interfere with MoClo assembly:\n"
         error_msg += "\n".join(errors)
         error_msg += "\n\nMoClo parts must not contain internal BsaI (GGTCTC/GAGACC) or BpiI (GAAGAC/GTCTTC) sites."
+        # Clarification so the user can judge the severity for their workflow.
+        # Only appended when there is already an error to report (a clean part
+        # gets no restriction-site commentary at all).
+        if bsmbi_positions:
+            bsmbi_str = ', '.join([f"{pos+1} ({site})" for pos, site in bsmbi_positions])
+            error_msg += (
+                f"\n\nNote: BsmBI/Esp3I site(s) were also found at position(s): "
+                f"{bsmbi_str}. BsmBI is only relevant if you intend to use "
+                f"BsmBI/Esp3I-based assembly (e.g. MoClo-YTK or Loop); it is not "
+                f"used by traditional plant MoClo (BsaI + BpiI), so you can "
+                f"decide whether these sites are a problem for your workflow."
+            )
         raise ValidationError(error_msg)
+
+
+def restriction_site_notice(sequence: str, level: Optional[str] = None) -> Optional[str]:
+    """
+    Return a non-blocking, informational notice about restriction sites in a
+    part sequence, or ``None`` when there is nothing worth saying.
+
+    This is the companion to :func:`check_internal_restriction_sites` (which
+    hard-blocks parts carrying internal BsaI/BpiI sites). It covers the case the
+    hard check deliberately lets through: a sequence that is clean for
+    traditional MoClo (no BsaI/BpiI) but still carries BsmBI/Esp3I sites. Those
+    sites only matter for BsmBI/Esp3I-based assembly (e.g. MoClo-YTK, Loop), so
+    the user is told and can decide whether it matters for their workflow.
+
+    Only Level 0 (or unspecified) parts are considered; Level 1+ parts are
+    expected to contain assembly sites, so no notice is produced.
+
+    Returns the notice string, or None when the part has BsaI/BpiI sites (those
+    are reported by the blocking check instead) or no notable sites at all.
+    """
+    if not sequence:
+        return None
+
+    part_level = None
+    if level:
+        try:
+            part_level = int(level)
+        except (ValueError, TypeError):
+            part_level = None
+    if part_level not in (None, 0):
+        return None
+
+    seq_upper = sequence.upper()
+
+    def _has(sites):
+        return any(s in seq_upper for s in sites)
+
+    has_bsai = _has(['GGTCTC', 'GAGACC'])
+    has_bpii = _has(['GAAGAC', 'GTCTTC'])
+    # If BsaI/BpiI are present the blocking check already explains the problem.
+    if has_bsai or has_bpii:
+        return None
+
+    # No BsaI/BpiI -> safe for traditional MoClo. Only emit a notice when there
+    # is a meaningful BsmBI caveat to add; a fully clean part gets nothing.
+    has_bsmbi = _has(['CGTCTC', 'GAGACG'])
+    if not has_bsmbi:
+        return None
+
+    return (
+        "No internal BsaI or BpiI sites — this sequence is safe for traditional "
+        "MoClo (BsaI + BpiI). Note: it does contain BsmBI/Esp3I (CGTCTC) site(s), "
+        "which only matter if you intend to use BsmBI/Esp3I-based assembly "
+        "(e.g. MoClo-YTK or Loop); you can decide whether that is a problem for "
+        "your workflow."
+    )
 
 
 def validate_part_for_upload(

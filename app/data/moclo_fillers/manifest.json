@@ -34,8 +34,8 @@
       "part_type": "NonCodingOther"
     },
     {
-      "name": "Dummy position 4 (dummy_pos4)",
-      "plasmid_id": "dummy_pos4",
+      "name": "Dummy position 4 (pICH54044)",
+      "plasmid_id": "pICH54044",
       "position": 4,
       "overhang_5prime": "TTAC",
       "overhang_3prime": "CAGA",
@@ -45,8 +45,8 @@
       "part_type": "NonCodingOther"
     },
     {
-      "name": "Dummy position 5 (dummy_pos5)",
-      "plasmid_id": "dummy_pos5",
+      "name": "Dummy position 5 (pICH54055)",
+      "plasmid_id": "pICH54055",
       "position": 5,
       "overhang_5prime": "CAGA",
       "overhang_3prime": "TGTG",
@@ -56,8 +56,8 @@
       "part_type": "NonCodingOther"
     },
     {
-      "name": "Dummy position 6 (dummy_pos6)",
-      "plasmid_id": "dummy_pos6",
+      "name": "Dummy position 6 (pICH54066)",
+      "plasmid_id": "pICH54066",
       "position": 6,
       "overhang_5prime": "TGTG",
       "overhang_3prime": "GAGC",
@@ -67,8 +67,8 @@
       "part_type": "NonCodingOther"
     },
     {
-      "name": "Dummy position 7 (dummy_pos7)",
-      "plasmid_id": "dummy_pos7",
+      "name": "Dummy position 7 (pICH54077)",
+      "plasmid_id": "pICH54077",
       "position": 7,
       "overhang_5prime": "GAGC",
       "overhang_3prime": "TGCC",

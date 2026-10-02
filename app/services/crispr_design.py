@@ -1236,6 +1236,33 @@ def _part_plasmid_size(part) -> Optional[int]:
     return None
 
 
+_UUID_RE = _re.compile(
+    r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$')
+
+
+def _display_plasmid_id(pid):
+    """Return a plasmid id suitable for display, or None. A UUID (internal
+    record-link id) is not a meaningful plasmid name, so it is suppressed."""
+    pid = (pid or '').strip()
+    if not pid or _UUID_RE.match(pid):
+        return None
+    return pid
+
+
+def _part_display_name(part) -> str:
+    """
+    Human-facing name for a part in the protocol: append the plasmid id in
+    parentheses when the part has a meaningful one and it is not already part of
+    the name, e.g. 'LVL1_UBQ10_zCas9i_E9 (pICH47802)'. UUID record-link ids are
+    suppressed.
+    """
+    name = (getattr(part, 'name', None) or '').strip() or 'part'
+    pid = _display_plasmid_id(getattr(part, 'plasmid_id', None))
+    if pid and pid.lower() not in name.lower():
+        return f"{name} ({pid})"
+    return name
+
+
 def plan_level2_components(selected_parts, fillers):
     """
     Build the ordered Level 2 component list (filling internal gaps with dummies
@@ -1294,6 +1321,8 @@ def plan_level2_components(selected_parts, fillers):
             warnings.append(f"Auto-added dummy at position {pos}.")
         ordered.append(part)
         layout.append({'position': pos, 'part_name': part.name, 'role': role,
+                       'display_name': _part_display_name(part),
+                       'plasmid_id': getattr(part, 'plasmid_id', None),
                        'size': _part_plasmid_size(part),
                        'insert_length': len(part.sequence) if getattr(part, 'sequence', None) else None})
 
@@ -1306,6 +1335,8 @@ def plan_level2_components(selected_parts, fillers):
                 'error': f"No end-linker available to close after position {last_pos}."}
     ordered.append(endlinker)
     layout.append({'position': f'{last_pos}+', 'part_name': endlinker.name, 'role': 'end-linker',
+                   'display_name': _part_display_name(endlinker),
+                   'plasmid_id': getattr(endlinker, 'plasmid_id', None),
                    'size': _part_plasmid_size(endlinker),
                    'insert_length': len(endlinker.sequence) if getattr(endlinker, 'sequence', None) else None})
     warnings.append(f"Auto-added {endlinker.name} to close the Level 2 ring (-> GGGA).")

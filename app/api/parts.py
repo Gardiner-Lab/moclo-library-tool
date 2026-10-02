@@ -12,7 +12,9 @@ Requirements: 1.1, 1.3, 1.5, 3.1, 4.1, 10.1
 
 from flask import Blueprint, request, jsonify, session
 from app.models.part import Part
-from app.services.validation import validate_part_for_upload, ValidationError
+from app.services.validation import (
+    validate_part_for_upload, restriction_site_notice, ValidationError
+)
 from app.services.compatibility import find_compatible_parts
 from functools import wraps
 from typing import Callable, Any
@@ -309,11 +311,15 @@ def _handle_json_upload():
         description=description
     )
     
-    return jsonify({
+    resp = {
         'part': part.to_dict(),
         'message': 'Part uploaded successfully',
         'source': 'manual'
-    }), 201
+    }
+    notice = restriction_site_notice(sequence, level=level)
+    if notice:
+        resp['restriction_warning'] = notice
+    return jsonify(resp), 201
 
 
 def _handle_genbank_upload():
@@ -452,6 +458,10 @@ def _handle_genbank_upload():
         'bsai_sites_found': part_data['bsai_sites_found'],
         'intron_annotations': part_data.get('intron_annotations', [])
     }
+
+    notice = restriction_site_notice(part_data['sequence'], level=upload_level)
+    if notice:
+        resp['restriction_warning'] = notice
 
     # A Coding or ExpressionCassette part is expected to carry a coding sequence.
     # Analyse it now so the caller can flag a part with none.

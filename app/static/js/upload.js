@@ -225,11 +225,14 @@ async function handleManualSubmit(event) {
         
         // Success - show message and redirect
         showFlashMessage('Part uploaded successfully!', 'success');
+        if (response && response.restriction_warning) {
+            showFlashMessage(response.restriction_warning, 'info');
+        }
         
         // Redirect to parts browser after a short delay
         setTimeout(() => {
             window.location.href = '/parts';
-        }, 1000);
+        }, response && response.restriction_warning ? 3500 : 1000);
         
     } catch (error) {
         // Handle errors
@@ -318,11 +321,14 @@ async function handleGenbankSubmit(event) {
             message += ` (Detected type: ${data.detected_type})`;
         }
         showFlashMessage(message, 'success');
+        if (data.restriction_warning) {
+            showFlashMessage(data.restriction_warning, 'info');
+        }
 
         // Redirect to the relevant browser after a short delay
         setTimeout(() => {
             window.location.href = asBackbone ? '/backbones' : '/parts';
-        }, 1500);
+        }, data.restriction_warning ? 3500 : 1500);
         
     } catch (error) {
         // Handle errors
@@ -963,6 +969,9 @@ async function handleBulkSubmit(event) {
                 resultsDiv.innerHTML += `<div style="color: #16a34a;">✓ ${escapeHtml(objName)}${kindNote} — uploaded${renameNote}</div>`;
                 if (data.coding_warning) {
                     resultsDiv.innerHTML += `<div style="color: #d97706; margin-left: 1rem;">⚠ ${escapeHtml(data.coding_warning)}</div>`;
+                }
+                if (data.restriction_warning) {
+                    resultsDiv.innerHTML += `<div style="color: #2563eb; margin-left: 1rem;">ℹ ${escapeHtml(data.restriction_warning)}</div>`;
                 }
             } else if (response.status === 409) {
                 duplicateCount++;

@@ -5,6 +5,40 @@ All notable changes to the MoClo Library Tool project will be documented in this
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.11.2] - 2026-09-30
+
+### Changed
+- CRISPR Designer construct flow streamlined to need minimal input:
+  - The Level 1 acceptor backbone is now auto-resolved from the acceptor chosen
+    at the top of the page (the duplicate backbone picker was removed).
+  - A construct always creates the full lineage — Level 0 guide-module parts,
+    the Level 1 plasmid, the Level 2 cassette and (optionally) the Level 2
+    plasmid — so every record can be traced back to its parts.
+  - A single editable base name drives collision-safe unique names for every
+    child record, with an optional per-record overrides section.
+- Parts are now referred to by `name (plasmid_id)` in the construct layout,
+  plasmid-assembly strategy and protocol, reading the plasmid id from the part
+  metadata. Redundant ids (already in the name) and internal UUID record-link
+  ids are suppressed.
+
+### Added
+- CRISPR Designer surfaces construct-creation problems in the UI: when a
+  construct cannot be fully built, a prominent panel lists what failed and how
+  to fix it (e.g. missing Level 2 acceptor, an unuploaded Level 1 acceptor
+  backbone, two parts mapping to the same Level 2 position), and the response
+  carries a `complete` flag separating problems from success messages.
+- Restriction-site validation now reports BsmBI/Esp3I (`CGTCTC`) context so the
+  user can judge relevance to their workflow: when a part is blocked for
+  internal BsaI/BpiI sites, any BsmBI sites are noted as only relevant to
+  BsmBI/Esp3I-based assembly (e.g. MoClo-YTK, Loop); and a part that is clean
+  for traditional MoClo but carries BsmBI sites now uploads with a non-blocking
+  notice instead of silently passing.
+
+### Fixed
+- MoClo dummy fillers for Level 2 positions 4–7 now carry their real kit plasmid
+  ids (pICH54044, pICH54055, pICH54066, pICH54077) in both the seed manifest and
+  the part metadata, matching positions 1–3 (pICH54011/54022/54033).
+
 ## [1.11.1] - 2026-10-01
 
 ### Fixed

@@ -396,63 +396,62 @@ function renderPlan(plan, opts) {
         return;
     }
 
-    // Action: create Level 0 parts (oligo modules only)
-    html += `<div class="gd-panel">
-        <h3>Add Level 0 guide modules to library</h3>
-        <p class="gd-subtitle">Generate the fully assembled Level 0 guide-cassette module(s)
-            (real toolkit vector with your guide spliced in) and save them as parts,
-            each with the MoClo cloning strategy and oligo annealing protocol.</p>
-        <button id="gdCreateParts" class="btn btn-secondary">Generate Level 0 cassette part(s)</button>
-    </div>`;
+    // Action: create the full construct. One streamlined panel — the full
+    // lineage (Level 0 modules -> Level 1 plasmid -> Level 2 cassette -> Level 2
+    // plasmid) is always created so provenance is traceable. The Level 1
+    // acceptor is taken from the dropdown at the top of the page (no second
+    // picker). A single construct name drives collision-safe names for every
+    // record, each editable in the "Names" section.
+    const today = new Date().toISOString().split('T')[0];
+    const defaultBase = `CRISPR_${esc(gdCurrentL1Acceptor())}_${plan.guide_count || 1}g_${today}`;
+    const guideNameRows = plan.level_minus1.guides.map((g, i) => `
+        <div class="form-group" style="margin-bottom:0.4rem;">
+            <label>Level 0 module ${i + 1} (${esc(g.level0_vector)}, guide <code>${esc(g.guide)}</code>)</label>
+            <input type="text" class="form-control gd-l0-name" data-i="${i}">
+        </div>`).join('');
 
-    // Action: create the full construct (L1 guide cassette + L2 cassette + plasmid)
     html += `<div class="gd-panel">
         <h3>Build the full construct</h3>
-        <p class="gd-subtitle">Assemble the Level&nbsp;1 guide cassette and, optionally, the
-            Level&nbsp;2 cassette (guide + Cas + resistance + others) and the final Level&nbsp;2 plasmid.</p>
+        <p class="gd-subtitle">Creates the complete lineage so everything is traceable:
+            Level&nbsp;0 guide module part(s) → Level&nbsp;1 guide plasmid (into the acceptor
+            you selected above) → Level&nbsp;2 cassette (guide + Cas + resistance${gdSelected.other.length ? ' + ' + gdSelected.other.length + ' other' : ''})
+            → optional Level&nbsp;2 plasmid. Dummies and the end-linker are added automatically.</p>
+
         <div class="form-group">
-            <label>Guide cassette name (Level 1)</label>
-            <input type="text" id="gdGuideCassetteName" class="form-control"
-                   value="gRNA_L1_${esc(plan.guide_count || 1)}guides_${new Date().toISOString().split('T')[0]}">
+            <label>Construct name</label>
+            <input type="text" id="gdConstructName" class="form-control" value="${defaultBase}">
+            <div class="gd-dg">Used to name every created record (made unique automatically).</div>
         </div>
-        <label style="display:block; margin:0.4rem 0;">
-            <input type="checkbox" id="gdMakeL2" checked> Also create the Level&nbsp;2 cassette
-            (guide + Cas <code>${esc(gdSelected.cas ? gdSelected.cas.name : '')}</code>
-             + resistance <code>${esc(gdSelected.resistance ? gdSelected.resistance.name : '')}</code>${gdSelected.other.length ? ' + ' + gdSelected.other.length + ' other' : ''})
-        </label>
-        <div id="gdL2Name" class="form-group">
-            <label>Level 2 cassette name</label>
-            <input type="text" id="gdL2CassetteName" class="form-control"
-                   value="L2_construct_${new Date().toISOString().split('T')[0]}">
-        </div>
-        <label style="display:block; margin:0.4rem 0;">
-            <input type="checkbox" id="gdMakeL1Plasmid"> Assemble the Level&nbsp;1 guide plasmid into a
-            Level&nbsp;1 acceptor backbone (recommended &mdash; creates a real Level&nbsp;1 unit)
-        </label>
-        <div id="gdL1PlasmidBlock" class="gd-hidden">
-            <div class="form-group">
-                <label>Level 1 acceptor backbone</label>
-                <div id="gdL1BackbonePick" class="gd-partpick"></div>
+
+        <details class="gd-names" style="margin:0.5rem 0;">
+            <summary style="cursor:pointer; font-weight:500;">Edit individual names (optional)</summary>
+            <div style="margin-top:0.5rem;">
+                ${guideNameRows}
+                <div class="form-group" style="margin-bottom:0.4rem;">
+                    <label>Level 1 plasmid</label>
+                    <input type="text" id="gdNameL1" class="form-control">
+                </div>
+                <div class="form-group" style="margin-bottom:0.4rem;">
+                    <label>Level 2 cassette</label>
+                    <input type="text" id="gdNameL2" class="form-control">
+                </div>
+                <div class="form-group" style="margin-bottom:0.4rem;">
+                    <label>Level 2 plasmid</label>
+                    <input type="text" id="gdNamePlasmid" class="form-control">
+                </div>
             </div>
-            <div class="form-group">
-                <label>Level 1 plasmid name</label>
-                <input type="text" id="gdL1PlasmidName" class="form-control" value="">
-            </div>
-        </div>
+        </details>
+
         <label style="display:block; margin:0.4rem 0;">
-            <input type="checkbox" id="gdMakePlasmid"> Also assemble the final Level&nbsp;2 plasmid
+            <input type="checkbox" id="gdMakePlasmid" checked> Assemble the final Level&nbsp;2 plasmid
         </label>
-        <div id="gdPlasmidBlock" class="gd-hidden">
+        <div id="gdPlasmidBlock">
             <div class="form-group">
                 <label>Level 2 acceptor backbone</label>
                 <div id="gdBackbonePick" class="gd-partpick"></div>
             </div>
-            <div class="form-group">
-                <label>Plasmid name</label>
-                <input type="text" id="gdPlasmidName" class="form-control" value="">
-            </div>
         </div>
-        <button id="gdCreateConstruct" class="btn btn-success">Create construct</button>
+        <button id="gdCreateConstruct" class="btn btn-success">Create full construct</button>
     </div>`;
 
     // Reference
@@ -465,49 +464,30 @@ function renderPlan(plan, opts) {
         b.addEventListener('click', () => copyToClipboard(b.dataset.seq, b));
     });
 
-    // Wire the create-parts (Level 0 only) button
     gdLastPlan = plan;
-    const cpBtn = document.getElementById('gdCreateParts');
-    if (cpBtn) cpBtn.addEventListener('click', openCreatePartsModal);
 
-    // Wire the full-construct controls
+    // Wire the full-construct controls.
     const makePlasmid = document.getElementById('gdMakePlasmid');
     const plasmidBlock = document.getElementById('gdPlasmidBlock');
     const backbonePickEl = document.getElementById('gdBackbonePick');
     gdSelectedBackbone = null;
+    // The Level 2 plasmid is created by default, so init the acceptor picker now.
+    initBackbonePicker(backbonePickEl,
+        (b) => { gdSelectedBackbone = b; }, () => gdSelectedBackbone);
+    backbonePickEl.dataset.inited = '1';
     makePlasmid.addEventListener('change', () => {
         plasmidBlock.classList.toggle('gd-hidden', !makePlasmid.checked);
-        if (makePlasmid.checked && !backbonePickEl.dataset.inited) {
-            initBackbonePicker(backbonePickEl,
-                (b) => { gdSelectedBackbone = b; },
-                () => gdSelectedBackbone);
-            backbonePickEl.dataset.inited = '1';
-        }
     });
 
-    // Wire the Level 1 acceptor backbone picker (assemble the guide plasmid).
-    const makeL1Plasmid = document.getElementById('gdMakeL1Plasmid');
-    const l1PlasmidBlock = document.getElementById('gdL1PlasmidBlock');
-    const l1BackbonePickEl = document.getElementById('gdL1BackbonePick');
-    gdSelectedL1Backbone = null;
-    makeL1Plasmid.addEventListener('change', () => {
-        l1PlasmidBlock.classList.toggle('gd-hidden', !makeL1Plasmid.checked);
-        if (makeL1Plasmid.checked && !l1BackbonePickEl.dataset.inited) {
-            initBackbonePicker(l1BackbonePickEl,
-                (b) => { gdSelectedL1Backbone = b; },
-                () => gdSelectedL1Backbone);
-            l1BackbonePickEl.dataset.inited = '1';
-        }
-    });
-    const makeL2 = document.getElementById('gdMakeL2');
-    makeL2.addEventListener('change', () => {
-        document.getElementById('gdL2Name').classList.toggle('gd-hidden', !makeL2.checked);
-        if (!makeL2.checked) { makePlasmid.checked = false; makePlasmid.disabled = true; plasmidBlock.classList.add('gd-hidden'); }
-        else { makePlasmid.disabled = false; }
-    });
     document.getElementById('gdCreateConstruct').addEventListener('click', createConstruct);
 
     c.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+/** Current Level 1 acceptor vector id from the top-of-page dropdown. */
+function gdCurrentL1Acceptor() {
+    const sel = document.getElementById('gdL1Acceptor');
+    return (sel && sel.value) || 'pICH47742';
 }
 
 let gdSelectedBackbone = null;    // Level 2 acceptor
@@ -560,17 +540,21 @@ function initBackbonePicker(container, onSelect, getSelected) {
 
 async function createConstruct() {
     if (!gdLastPlan) return;
-    const makeL2 = document.getElementById('gdMakeL2').checked;
     const makePlasmid = document.getElementById('gdMakePlasmid').checked;
-    const makeL1Plasmid = (document.getElementById('gdMakeL1Plasmid') || {}).checked;
     if (makePlasmid && !gdSelectedBackbone) {
-        showFlashMessage('Select a Level 2 backbone to assemble the plasmid.', 'warning');
+        showFlashMessage('Select a Level 2 acceptor backbone to assemble the plasmid.', 'warning');
         return;
     }
-    if (makeL1Plasmid && !gdSelectedL1Backbone) {
-        showFlashMessage('Select a Level 1 acceptor backbone to assemble the Level 1 plasmid.', 'warning');
-        return;
-    }
+    // Collect optional per-record name overrides (blank = auto from construct name).
+    const level0Names = Array.from(document.querySelectorAll('.gd-l0-name'))
+        .sort((a, b) => (+a.dataset.i) - (+b.dataset.i))
+        .map(inp => inp.value.trim());
+    const names = {
+        level0: level0Names,
+        l1_plasmid: (document.getElementById('gdNameL1') || {}).value || '',
+        l2_cassette: (document.getElementById('gdNameL2') || {}).value || '',
+        plasmid: (document.getElementById('gdNamePlasmid') || {}).value || '',
+    };
     const btn = document.getElementById('gdCreateConstruct');
     setButtonLoading(btn, true);
     try {
@@ -579,22 +563,26 @@ async function createConstruct() {
             promoter: document.getElementById('gdPromoter').value,
             backbone_flavor: document.getElementById('gdBackbone').value,
             l1_acceptor: document.getElementById('gdL1Acceptor').value,
-            guide_cassette_name: document.getElementById('gdGuideCassetteName').value.trim(),
+            construct_name: document.getElementById('gdConstructName').value.trim(),
+            names: names,
             cas_part_id: gdSelected.cas.id,
             resistance_part_id: gdSelected.resistance.id,
             other_part_ids: gdSelected.other.map(p => p.id),
-            l1_backbone_id: (makeL1Plasmid && gdSelectedL1Backbone) ? gdSelectedL1Backbone.id : null,
-            l1_plasmid_name: (document.getElementById('gdL1PlasmidName') || {}).value || '',
-            create_l2_cassette: makeL2,
-            l2_cassette_name: document.getElementById('gdL2CassetteName').value.trim(),
             create_plasmid: makePlasmid,
             l2_backbone_id: gdSelectedBackbone ? gdSelectedBackbone.id : null,
-            plasmid_name: (document.getElementById('gdPlasmidName') || {}).value || '',
         };
         const res = await apiRequest('/api/guide-designer/create-construct', {
             method: 'POST', body: JSON.stringify(body)
         });
-        (res.messages || []).forEach(m => showFlashMessage(m, 'success'));
+        const problems = res.problems || [];
+        const info = res.info || (problems.length ? [] : (res.messages || []));
+        info.forEach(m => showFlashMessage(m, 'success'));
+        problems.forEach(p => showFlashMessage(p.message, 'error'));
+        if (res.complete === false && !problems.length) {
+            showFlashMessage('The construct was not fully created.', 'warning');
+        } else if (res.complete) {
+            showFlashMessage('Construct created successfully.', 'success');
+        }
         renderConstructResult(res);
     } catch (e) {
         showFlashMessage(e.message || 'Failed to create construct', 'error');
@@ -608,6 +596,10 @@ function renderConstructResult(res) {
     const panel = document.createElement('div');
     panel.className = 'gd-panel';
     let rows = '';
+    // Level 0 guide module parts (provenance) created with the construct.
+    (res.level0_parts || []).forEach(p0 => {
+        rows += `<tr><td>Level 0 guide module</td><td><code>${esc(p0.name)}</code></td><td>${p0.length} bp · ${esc(p0.vector)} · pos ${p0.position}</td></tr>`;
+    });
     if (res.guide_cassette_part) {
         const g = res.guide_cassette_part;
         rows += `<tr><td>Level 1 guide cassette</td><td><code>${esc(g.name)}</code></td><td>${g.length} bp, pos ${g.position}</td></tr>`;
@@ -643,7 +635,7 @@ function renderConstructResult(res) {
             const size = (u.size != null) ? `${u.size} bp` : '—';
             return `<tr>
                 <td style="text-align:center;">${esc(String(u.position))}</td>
-                <td><code>${esc(u.part_name)}</code></td>
+                <td><code>${esc(u.display_name || u.part_name)}</code></td>
                 <td><span class="gd-role-tag ${roleClass}">${role}</span></td>
                 <td style="text-align:right;">${size}</td>
             </tr>`;
@@ -681,12 +673,35 @@ function renderConstructResult(res) {
             Calculate ${esc(rx.label)} reaction (${esc(rx.enzyme)})</button>`;
     });
 
+    // Prominent problems box: what failed + how to fix it.
+    const problems = res.problems || [];
+    let problemsHtml = '';
+    if (problems.length) {
+        const items = problems.map(p => `
+            <li style="margin-bottom:0.4rem;">
+                <strong>${esc(p.message)}</strong>
+                ${p.guidance ? `<div class="gd-subtitle" style="margin-top:0.15rem;">How to fix: ${esc(p.guidance)}</div>` : ''}
+            </li>`).join('');
+        problemsHtml = `
+            <div style="border:1px solid #dc3545; background:#fdf1f2; border-radius:6px; padding:0.75rem 1rem; margin-bottom:0.75rem;">
+                <strong style="color:#b02a37;">⚠ This construct could not be fully created</strong>
+                <ul style="margin:0.5rem 0 0; padding-left:1.25rem;">${items}</ul>
+            </div>`;
+    }
+
+    const complete = res.complete !== false && !problems.length;
+    const header = complete
+        ? '<h3>✓ Construct created</h3>'
+        : '<h3 style="color:#b02a37;">⚠ Construct incomplete</h3>';
+    const info = res.info || (problems.length ? [] : (res.messages || []));
+
     panel.innerHTML = `
-        <h3>✓ Construct created</h3>
+        ${header}
+        ${problemsHtml}
         <table class="gd-module-table"><tbody>${rows}</tbody></table>
         ${layoutHtml}
         <div class="gd-dg" style="margin-top:0.5rem;">
-            ${(res.messages || []).map(m => esc(m)).join('<br>')}
+            ${info.map(m => esc(m)).join('<br>')}
         </div>
         <div style="margin-top:0.75rem; display:flex; gap:0.5rem; flex-wrap:wrap;">
             ${calcButtons}
@@ -768,7 +783,7 @@ function buildConstructReactions(res) {
             });
         }
         res.l2_layout.forEach(u => frags.push({
-            name: u.part_name, size: u.size || 0, role: 'insert',
+            name: u.display_name || u.part_name, size: u.size || 0, role: 'insert',
         }));
         reactions.push({ label: 'Level 2', level: '2', enzyme: 'BpiI', fragments: frags });
     }
@@ -808,6 +823,7 @@ async function saveConstructToDashboard(res, reactions, btn) {
         // whole protocol can be regenerated read-only from the dashboard.
         plan: gdLastPlan || null,
         records: {
+            level0_parts: res.level0_parts || [],
             guide_cassette_part: res.guide_cassette_part || null,
             l1_plasmid: res.l1_plasmid || null,
             l2_cassette: res.l2_cassette || null,
@@ -846,6 +862,9 @@ async function saveConstructToDashboard(res, reactions, btn) {
 function renderSavedConstructRecords(saved) {
     const records = saved.records || {};
     let rows = '';
+    (records.level0_parts || []).forEach(p0 => {
+        rows += `<tr><td>Level 0 guide module</td><td><code>${esc(p0.name)}</code></td><td>${p0.length || '?'} bp${p0.vector ? ' · ' + esc(p0.vector) : ''}</td></tr>`;
+    });
     const g = records.guide_cassette_part;
     if (g) rows += `<tr><td>Level 1 guide cassette</td><td><code>${esc(g.name)}</code></td><td>${g.length || '?'} bp${g.position ? ', pos ' + g.position : ''}</td></tr>`;
     const p1 = records.l1_plasmid;
@@ -872,7 +891,7 @@ function renderSavedConstructRecords(saved) {
             const roleClass = u.role === 'selected' ? 'gd-role-selected' : 'gd-role-auto';
             const size = (u.size != null) ? `${u.size} bp` : '—';
             return `<tr><td style="text-align:center;">${esc(String(u.position))}</td>
-                <td><code>${esc(u.part_name)}</code></td>
+                <td><code>${esc(u.display_name || u.part_name)}</code></td>
                 <td><span class="gd-role-tag ${roleClass}">${role}</span></td>
                 <td style="text-align:right;">${size}</td></tr>`;
         }).join('');
