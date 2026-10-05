@@ -5,6 +5,22 @@ All notable changes to the MoClo Library Tool project will be documented in this
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.11.3] - 2026-09-30
+
+### Fixed
+- CRISPR Designer: the Level 1 guide unit now assembles correctly into the
+  Level 2 cassette. The Level 1 part that feeds Level 2 assembly previously
+  stored the entire circular Level 1 plasmid as its sequence while declaring the
+  canonical Level 2 position fusion overhangs. Because the plasmid's sequence
+  ends were arbitrary backbone coordinates rather than those overhangs, Level 2
+  chaining used the wrong 4 bp at the guide-unit junctions and produced a
+  biologically invalid cassette. The Level 1 unit part now stores the fragment a
+  BpiI digest actually releases — the transcription-unit body re-flanked with
+  the position's Level 2 overhangs (`o5 + array_body[4:-4] + o3`) — so every
+  Level 2 junction chains and the cassette/plasmid sequences are correct. The
+  same fix is applied to the fallback path used when the Level 1 acceptor
+  backbone is not uploaded.
+
 ## [1.11.2] - 2026-09-30
 
 ### Changed

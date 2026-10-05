@@ -1161,25 +1161,53 @@ def assemble_level1_guide_plasmid(
     if sub_parts:
         comments += f"\nSUBPARTS: {_json.dumps(sub_parts)}"
 
-    # The _L1 part's features are the array features (relative to the part's own
-    # sequence). The part sequence is the whole L1 plasmid, so the array features
-    # sit at the insertion start, same as in the plasmid.
-    part_features = [
-        {'type': f.get('type', 'misc_feature'),
-         'label': f.get('label') or f.get('type') or 'feature',
-         'start': int(f.get('start', 0)) + start,
-         'end': int(f.get('end', 0)) + start,
-         'strand': f.get('strand', 1)}
-        for f in (array_features or [])
-        if int(f.get('end', 0)) > int(f.get('start', 0))
-    ]
+    # Build the Level 1 unit PART that feeds Level 2 assembly. This must be the
+    # fragment that a BpiI digest of the Level 1 plasmid RELEASES, i.e. the
+    # transcription-unit body flanked by the canonical Level 2 position fusion
+    # overhangs (l2_overhang_5prime .. l2_overhang_3prime) — NOT the whole
+    # circular plasmid. Storing the whole plasmid as the part sequence made the
+    # part's real sequence ends (arbitrary backbone coordinates) disagree with
+    # its declared fusion overhangs, so Level 2 chaining used the wrong 4 bp and
+    # produced an invalid cassette.
+    #
+    # The assembled array body carries its own Level 0 (BsaI) fusion overhangs
+    # (GGAG .. CGCT) at its ends. The released Level 1 insert replaces those L0
+    # overhangs with the Level 2 position overhangs, so:
+    #     part_sequence = l2_oh5 + array_body[4:-4] + l2_oh3
+    arr = (array_sequence or '').upper()
+    inner = arr[4:-4] if len(arr) > 8 else arr
+    part_sequence = f"{l2_overhang_5prime}{inner}{l2_overhang_3prime}"
+
+    # Array features are expressed relative to the array sequence (which starts
+    # with a 4 bp L0 overhang). In the released part the body is shifted left by
+    # 4 (dropped L0 overhang) and right by +len(l2_oh5) (prepended L2 overhang);
+    # net shift = len(l2_overhang_5prime) - 4 (== 0 for standard 4 bp overhangs).
+    feat_shift = len(l2_overhang_5prime) - 4
+    part_len = len(part_sequence)
+    part_features = []
+    for f in (array_features or []):
+        try:
+            fs = int(f.get('start', 0)) + feat_shift
+            fe = int(f.get('end', 0)) + feat_shift
+        except (TypeError, ValueError):
+            continue
+        # Clamp into the released insert and drop features that fall outside it.
+        fs = max(0, fs)
+        fe = min(part_len, fe)
+        if fe <= fs:
+            continue
+        part_features.append({
+            'type': f.get('type', 'misc_feature'),
+            'label': f.get('label') or f.get('type') or 'feature',
+            'start': fs, 'end': fe, 'strand': f.get('strand', 1),
+        })
 
     part_name = f"{name}_L1"
     try:
         l1_part = Part.create(
             name=part_name,
             part_type='Coding',
-            sequence=assembled,
+            sequence=part_sequence,
             overhang_5prime=l2_overhang_5prime,
             overhang_3prime=l2_overhang_3prime,
             lab_source=f"Assembled from {backbone.name}",

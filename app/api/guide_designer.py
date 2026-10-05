@@ -597,9 +597,18 @@ def create_construct(user):
                 f"No uploaded Level 1 acceptor backbone matches '{l1_acceptor}'. "
                 f"Upload it (plasmid_id {l1_acceptor}) to assemble the Level 1 plasmid.")
             gp_name = _unique_part_name(names.get('l1_cassette') or f"{base_name}_L1_cassette", taken)
+            # The Level 1 unit part must present the canonical Level 2 position
+            # fusion overhangs and have a sequence whose ends MATCH them, so it
+            # chains correctly in Level 2. The raw array carries Level 0 (BsaI)
+            # overhangs (GGAG..CGCT); the released Level 1 insert swaps those for
+            # the position's Level 2 overhangs: o5 + array_body[4:-4] + o3.
+            _o5, _o3 = L2_POSITION_OVERHANGS[position]
+            _arr = (l1['sequence'] or '').upper()
+            _inner = _arr[4:-4] if len(_arr) > 8 else _arr
+            _l1_insert = f"{_o5}{_inner}{_o3}"
             guide_unit = Part.create(
-                name=gp_name, part_type='Coding', sequence=l1['sequence'],
-                overhang_5prime=l1['overhang_5prime'], overhang_3prime=l1['overhang_3prime'],
+                name=gp_name, part_type='Coding', sequence=_l1_insert,
+                overhang_5prime=_o5, overhang_3prime=_o3,
                 lab_source=lab_source, contributor=contributor,
                 description=f"Level 1 tRNA-sgRNA guide cassette ({len(guides)} guides; acceptor {l1_acceptor})",
                 level='1', unit='gRNA-array', plasmid_id=l1_acceptor,
