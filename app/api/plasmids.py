@@ -17,7 +17,9 @@ from io import BytesIO
 from app.models.backbone import Backbone
 from app.models.cassette import Cassette
 from app.models.final_plasmid import FinalPlasmid
-from app.services.authorization import require_auth
+from app.services.authorization import (
+    require_auth, can_view_plasmid, can_edit_plasmid, plasmid_shared_with
+)
 from app.services.plasmid_assembly import (
     assemble_plasmid,
     validate_assembly,
@@ -342,24 +344,102 @@ def get_plasmid(user, plasmid_id):
                 'message': f'Plasmid {plasmid_id} not found'
             }), 404
         
-        # Check ownership or if it's a system plasmid
-        from app.models.user import User
-        system_user = User.get_by_username('system')
-        is_system_plasmid = system_user and plasmid.owner_id == system_user.id
-        
-        if plasmid.owner_id != user.id and not is_system_plasmid:
+        # Plasmids are shared library objects: any authenticated user who can
+        # see a plasmid can view and download it.
+        if not can_view_plasmid(user, plasmid):
             return jsonify({
                 'error': 'Forbidden',
                 'message': 'Access denied to this plasmid'
             }), 403
-        
-        return jsonify(plasmid.to_dict()), 200
+
+        # Include permission hints so the UI can show the right controls.
+        payload = plasmid.to_dict()
+        payload['can_edit'] = can_edit_plasmid(user, plasmid)
+        payload['is_owner'] = (plasmid.owner_id == user.id)
+        payload['viewer_is_admin'] = bool(getattr(user, 'is_admin', False))
+        payload['shared_with'] = plasmid_shared_with(plasmid)
+        return jsonify(payload), 200
         
     except Exception as e:
         return jsonify({
             'error': 'Internal server error',
             'message': str(e)
         }), 500
+
+
+# Metadata keys an editor may change. Assembly-internal keys (cassette_details,
+# created_part_id, moclo_strategy, etc.) and the share list are intentionally
+# excluded so edits cannot corrupt provenance or access control.
+EDITABLE_PLASMID_METADATA_KEYS = {
+    'description', 'notes', 'reference', 'antibiotic', 'host_strain',
+    'location_80', 'location_96_plate', 'sequenced', 'comments',
+    'contributor', 'donor_organism', 'lab_source',
+}
+
+
+@plasmids_bp.route('/<plasmid_id>', methods=['PUT', 'PATCH'])
+@require_auth
+def update_plasmid(user, plasmid_id):
+    """
+    Edit a plasmid's metadata.
+
+    Allowed for the owner, an admin, or a user the plasmid has been shared with
+    (see metadata['shared_with'], managed by admins). Only the plasmid name and a
+    curated set of descriptive metadata fields can be changed; the sequence,
+    owner, assembly provenance and the share list cannot be edited here.
+
+    Request body (JSON): any of
+        name: new plasmid name
+        metadata: object with any of the editable keys
+            (description, notes, reference, antibiotic, host_strain,
+             location_80, location_96_plate, sequenced, comments,
+             contributor, donor_organism, lab_source)
+
+    Error Responses:
+        401 Unauthorized, 403 Forbidden, 404 Not Found, 400 Bad request
+    """
+    try:
+        plasmid = FinalPlasmid.get_by_id(plasmid_id)
+        if plasmid is None:
+            return jsonify({'error': 'Not found',
+                            'message': f'Plasmid {plasmid_id} not found'}), 404
+
+        if not can_edit_plasmid(user, plasmid):
+            return jsonify({
+                'error': 'Forbidden',
+                'message': ('You can only edit plasmids you own, are shared on, '
+                            'or if you are an admin.')
+            }), 403
+
+        data = request.get_json(silent=True) or {}
+
+        # Update the name if provided and non-empty.
+        new_name = data.get('name')
+        if new_name is not None:
+            new_name = str(new_name).strip()
+            if not new_name:
+                return jsonify({'error': 'Bad request',
+                                'message': 'Plasmid name cannot be empty'}), 400
+            plasmid.name = new_name
+
+        # Merge only the editable metadata keys; leave everything else intact.
+        incoming = data.get('metadata')
+        if incoming is not None:
+            if not isinstance(incoming, dict):
+                return jsonify({'error': 'Bad request',
+                                'message': 'metadata must be an object'}), 400
+            md = dict(plasmid.metadata or {})
+            for key, value in incoming.items():
+                if key in EDITABLE_PLASMID_METADATA_KEYS:
+                    md[key] = value
+            plasmid.metadata = md
+
+        plasmid.update()
+        return jsonify({'plasmid': plasmid.to_dict(),
+                        'message': 'Plasmid updated'}), 200
+
+    except Exception as e:  # noqa: BLE001
+        return jsonify({'error': 'Internal server error', 'message': str(e)}), 500
 
 
 @plasmids_bp.route('/<plasmid_id>', methods=['DELETE'])
@@ -451,12 +531,9 @@ def export_genbank(user, plasmid_id):
                 'message': f'Plasmid {plasmid_id} not found'
             }), 404
         
-        # Check ownership or if it's a system plasmid
-        from app.models.user import User
-        system_user = User.get_by_username('system')
-        is_system_plasmid = system_user and plasmid.owner_id == system_user.id
-        
-        if plasmid.owner_id != user.id and not is_system_plasmid:
+        # Plasmids are shared library objects: any authenticated user who can
+        # see a plasmid can view and download it.
+        if not can_view_plasmid(user, plasmid):
             return jsonify({
                 'error': 'Forbidden',
                 'message': 'Access denied to this plasmid'
@@ -521,12 +598,9 @@ def export_fasta(user, plasmid_id):
                 'message': f'Plasmid {plasmid_id} not found'
             }), 404
         
-        # Check ownership or if it's a system plasmid
-        from app.models.user import User
-        system_user = User.get_by_username('system')
-        is_system_plasmid = system_user and plasmid.owner_id == system_user.id
-        
-        if plasmid.owner_id != user.id and not is_system_plasmid:
+        # Plasmids are shared library objects: any authenticated user who can
+        # see a plasmid can view and download it.
+        if not can_view_plasmid(user, plasmid):
             return jsonify({
                 'error': 'Forbidden',
                 'message': 'Access denied to this plasmid'
@@ -597,12 +671,9 @@ def export_image(user, plasmid_id):
                 'message': f'Plasmid {plasmid_id} not found'
             }), 404
         
-        # Check ownership or if it's a system plasmid
-        from app.models.user import User
-        system_user = User.get_by_username('system')
-        is_system_plasmid = system_user and plasmid.owner_id == system_user.id
-        
-        if plasmid.owner_id != user.id and not is_system_plasmid:
+        # Plasmids are shared library objects: any authenticated user who can
+        # see a plasmid can view and download it.
+        if not can_view_plasmid(user, plasmid):
             return jsonify({
                 'error': 'Forbidden',
                 'message': 'Access denied to this plasmid'

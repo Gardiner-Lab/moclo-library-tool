@@ -262,6 +262,112 @@ def delete_plasmid(user, plasmid_id):
     return jsonify({'message': 'Plasmid deleted'}), 200
 
 
+# ── Plasmid sharing (admin-managed access list) ─────────────────────────────
+#
+# Admins grant specific users edit access to a plasmid's metadata. The share
+# list lives on the plasmid as metadata['shared_with'] (a list of user IDs), so
+# no schema change is needed — FinalPlasmid.update() already persists metadata.
+
+
+def _shared_ids(plasmid):
+    """Current shared user-id list on a plasmid (never None)."""
+    shared = (plasmid.metadata or {}).get('shared_with') or []
+    if isinstance(shared, str):
+        shared = [shared]
+    return [str(uid) for uid in shared] if isinstance(shared, list) else []
+
+
+def _share_payload(plasmid):
+    """Serialize the share list with resolvable usernames for the UI."""
+    users = []
+    for uid in _shared_ids(plasmid):
+        u = User.get_by_id(uid)
+        users.append({
+            'id': uid,
+            'username': u.username if u else '(unknown user)',
+            'exists': u is not None,
+        })
+    owner = User.get_by_id(plasmid.owner_id)
+    return {
+        'plasmid_id': plasmid.id,
+        'plasmid_name': plasmid.name,
+        'owner_id': plasmid.owner_id,
+        'owner_username': owner.username if owner else '(unknown)',
+        'shared_with': users,
+    }
+
+
+def _persist_shared(plasmid, ids):
+    """Write a de-duplicated share-id list back onto the plasmid metadata."""
+    md = dict(plasmid.metadata or {})
+    # Preserve insertion order while removing duplicates.
+    seen, ordered = set(), []
+    for uid in ids:
+        if uid not in seen:
+            seen.add(uid)
+            ordered.append(uid)
+    md['shared_with'] = ordered
+    plasmid.metadata = md
+    plasmid.update()
+
+
+@admin_bp.route('/plasmids/<plasmid_id>/share', methods=['GET'])
+@require_admin
+def list_plasmid_shares(user, plasmid_id):
+    plasmid = FinalPlasmid.get_by_id(plasmid_id)
+    if not plasmid:
+        return jsonify({'error': 'Plasmid not found'}), 404
+    return jsonify(_share_payload(plasmid)), 200
+
+
+@admin_bp.route('/plasmids/<plasmid_id>/share', methods=['POST'])
+@require_admin
+def add_plasmid_share(user, plasmid_id):
+    plasmid = FinalPlasmid.get_by_id(plasmid_id)
+    if not plasmid:
+        return jsonify({'error': 'Plasmid not found'}), 404
+
+    data = request.get_json(silent=True) or {}
+    # Accept a user id or a username.
+    target = None
+    uid = (data.get('user_id') or '').strip()
+    uname = (data.get('username') or '').strip()
+    if uid:
+        target = User.get_by_id(uid)
+    elif uname:
+        target = User.get_by_username(uname)
+    if target is None:
+        return jsonify({'error': 'User not found',
+                        'message': 'Provide an existing user_id or username'}), 404
+
+    if target.id == plasmid.owner_id:
+        return jsonify({'error': 'The owner already has full access'}), 400
+
+    ids = _shared_ids(plasmid)
+    if target.id in ids:
+        return jsonify({'message': 'User already has access',
+                        **_share_payload(plasmid)}), 200
+    ids.append(target.id)
+    _persist_shared(plasmid, ids)
+    return jsonify({'message': f'Shared with {target.username}',
+                    **_share_payload(plasmid)}), 200
+
+
+@admin_bp.route('/plasmids/<plasmid_id>/share/<target_user_id>', methods=['DELETE'])
+@require_admin
+def remove_plasmid_share(user, plasmid_id, target_user_id):
+    plasmid = FinalPlasmid.get_by_id(plasmid_id)
+    if not plasmid:
+        return jsonify({'error': 'Plasmid not found'}), 404
+
+    ids = _shared_ids(plasmid)
+    if target_user_id not in ids:
+        return jsonify({'error': 'User is not on the share list'}), 404
+    ids = [uid for uid in ids if uid != target_user_id]
+    _persist_shared(plasmid, ids)
+    return jsonify({'message': 'Access removed', **_share_payload(plasmid)}), 200
+
+
 # ── Legacy backbone fix endpoint ───────────────────────────────────────────
 
 @admin_bp.route('/fix-backbones', methods=['POST'])

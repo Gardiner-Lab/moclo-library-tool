@@ -401,10 +401,187 @@ function showPlasmidModal(plasmid) {
         </div>
     `;
 
+    // Edit metadata — shown to the owner, an admin, or a shared user.
+    if (plasmid.can_edit) {
+        html += `
+            <div class="detail-section">
+                <h3>Edit Metadata</h3>
+                <div id="plasmidEditForm">${renderPlasmidEditForm(plasmid)}</div>
+            </div>
+        `;
+    }
+
+    // Manage access — admins only. Lets an admin grant/revoke edit access.
+    if (plasmid.viewer_is_admin) {
+        html += `
+            <div class="detail-section">
+                <h3>Manage Access</h3>
+                <div class="text-muted" style="margin-bottom:0.5rem;">
+                    Owner and admins always have access. Add users below to let
+                    them edit this plasmid's metadata.
+                </div>
+                <div class="export-buttons" style="margin-bottom:0.5rem;">
+                    <input type="text" id="plasmidShareUsername" placeholder="username"
+                           style="padding:0.35rem 0.5rem; min-width:180px;">
+                    <button class="btn btn-sm btn-primary"
+                            onclick="addPlasmidShare('${plasmid.id}')">Add user</button>
+                </div>
+                <div id="plasmidShareList"></div>
+            </div>
+        `;
+    }
+
     detailsElement.innerHTML = html;
     modal.style.display = 'block';
 
+    if (plasmid.viewer_is_admin) {
+        loadPlasmidShares(plasmid.id);
+    }
     loadPlasmidTranslation(plasmid.id);
+}
+
+// Keep the editable metadata keys in sync with the backend allowlist
+// (EDITABLE_PLASMID_METADATA_KEYS in app/api/plasmids.py).
+const PLASMID_EDITABLE_FIELDS = [
+    ['description', 'Description'],
+    ['notes', 'Notes'],
+    ['reference', 'Reference'],
+    ['antibiotic', 'Antibiotic'],
+    ['host_strain', 'Host strain'],
+    ['location_80', 'Location (-80)'],
+    ['location_96_plate', '96-well plate location'],
+    ['sequenced', 'Sequenced'],
+    ['comments', 'Comments'],
+    ['contributor', 'Contributor'],
+    ['donor_organism', 'Donor organism'],
+    ['lab_source', 'Lab source'],
+];
+
+/**
+ * Render the metadata edit form for a plasmid.
+ */
+function renderPlasmidEditForm(plasmid) {
+    const md = plasmid.metadata || {};
+    let rows = `
+        <div class="detail-item" style="margin-bottom:0.5rem;">
+            <label class="detail-label" for="peditName">Name</label>
+            <input type="text" id="peditName" value="${escapeHtml(plasmid.name || '')}"
+                   style="width:100%; padding:0.35rem 0.5rem;">
+        </div>
+    `;
+    PLASMID_EDITABLE_FIELDS.forEach(([key, label]) => {
+        const val = md[key] == null ? '' : String(md[key]);
+        rows += `
+            <div class="detail-item" style="margin-bottom:0.5rem;">
+                <label class="detail-label" for="pedit_${key}">${escapeHtml(label)}</label>
+                <input type="text" id="pedit_${key}" value="${escapeHtml(val)}"
+                       style="width:100%; padding:0.35rem 0.5rem;">
+            </div>
+        `;
+    });
+    rows += `
+        <button class="btn btn-sm btn-primary" onclick="savePlasmidMetadata('${plasmid.id}')">
+            Save metadata
+        </button>
+    `;
+    return rows;
+}
+
+/**
+ * Collect the edit form values and PUT them to the plasmid endpoint.
+ */
+async function savePlasmidMetadata(plasmidId) {
+    const nameEl = document.getElementById('peditName');
+    const body = { name: nameEl ? nameEl.value.trim() : undefined, metadata: {} };
+    PLASMID_EDITABLE_FIELDS.forEach(([key]) => {
+        const el = document.getElementById(`pedit_${key}`);
+        if (el) body.metadata[key] = el.value;
+    });
+    try {
+        const res = await apiRequest(`/api/plasmids/${plasmidId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body),
+        });
+        showFlashMessage('Plasmid metadata saved', 'success');
+        // Re-render the modal with the fresh data.
+        if (res && res.plasmid) {
+            // get_plasmid adds permission hints; re-fetch to keep them.
+            await viewPlasmid(plasmidId);
+        }
+    } catch (error) {
+        showFlashMessage(`Failed to save: ${error.message}`, 'error');
+    }
+}
+
+/**
+ * Load and render the share list for an admin (Manage Access).
+ */
+async function loadPlasmidShares(plasmidId) {
+    const container = document.getElementById('plasmidShareList');
+    if (!container) return;
+    try {
+        const data = await apiRequest(`/api/admin/plasmids/${plasmidId}/share`);
+        const shared = data.shared_with || [];
+        let html = `<div class="text-muted" style="margin-bottom:0.35rem;">Owner: ${escapeHtml(data.owner_username || '')}</div>`;
+        if (shared.length === 0) {
+            html += '<div class="text-muted">Not shared with anyone yet.</div>';
+        } else {
+            html += '<ul style="margin:0; padding-left:1rem;">';
+            shared.forEach(u => {
+                html += `
+                    <li style="margin-bottom:0.25rem;">
+                        ${escapeHtml(u.username)}${u.exists ? '' : ' (missing)'}
+                        <button class="btn btn-sm btn-danger" style="margin-left:0.5rem;"
+                                onclick="removePlasmidShare('${plasmidId}', '${u.id}')">Remove</button>
+                    </li>
+                `;
+            });
+            html += '</ul>';
+        }
+        container.innerHTML = html;
+    } catch (error) {
+        container.innerHTML = `<div class="error-message">Failed to load access list: ${escapeHtml(error.message)}</div>`;
+    }
+}
+
+/**
+ * Admin: grant a user edit access to a plasmid.
+ */
+async function addPlasmidShare(plasmidId) {
+    const input = document.getElementById('plasmidShareUsername');
+    const username = input ? input.value.trim() : '';
+    if (!username) {
+        showFlashMessage('Enter a username to add', 'error');
+        return;
+    }
+    try {
+        await apiRequest(`/api/admin/plasmids/${plasmidId}/share`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username }),
+        });
+        if (input) input.value = '';
+        showFlashMessage(`Shared with ${username}`, 'success');
+        loadPlasmidShares(plasmidId);
+    } catch (error) {
+        showFlashMessage(`Failed to share: ${error.message}`, 'error');
+    }
+}
+
+/**
+ * Admin: revoke a user's edit access to a plasmid.
+ */
+async function removePlasmidShare(plasmidId, userId) {
+    try {
+        await apiRequest(`/api/admin/plasmids/${plasmidId}/share/${userId}`, {
+            method: 'DELETE',
+        });
+        showFlashMessage('Access removed', 'success');
+        loadPlasmidShares(plasmidId);
+    } catch (error) {
+        showFlashMessage(`Failed to remove access: ${error.message}`, 'error');
+    }
 }
 
 /**
@@ -729,3 +906,6 @@ window.viewPlasmid = viewPlasmid;
 window.closePlasmidModal = closePlasmidModal;
 window.exportPlasmid = exportPlasmid;
 window.deletePlasmid = deletePlasmid;
+window.savePlasmidMetadata = savePlasmidMetadata;
+window.addPlasmidShare = addPlasmidShare;
+window.removePlasmidShare = removePlasmidShare;

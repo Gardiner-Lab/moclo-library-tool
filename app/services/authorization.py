@@ -228,3 +228,57 @@ def can_access_cassette(cassette_id: str, user_id: str) -> bool:
     """
     is_owner, _ = check_cassette_ownership(cassette_id, user_id)
     return is_owner
+
+
+# ── Plasmid access control ───────────────────────────────────────────────────
+#
+# Plasmids are visible to every authenticated user (the list and detail views
+# are shared across the lab). Because a user can SEE any plasmid, a user can also
+# DOWNLOAD any plasmid's exports (GenBank / FASTA / image).
+#
+# Editing a plasmid's metadata is more restricted: the owner, an admin, or a user
+# the plasmid has been explicitly shared with (admins manage the share list).
+# The share list is stored on the plasmid as metadata['shared_with'] — a list of
+# user IDs — so no schema change is required (FinalPlasmid.update() already
+# persists the metadata JSON).
+
+
+def plasmid_shared_with(plasmid) -> list:
+    """Return the list of user IDs a plasmid has been shared with (never None)."""
+    try:
+        shared = (plasmid.metadata or {}).get('shared_with') or []
+    except AttributeError:
+        shared = []
+    # Be tolerant of a single string or non-list values.
+    if isinstance(shared, str):
+        return [shared]
+    if not isinstance(shared, list):
+        return []
+    return [str(uid) for uid in shared]
+
+
+def can_view_plasmid(user, plasmid) -> bool:
+    """
+    Whether `user` may view/download `plasmid`.
+
+    Plasmids are shared library objects: any authenticated user may view and
+    therefore download them. (Kept as a function so the policy lives in one
+    place and can be tightened later without touching every route.)
+    """
+    return user is not None and plasmid is not None
+
+
+def can_edit_plasmid(user, plasmid) -> bool:
+    """
+    Whether `user` may edit `plasmid`'s metadata.
+
+    Allowed for: the owner, any admin, or a user the plasmid has been shared
+    with (metadata['shared_with']).
+    """
+    if user is None or plasmid is None:
+        return False
+    if getattr(user, 'is_admin', False):
+        return True
+    if plasmid.owner_id == user.id:
+        return True
+    return str(user.id) in plasmid_shared_with(plasmid)

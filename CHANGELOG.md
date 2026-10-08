@@ -5,6 +5,26 @@ All notable changes to the MoClo Library Tool project will be documented in this
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.11.4] - 2026-09-30
+
+### Changed
+- Plasmid downloads are now available to any signed-in user who can see the
+  plasmid. The GenBank, FASTA and circular-map exports (and the plasmid detail
+  view) are no longer restricted to the plasmid's creator — matching the fact
+  that the plasmid list is shared across the lab.
+
+### Added
+- Admin-managed plasmid sharing: admins can grant specific users edit access to
+  a plasmid from the plasmid detail view (new "Manage Access" panel), backed by
+  `GET/POST/DELETE /api/admin/plasmids/<id>/share`. The share list is stored on
+  the plasmid metadata, so no database migration is required.
+- Plasmid metadata editing: the owner, an admin, or a shared user can edit a
+  plasmid's name and descriptive metadata (description, notes, reference,
+  antibiotic, host strain, locations, sequenced, comments, contributor, donor
+  organism, lab source) via `PUT /api/plasmids/<id>` and a new "Edit Metadata"
+  form in the plasmid detail view. The sequence, owner, assembly provenance and
+  the share list itself cannot be changed through this route.
+
 ## [1.11.3] - 2026-09-30
 
 ### Fixed
