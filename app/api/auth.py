@@ -10,6 +10,8 @@ This module provides REST API endpoints for:
 Requirements: 9.1, 9.2, 9.3, 9.6
 """
 
+import os
+
 from flask import Blueprint, request, jsonify, session
 from app.services.auth import AuthService
 from app.services.backup import backup_all
@@ -67,6 +69,14 @@ def register():
     
     Requirements: 9.1, 9.2
     """
+    # Inside the Gardiner Lab suite, accounts are created on the suite's one
+    # registration page, which asks for the lab and its registration code.
+    external = os.environ.get('REGISTRATION_URL', '').strip()
+    if external:
+        return jsonify({
+            'error': f'Accounts are created on the lab registration page: {external}'
+        }), 403
+
     try:
         # Parse request body
         data = request.get_json(silent=True)

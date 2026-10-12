@@ -2,7 +2,7 @@
 Main Flask application entry point.
 """
 
-APP_VERSION = '1.11.4'
+APP_VERSION = '1.12.0'
 
 from flask import Flask, render_template, session, redirect, url_for
 from flask_cors import CORS
@@ -65,7 +65,13 @@ def create_app():
     # cache-busted (?v={{ app_version }}) and bump automatically on each release.
     @app.context_processor
     def inject_app_version():
-        return {'app_version': APP_VERSION}
+        return {
+            'app_version': APP_VERSION,
+            # Set when this tool runs inside the Gardiner Lab suite: a link back
+            # to the suite's landing page, and the suite's one registration page.
+            'suite_home': os.environ.get('SUITE_HOME_URL', '').strip(),
+            'registration_url': os.environ.get('REGISTRATION_URL', '').strip() or '/register',
+        }
     
     # Register blueprints
     from app.api import auth_bp, parts_bp, cassettes_bp, visualize_bp, backbones_bp, plasmids_bp, admin_bp, guide_designer_bp
@@ -97,9 +103,12 @@ def create_app():
     
     @app.route('/register')
     def register_page():
-        """Registration page."""
+        """Registration page, or the suite's when accounts are created there."""
         if 'user_id' in session:
             return redirect(url_for('parts_page'))
+        external = os.environ.get('REGISTRATION_URL', '').strip()
+        if external:
+            return redirect(external)
         return render_template('register.html')
     
     @app.route('/logout')

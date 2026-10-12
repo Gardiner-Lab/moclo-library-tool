@@ -5,6 +5,21 @@ All notable changes to the MoClo Library Tool project will be documented in this
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.12.0] - 2026-10-12
+
+### Added
+- Settings for running inside the Gardiner Lab tool suite, all off unless set,
+  so a standalone installation behaves exactly as before:
+  - `SUITE_HOME_URL` shows a "Lab tools" link back to the suite's landing page.
+  - `REGISTRATION_URL` sends the Register page and links to the suite's one
+    registration page (which asks for the lab and its registration code), and
+    closes `POST /api/auth/register`, so that page cannot be bypassed.
+- `ADMIN_PASSWORD` sets the password of the `admin` account created on a new
+  installation, instead of the published default `admin123`. A warning is logged
+  at start-up while `admin` still has the default password.
+- Release images are built for ARM servers as well as Intel, and the tests run
+  before an image is published.
+
 ## [1.11.4] - 2026-09-30
 
 ### Changed

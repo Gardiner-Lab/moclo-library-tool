@@ -362,22 +362,33 @@ def _ensure_demo_backbones():
         logger.error(f"Demo multigene L2: {e}")
 
 
+DEFAULT_ADMIN_PASSWORD = 'admin123'
+
+
 def _ensure_default_admin():
     """
     Ensure a default admin user exists on every startup.
-    
-    Creates an 'admin' user with password 'admin123' if no admin user exists.
-    This guarantees the application is always accessible after deployment.
-    The password should be changed after first login.
+
+    Creates an 'admin' user if there is none, so the application is always
+    accessible after deployment. Its password is ADMIN_PASSWORD when that is
+    set, and otherwise the published default 'admin123', which must be changed
+    after first login: anyone who has read this file knows it.
     """
     try:
         existing_admin = User.get_by_username('admin')
         if existing_admin:
             logger.info("Admin user already exists")
+            if User.verify_password(DEFAULT_ADMIN_PASSWORD, existing_admin.password_hash):
+                logger.warning("The 'admin' account still has the published default password "
+                               "'admin123'. Change it, or set ADMIN_PASSWORD for new deployments.")
             return
-        
-        User.create('admin', 'admin123', is_admin=True)
-        logger.info("Created default admin user (username: admin, password: admin123)")
+
+        password = os.environ.get('ADMIN_PASSWORD', '') or DEFAULT_ADMIN_PASSWORD
+        User.create('admin', password, is_admin=True)
+        if password == DEFAULT_ADMIN_PASSWORD:
+            logger.info("Created default admin user (username: admin, password: admin123)")
+        else:
+            logger.info("Created admin user 'admin' with the password from ADMIN_PASSWORD")
     except Exception as e:
         logger.warning(f"Could not create default admin user: {e}")
 

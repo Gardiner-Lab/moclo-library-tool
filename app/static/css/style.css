@@ -73,6 +73,26 @@ a:visited {
     font-size: 1.25rem;
     font-weight: 600;
     flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+/* Back to the suite's launch page, when SUITE_HOME_URL is set. */
+.navbar-home {
+    color: var(--text-secondary);
+    font-size: 0.875rem;
+    font-weight: 500;
+    padding: 0.3rem 0.6rem;
+    border-radius: 0.375rem;
+    text-decoration: none;
+    white-space: nowrap;
+}
+
+.navbar-home:hover {
+    background-color: var(--bg-color);
+    color: var(--primary-color);
+    text-decoration: none;
 }
 
 .navbar-logo {
