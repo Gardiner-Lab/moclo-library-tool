@@ -26,7 +26,13 @@ jobs:
       - name: Cairo, for image export
         run: sudo apt-get update && sudo apt-get install -y libcairo2
       - run: pip install -r requirements.txt
-      - run: python -m pytest -q -o addopts=''
+      - name: Tests
+        # The app creates its data folder on import; /data is not writable here.
+        env:
+          DATABASE_PATH: ${{ runner.temp }}/data/moclo.db
+          PARTS_DATABASE_PATH: ${{ runner.temp }}/data/parts.db
+          BACKUP_DIR: ${{ runner.temp }}/data/backups
+        run: python -m pytest -q -o addopts=''
 
   build-and-push:
     needs: test
