@@ -502,10 +502,11 @@ def delete_plasmid(user, plasmid_id):
 
 
 @plasmids_bp.route('/<plasmid_id>/export/genbank', methods=['GET'])
+@plasmids_bp.route('/<plasmid_id>/export/snapgene', methods=['GET'])
 @require_auth
 def export_genbank(user, plasmid_id):
     """
-    Export a plasmid as GenBank format.
+    Export a plasmid as GenBank format, or at .../snapgene as a SnapGene (.dna) file.
     
     Path Parameters:
         plasmid_id: Plasmid ID
@@ -548,18 +549,8 @@ def export_genbank(user, plasmid_id):
             topology='circular'
         )
         
-        # Create file-like object
-        genbank_bytes = BytesIO(genbank_content.encode('utf-8'))
-        
-        # Generate filename
-        filename = f"{plasmid.name.replace(' ', '_')}.gb"
-        
-        return send_file(
-            genbank_bytes,
-            mimetype='text/plain',
-            as_attachment=True,
-            download_name=filename
-        )
+        from app.services.file_formats import genbank_download
+        return genbank_download(genbank_content, plasmid.name)
         
     except Exception as e:
         return jsonify({

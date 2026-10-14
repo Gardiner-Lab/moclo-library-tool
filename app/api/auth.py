@@ -157,6 +157,14 @@ def login():
     
     Requirements: 9.1, 9.3, 9.4
     """
+    from app.services import suite_auth
+    if suite_auth.enabled():
+        # The suite's sign-in page signs people in to every tool at once.
+        return jsonify({
+            'error': 'Sign in on the lab tools sign-in page',
+            'login_url': suite_auth.login_url()
+        }), 403
+
     try:
         # Parse request body
         data = request.get_json(silent=True)

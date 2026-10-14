@@ -68,15 +68,17 @@
 {% endblock %}
 
 {% block content %}
-<h1>My Dashboard</h1>
+{% if not embed %}<h1>My Dashboard</h1>{% endif %}
 
-<div class="dash-tabs">
-  <button class="dash-tab active" data-tab="account">👤 My Account</button>
+{# In a dashboard tab, the suite shows one section per tab, and your account is its own. #}
+<div class="dash-tabs"{% if embed %} style="display:none"{% endif %}>
+  {% if not suite_mode %}<button class="dash-tab active" data-tab="account">👤 My Account</button>{% endif %}
   <button class="dash-tab" data-tab="parts">🧩 My Parts</button>
   <button class="dash-tab" data-tab="saved">⭐ Saved</button>
 </div>
 
 <!-- ── ACCOUNT ── -->
+{% if not suite_mode %}
 <div id="tab-account" class="dash-section active">
   <div class="account-card">
     <h2 style="margin-top:0">Account Settings</h2>
@@ -100,6 +102,8 @@
     </div>
   </div>
 </div>
+
+{% endif %}
 
 <!-- ── MY PARTS ── -->
 <div id="tab-parts" class="dash-section">
@@ -191,6 +195,7 @@ document.querySelectorAll('.dash-modal-overlay').forEach(el => {
   el.addEventListener('click', e => { if (e.target === el) el.classList.remove('open'); });
 });
 
+{% if not suite_mode %}
 // ── ACCOUNT ────────────────────────────────────────────────────────────────
 // Pre-fill current username
 apiFetch(`${API}/account`).then(data => {
@@ -232,6 +237,7 @@ document.getElementById('acc-save').addEventListener('click', async () => {
     setTimeout(() => { msg.textContent = ''; }, 3000);
   }
 });
+{% endif %}
 
 // ── MY PARTS ───────────────────────────────────────────────────────────────
 async function loadParts() {
@@ -419,6 +425,13 @@ async function deleteSaved(id) {
   const data = await apiFetch(`${API}/saved/${id}`, { method: 'DELETE' });
   if (data.error) { alert(data.error); return; }
   loadSaved();
+}
+
+// Open the tab asked for (?tab=saved), or the first one.
+{
+  const wanted = new URLSearchParams(location.search).get('tab');
+  const tabs = [...document.querySelectorAll('.dash-tab')];
+  (tabs.find(t => t.dataset.tab === wanted) || tabs[0]).click();
 }
 </script>
 {% endblock %}

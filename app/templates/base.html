@@ -9,8 +9,17 @@
     <title>{% block title %}MoClo Library Tool{% endblock %}</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v=2.2">
     {% block extra_css %}{% endblock %}
+    {# In a tab of the suite's dashboard, links open their page in the window, not inside the tab. #}
+    {% if embed %}<base target="_top">{% endif %}
 </head>
-<body data-is-admin="{{ 'true' if session.get('is_admin') else 'false' }}" data-username="{{ session.get('username', '') }}">
+<body data-is-admin="{{ 'true' if session.get('is_admin') else 'false' }}" data-username="{{ session.get('username', '') }}"{% if embed %} class="embedded"{% endif %}>
+    {% if not embed %}
+    {% if suite_mode %}
+    <script>
+      // A full MoClo page opened inside a dashboard tab (a link from it) takes the window.
+      if (window.top !== window.self) window.top.location.replace(window.location.href);
+    </script>
+    {% endif %}
     <nav class="navbar">
         <div class="container">
             <div class="navbar-brand">
@@ -36,9 +45,9 @@
                     <a href="/upload" class="navbar-link navbar-link-action">Upload</a>
                     <span class="navbar-divider"></span>
                     <span class="navbar-user">👤 {{ session.get('username') }}</span>
-                    <a href="/dashboard" class="navbar-link">Dashboard</a>
+                    <a href="{{ dashboard_url }}" class="navbar-link">Dashboard</a>
                     {% if session.get('is_admin') %}
-                    <a href="/admin" class="navbar-link">⚙️ Admin</a>
+                    <a href="{{ admin_url }}" class="navbar-link">⚙️ Admin</a>
                     {% endif %}
                     <a href="/logout" class="navbar-link">Logout</a>
                 {% else %}
@@ -48,6 +57,7 @@
             </div>
         </div>
     </nav>
+    {% endif %}
 
     <main class="main-content">
         <div class="container">
@@ -65,11 +75,13 @@
         </div>
     </main>
 
+    {% if not embed %}
     <footer class="footer">
         <div class="container">
             <p>&copy; 2024 MoClo Library Tool v0.1.0</p>
         </div>
     </footer>
+    {% endif %}
 
     <script src="https://cdn.jsdelivr.net/npm/animejs@3.2.2/lib/anime.min.js"></script>
     <script src="{{ url_for('static', filename='js/main.js') }}?v=2.0"></script>

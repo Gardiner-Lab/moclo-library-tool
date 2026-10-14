@@ -169,8 +169,8 @@ function handleFileSelect() {
         const file = fileInput.files[0];
         
         // Validate file extension
-        if (!file.name.toLowerCase().endsWith('.gb') && !file.name.toLowerCase().endsWith('.gbk') && !file.name.toLowerCase().endsWith('.genbank')) {
-            showError('genbankFileError', 'Please select a GenBank file (.gb, .gbk, or .genbank)');
+        if (!/\.(gb|gbk|genbank|dna)$/i.test(file.name)) {
+            showError('genbankFileError', 'Please select a GenBank (.gb, .gbk, .genbank) or SnapGene (.dna) file');
             fileInput.value = '';
             return;
         }
@@ -750,7 +750,7 @@ function updateBulkFileDisplay() {
         const validFiles = [];
         for (let i = 0; i < fileInput.files.length; i++) {
             const name = fileInput.files[i].name.toLowerCase();
-            if (name.endsWith('.gb') || name.endsWith('.gbk') || name.endsWith('.genbank')) {
+            if (name.endsWith('.gb') || name.endsWith('.gbk') || name.endsWith('.genbank') || name.endsWith('.dna')) {
                 validFiles.push(fileInput.files[i].name);
             }
         }
@@ -871,13 +871,13 @@ async function handleBulkSubmit(event) {
     const files = [];
     for (let i = 0; i < fileInput.files.length; i++) {
         const name = fileInput.files[i].name.toLowerCase();
-        if (name.endsWith('.gb') || name.endsWith('.gbk') || name.endsWith('.genbank')) {
+        if (name.endsWith('.gb') || name.endsWith('.gbk') || name.endsWith('.genbank') || name.endsWith('.dna')) {
             files.push(fileInput.files[i]);
         }
     }
 
     if (files.length === 0) {
-        showError('bulkFileError', 'No valid GenBank files found (.gb, .gbk, or .genbank)');
+        showError('bulkFileError', 'No GenBank (.gb, .gbk, .genbank) or SnapGene (.dna) files found');
         return;
     }
 

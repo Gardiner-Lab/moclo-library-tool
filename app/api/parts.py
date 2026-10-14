@@ -335,17 +335,18 @@ def _handle_genbank_upload():
         }), 400
     
     # Check file extension
-    if not file.filename.lower().endswith(('.gb', '.gbk', '.genbank')):
+    from app.services.file_formats import UPLOAD_DESCRIPTION, accepted, uploaded_genbank
+    if not accepted(file.filename):
         return jsonify({
-            'error': 'File must be a GenBank file (.gb, .gbk, or .genbank)'
+            'error': f'File must be {UPLOAD_DESCRIPTION}'
         }), 400
-    
-    # Read file content
+
+    # Read file content, as GenBank (a SnapGene file is converted)
     try:
-        file_content = file.read().decode('utf-8')
-    except UnicodeDecodeError:
+        file_content = uploaded_genbank(file)
+    except ValueError as exc:
         return jsonify({
-            'error': 'File must be UTF-8 encoded text'
+            'error': str(exc)
         }), 400
     
     # Determine preferred cloning enzyme from the form.
@@ -701,10 +702,11 @@ def get_part_translation(part_id: str):
 
 
 @parts_bp.route('/<part_id>/download/genbank', methods=['GET'])
+@parts_bp.route('/<part_id>/download/snapgene', methods=['GET'])
 @require_session
 def download_part_genbank(part_id: str):
     """
-    Download a part as a GenBank file.
+    Download a part as a GenBank file, or at .../snapgene as a SnapGene (.dna) file.
     
     Path Parameters:
         part_id: Part ID
@@ -739,15 +741,8 @@ def download_part_genbank(part_id: str):
                 'message': 'Failed to generate GenBank file'
             }), 500
         
-        # Create response with GenBank file
-        response = make_response(genbank_content)
-        response.headers['Content-Type'] = 'text/plain'
-        
-        # Sanitize filename
-        safe_filename = part.name.replace(' ', '_').replace('/', '_')
-        response.headers['Content-Disposition'] = f'attachment; filename="{safe_filename}.gb"'
-        
-        return response
+        from app.services.file_formats import genbank_download
+        return genbank_download(genbank_content, part.name)
         
     except Exception as e:
         return jsonify({

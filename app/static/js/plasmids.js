@@ -210,6 +210,9 @@ function createPlasmidCard(plasmid) {
                 <button class="btn btn-sm btn-secondary" onclick="exportPlasmid('${plasmid.id}', 'genbank')">
                     GenBank
                 </button>
+                <button class="btn btn-sm btn-secondary" onclick="exportPlasmid('${plasmid.id}', 'snapgene')">
+                    SnapGene
+                </button>
                 <button class="btn btn-sm btn-secondary" onclick="exportPlasmid('${plasmid.id}', 'fasta')">
                     FASTA
                 </button>
@@ -390,6 +393,9 @@ function showPlasmidModal(plasmid) {
             <div class="export-buttons">
                 <button class="btn btn-primary" onclick="exportPlasmid('${plasmid.id}', 'genbank')">
                     Download GenBank
+                </button>
+                <button class="btn btn-primary" onclick="exportPlasmid('${plasmid.id}', 'snapgene')">
+                    Download SnapGene
                 </button>
                 <button class="btn btn-primary" onclick="exportPlasmid('${plasmid.id}', 'fasta')">
                     Download FASTA
@@ -850,6 +856,7 @@ async function exportPlasmid(plasmidId, format) {
     try {
         const formatMap = {
             'genbank': 'genbank',
+            'snapgene': 'snapgene',
             'fasta': 'fasta',
             'image': 'image'
         };

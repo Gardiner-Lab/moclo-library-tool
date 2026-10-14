@@ -11,17 +11,17 @@ A Docker-containerized web application for managing and working with MoClo (Modu
 - Visualize parts by type with graphical representations
 - Check compatibility for assembly based on overhang sequences
 - Create cassettes from compatible parts
-- Export cassettes as images and sequence files (FASTA, GenBank)
+- Export cassettes as images and sequence files (FASTA, GenBank, SnapGene)
 - User authentication with private cassette workspaces
 - Part upload with metadata tracking
 
 ### MoClo Backbone Integration (NEW)
-- **Upload MoClo Backbones**: Import GenBank files with automatic restriction site detection
+- **Upload MoClo Backbones**: Import GenBank or SnapGene (.dna) files with automatic restriction site detection
 - **Compatibility Checking**: See which cassettes fit which backbones (and vice versa)
 - **Plasmid Assembly**: Combine cassettes into backbones using Golden Gate assembly simulation
 - **Multi-Slot Support**: Assemble multiple cassettes into backbones with multiple insertion sites
 - **Circular Maps**: Visualize assembled plasmids with color-coded features
-- **Export Options**: Download plasmids as GenBank, FASTA, or PNG images
+- **Export Options**: Download plasmids as GenBank, SnapGene (.dna), FASTA, or PNG images
 - **Automated Analysis**: Automatic detection of BsaI, BpiI, and BsmBI restriction sites
 
 ## Technology Stack
@@ -90,8 +90,15 @@ password; otherwise it is the published default `admin123`, which you must chang
 To run it together with the Plasmid Editor, one port and one set of accounts for both, use the
 [Gardiner Lab tool suite](https://github.com/Gardiner-Lab/gardiner-lab-suite) instead: its
 installer takes over an existing MoClo installation with its users and data. The suite sets
-`SUITE_HOME_URL` (a "Lab tools" link back to its landing page) and `REGISTRATION_URL` (sign-up on
-its shared registration page); both are off unless set.
+`SUITE_HOME_URL` (a "Lab tools" link back to its landing page), `REGISTRATION_URL` (sign-up on
+its shared registration page) and `SUITE_AUTH=proxy` (see below); all are off unless set.
+
+With `SUITE_AUTH=proxy`, MoClo has no sign-in of its own: the suite's proxy names the signed-in
+user in an `X-Suite-User` header, and MoClo's Login and Logout send people to the suite's pages
+(`SUITE_LOGIN_URL`, default `/account/login`; `SUITE_LOGOUT_URL`, default `/account/logout`).
+Its Dashboard and Admin pages become tabs of the suite's dashboard (`SUITE_DASHBOARD_URL`, default
+`/account/`), listed in `/suite-manifest.json`, and accounts are managed only there.
+Only set it behind the suite's proxy: reachable directly, anyone could send that header.
 
 ### Updating
 
@@ -165,12 +172,12 @@ SECRET_KEY=$(openssl rand -hex 32) \
 - `POST /api/cassettes` - Create new cassette
 - `DELETE /api/cassettes/:id` - Delete cassette
 - `GET /api/cassettes/:id/export/fasta` - Export as FASTA
-- `GET /api/cassettes/:id/export/genbank` - Export as GenBank
+- `GET /api/cassettes/:id/export/genbank` - Export as GenBank (`/export/snapgene` for SnapGene)
 - `GET /api/cassettes/:id/export/image` - Export as image
 - `GET /api/cassettes/:id/compatible-backbones` - Get compatible backbones (NEW)
 
 ### Backbones (NEW)
-- `POST /api/backbones` - Upload GenBank backbone file
+- `POST /api/backbones` - Upload a GenBank or SnapGene backbone file
 - `GET /api/backbones` - List user's backbones
 - `GET /api/backbones/:id` - Get backbone details
 - `DELETE /api/backbones/:id` - Delete backbone
@@ -183,7 +190,7 @@ SECRET_KEY=$(openssl rand -hex 32) \
 - `GET /api/plasmids` - List user's assembled plasmids
 - `GET /api/plasmids/:id` - Get plasmid details
 - `DELETE /api/plasmids/:id` - Delete plasmid
-- `GET /api/plasmids/:id/export/genbank` - Export as GenBank
+- `GET /api/plasmids/:id/export/genbank` - Export as GenBank (`/export/snapgene` for SnapGene)
 - `GET /api/plasmids/:id/export/fasta` - Export as FASTA
 - `GET /api/plasmids/:id/export/image` - Export circular map as PNG
 

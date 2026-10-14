@@ -38,12 +38,12 @@ function handleFileSelect(event) {
     
     if (file) {
         // Validate file type
-        const validExtensions = ['.gb', '.gbk', '.genbank'];
+        const validExtensions = ['.gb', '.gbk', '.genbank', '.dna'];
         const fileName = file.name.toLowerCase();
         const isValid = validExtensions.some(ext => fileName.endsWith(ext));
         
         if (!isValid) {
-            errorElement.textContent = 'Please select a GenBank file (.gb, .gbk, .genbank)';
+            errorElement.textContent = 'Please select a GenBank (.gb, .gbk, .genbank) or SnapGene (.dna) file';
             errorElement.style.display = 'block';
             event.target.value = '';
             return;
@@ -52,7 +52,7 @@ function handleFileSelect(event) {
         // Auto-fill name if empty
         const nameInput = document.getElementById('backboneName');
         if (!nameInput.value) {
-            const baseName = file.name.replace(/\.(gb|gbk|genbank)$/i, '');
+            const baseName = file.name.replace(/\.(gb|gbk|genbank|dna)$/i, '');
             nameInput.value = baseName;
         }
     }
@@ -402,6 +402,19 @@ function showBackboneModal(backbone) {
         downloadBackboneGenBank(backbone.id);
     };
     modalHeader.insertBefore(downloadBtn, modalHeader.querySelector('.modal-close'));
+
+    // The same, as a SnapGene file
+    document.getElementById('downloadBackboneSnapGeneBtn')?.remove();
+    const snapGeneBtn = document.createElement('button');
+    snapGeneBtn.id = 'downloadBackboneSnapGeneBtn';
+    snapGeneBtn.className = 'btn btn-secondary btn-sm';
+    snapGeneBtn.textContent = 'Download SnapGene';
+    snapGeneBtn.style.marginRight = '10px';
+    snapGeneBtn.onclick = (e) => {
+        e.stopPropagation();
+        downloadBackboneGenBank(backbone.id, 'snapgene');
+    };
+    modalHeader.insertBefore(snapGeneBtn, modalHeader.querySelector('.modal-close'));
     
     // Build details HTML
     let html = `
@@ -875,12 +888,12 @@ window.editBackbone = editBackbone;
 window.closeEditBackbone = closeEditBackbone;
 
 /**
- * Download backbone as GenBank file
+ * Download backbone as a GenBank file, or a SnapGene (.dna) file with format 'snapgene'
  */
-function downloadBackboneGenBank(backboneId) {
+function downloadBackboneGenBank(backboneId, format = 'genbank') {
     // Create a temporary link and trigger download
     const link = document.createElement('a');
-    link.href = `/api/backbones/${backboneId}/download/genbank`;
+    link.href = `/api/backbones/${backboneId}/download/${format}`;
     link.download = '';  // Filename will be set by server
     document.body.appendChild(link);
     link.click();

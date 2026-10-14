@@ -57,6 +57,7 @@
 {% endblock %}
 
 {% block content %}
+{% if not suite_mode %}
 <h1>⚙️ Admin Dashboard</h1>
 
 <!-- Version & Update Check -->
@@ -67,9 +68,11 @@
 </div>
 <div id="updateInstructions" style="display: none; margin-bottom: 1.5rem; padding: 1rem; background: #dbeafe; border: 1px solid #3b82f6; border-radius: 0.5rem; font-size: 0.875rem;">
 </div>
+{% endif %}
 
 <div class="admin-tabs">
-  <button class="admin-tab active" data-tab="users">👥 Users</button>
+  {# Inside the suite, accounts are managed on its dashboard. #}
+  {% if not suite_mode %}<button class="admin-tab active" data-tab="users">👥 Users</button>{% endif %}
   <button class="admin-tab" data-tab="parts">🧩 Parts</button>
   <button class="admin-tab" data-tab="cassettes">🔗 Cassettes</button>
   <button class="admin-tab" data-tab="backbones">🦴 Backbones</button>
@@ -96,7 +99,7 @@
       <button class="btn-sm btn-primary" onclick="fetchGenbankFeatures()">🧬 Fetch Features from GitHub</button>
       <label class="btn-sm btn-primary" style="cursor: pointer;">
         📄 Re-upload .gb Files
-        <input type="file" id="reparseFiles" multiple accept=".gb,.gbk,.genbank" style="display:none" onchange="reparsePartsFromGB(this.files)">
+        <input type="file" id="reparseFiles" multiple accept=".gb,.gbk,.genbank,.dna" style="display:none" onchange="reparsePartsFromGB(this.files)">
       </label>
     </div>
   </div>
@@ -624,13 +627,19 @@ async function deletePlasmid(id) {
   loaders.plasmids();
 }
 
-// Load version on page load
-apiFetch(`${API}/version`)
-  .then(d => { document.getElementById('currentVersion').textContent = 'v' + d.version; })
-  .catch(() => { document.getElementById('currentVersion').textContent = 'unknown'; });
+// Load version on page load (the suite updates MoClo itself, so it has no version bar)
+if (document.getElementById('currentVersion')) {
+  apiFetch(`${API}/version`)
+    .then(d => { document.getElementById('currentVersion').textContent = 'v' + d.version; })
+    .catch(() => { document.getElementById('currentVersion').textContent = 'unknown'; });
+}
 
-// Load users on page load
-loaders.users();
+// Open the tab asked for (?tab=parts), or the first one.
+{
+  const wanted = new URLSearchParams(location.search).get('tab');
+  const tabs = [...document.querySelectorAll('.admin-tab')];
+  (tabs.find(t => t.dataset.tab === wanted) || tabs[0]).click();
+}
 
 // ── Re-parse parts from .gb files ──────────────────────────────────────────
 async function fetchGenbankFeatures() {

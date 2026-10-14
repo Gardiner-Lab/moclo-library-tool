@@ -5,6 +5,30 @@ All notable changes to the MoClo Library Tool project will be documented in this
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.13.0] - 2026-10-14
+
+### Added
+- `SUITE_AUTH=proxy`: inside the Gardiner Lab tool suite, signing in to the suite
+  signs in here, and signing out of it signs out here. The suite's proxy names the
+  signed-in user in an `X-Suite-User` header; MoClo follows it on every request,
+  and its Login and Logout pages send people to the suite's
+  (`SUITE_LOGIN_URL`, `SUITE_LOGOUT_URL`). `POST /api/auth/login` is closed in
+  this mode. Off unless set, so a standalone installation behaves as before. Only
+  set it behind the suite's proxy, which strips the header from what browsers send.
+- The suite's dashboard shows MoClo's tabs, listed in `/suite-manifest.json`:
+  My parts, Saved constructs, and for administrators the library (parts,
+  cassettes, backbones, plasmids). `?embed=1` shows a page without MoClo's own
+  navigation, for those tabs. With `SUITE_AUTH=proxy`, the Dashboard and Admin
+  links and pages go to the suite's dashboard (`SUITE_DASHBOARD_URL`), and
+  accounts are managed only there: the Users admin section, `/api/admin/users`
+  and changing your username or password under `/api/me/account` are closed.
+- **SnapGene files.** Parts, backbones, cassettes and plasmids download as SnapGene
+  `.dna` files as well as GenBank (a SnapGene button beside each GenBank one; the
+  routes are the GenBank ones with `snapgene` in place of `genbank`). Uploading a
+  part, a backbone, or files to re-parse also takes `.dna` files. SnapGene files
+  are converted to and from GenBank at the edges, so the parsers and exporters are
+  unchanged (`app/services/file_formats.py`, `app/services/snapgene.py`).
+
 ## [1.12.0] - 2026-10-12
 
 ### Added

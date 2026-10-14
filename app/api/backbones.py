@@ -84,14 +84,18 @@ def upload_backbone(user):
             }), 400
         
         # Check file extension
-        if not file.filename.lower().endswith(('.gb', '.gbk', '.genbank')):
+        from app.services.file_formats import UPLOAD_DESCRIPTION, accepted, uploaded_genbank
+        if not accepted(file.filename):
             return jsonify({
                 'error': 'Invalid file type',
-                'message': 'File must be a GenBank file (.gb, .gbk, .genbank)'
+                'message': f'File must be {UPLOAD_DESCRIPTION}'
             }), 400
-        
-        # Read file content
-        file_content = file.read().decode('utf-8')
+
+        # Read file content, as GenBank (a SnapGene file is converted)
+        try:
+            file_content = uploaded_genbank(file)
+        except ValueError as exc:
+            return jsonify({'error': 'Invalid file', 'message': str(exc)}), 400
         
         # Validate GenBank format
         is_valid, error_message = validate_genbank_content(file_content)
@@ -723,10 +727,11 @@ def get_compatible_cassettes(user, backbone_id):
 
 
 @backbones_bp.route('/<backbone_id>/download/genbank', methods=['GET'])
+@backbones_bp.route('/<backbone_id>/download/snapgene', methods=['GET'])
 @require_auth
 def download_backbone_genbank(user, backbone_id):
     """
-    Download a backbone as a GenBank file.
+    Download a backbone as a GenBank file, or at .../snapgene as a SnapGene (.dna) file.
     
     Path Parameters:
         backbone_id: Backbone ID
@@ -761,15 +766,8 @@ def download_backbone_genbank(user, backbone_id):
                 'message': 'Failed to generate GenBank file'
             }), 500
         
-        # Create response with GenBank file
-        response = make_response(genbank_content)
-        response.headers['Content-Type'] = 'text/plain'
-        
-        # Sanitize filename
-        safe_filename = backbone.name.replace(' ', '_').replace('/', '_')
-        response.headers['Content-Disposition'] = f'attachment; filename="{safe_filename}.gb"'
-        
-        return response
+        from app.services.file_formats import genbank_download
+        return genbank_download(genbank_content, backbone.name)
         
     except Exception as e:
         return jsonify({

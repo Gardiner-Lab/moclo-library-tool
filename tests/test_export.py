@@ -1610,3 +1610,16 @@ def test_svg_to_png_with_complex_shapes():
     # Should successfully convert SVG with paths
     assert isinstance(png_data, bytes)
     assert png_data[:8] == b'\x89PNG\r\n\x1a\n'
+
+def test_a_cassette_exports_as_snapgene(sample_cassette):
+    """The GenBank MoClo writes for a cassette converts to a SnapGene file with the same sequence."""
+    from app.services import snapgene
+    genbank = generate_genbank(sample_cassette)
+    data = snapgene.from_genbank(genbank)
+    assert data[5:13] == b'SnapGene'
+    record = snapgene.read(data)
+    from io import StringIO
+    from Bio import SeqIO
+    exported = SeqIO.read(StringIO(genbank), 'genbank')
+    assert str(record.seq).upper() == str(exported.seq).upper()
+    assert len(record.features) == len(exported.features)

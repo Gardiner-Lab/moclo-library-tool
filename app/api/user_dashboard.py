@@ -35,6 +35,12 @@ def update_account(user):
             "password": "new_password"    (optional)
         }
     """
+    from app.services import suite_auth
+    if suite_auth.enabled():
+        # One account for every tool: renaming it here would break it in the others.
+        return jsonify({'error': 'Your account is managed on the lab tools dashboard',
+                        'dashboard_url': suite_auth.dashboard_url('account')}), 403
+
     data = request.get_json(silent=True) or {}
     new_username = data.get('username', '').strip() or None
     new_password = data.get('password', '').strip() or None

@@ -2,9 +2,9 @@
 Main Flask application entry point.
 """
 
-APP_VERSION = '1.12.0'
+APP_VERSION = '1.13.0'
 
-from flask import Flask, render_template, session, redirect, url_for
+from flask import Flask, render_template, request, session, redirect, url_for
 from flask_cors import CORS
 import os
 from app.models import initialize_database
@@ -58,6 +58,11 @@ def create_app():
             # idempotent (creates a filler only if its named part is missing).
             _ensure_moclo_fillers()
     
+    # Inside the suite (SUITE_AUTH=proxy), the suite's sign-in decides who is
+    # signed in here; see app/services/suite_auth.py.
+    from app.services import suite_auth
+    app.before_request(suite_auth.follow_suite_sign_in)
+
     # Enable CORS with credentials support
     CORS(app, supports_credentials=True)
 
@@ -71,8 +76,15 @@ def create_app():
             # to the suite's landing page, and the suite's one registration page.
             'suite_home': os.environ.get('SUITE_HOME_URL', '').strip(),
             'registration_url': os.environ.get('REGISTRATION_URL', '').strip() or '/register',
+            # Inside the suite, accounts and the library are managed on its
+            # dashboard, which shows MoClo's pages without their navigation.
+            'suite_mode': suite_auth.enabled(),
+            'embed': suite_auth.embedded(),
+            'dashboard_url': suite_auth.dashboard_url() if suite_auth.enabled() else '/dashboard',
+            'admin_url': suite_auth.dashboard_url('moclo-library') if suite_auth.enabled() else '/admin',
         }
     
+
     # Register blueprints
     from app.api import auth_bp, parts_bp, cassettes_bp, visualize_bp, backbones_bp, plasmids_bp, admin_bp, guide_designer_bp
     from app.api.user_dashboard import user_dashboard_bp
@@ -96,9 +108,11 @@ def create_app():
     
     @app.route('/login')
     def login_page():
-        """Login page."""
+        """Login page, or the suite's when it signs people in."""
         if 'user_id' in session:
             return redirect(url_for('parts_page'))
+        if suite_auth.enabled():
+            return redirect(suite_auth.login_url(request.args.get('next') or url_for('protocol_page')))
         return render_template('login.html')
     
     @app.route('/register')
@@ -115,6 +129,9 @@ def create_app():
     def logout_page():
         """Logout - clear session and redirect to login."""
         session.clear()
+        if suite_auth.enabled():
+            # Signing out of the suite signs out of every tool.
+            return redirect(suite_auth.logout_url())
         return redirect(url_for('login_page'))
     
     @app.route('/parts')
@@ -180,17 +197,26 @@ def create_app():
     
     @app.route('/dashboard')
     def dashboard_page():
-        """User dashboard."""
+        """User dashboard, or the suite's, where it is one of the tabs."""
+        if suite_auth.enabled() and not suite_auth.embedded():
+            return redirect(suite_auth.dashboard_url('moclo-parts'))
         if 'user_id' not in session:
             return redirect(url_for('login_page'))
         return render_template('dashboard.html')
 
     @app.route('/admin')
     def admin_page():
-        """Admin dashboard."""
+        """Admin dashboard, or the suite's, where it is one of the tabs."""
+        if suite_auth.enabled() and not suite_auth.embedded():
+            return redirect(suite_auth.dashboard_url('moclo-library'))
         if 'user_id' not in session:
             return redirect(url_for('login_page'))
         return render_template('admin.html')
+
+    @app.route('/suite-manifest.json')
+    def suite_manifest():
+        """The tabs MoClo adds to the suite's dashboard."""
+        return suite_auth.MANIFEST
 
     @app.route('/protocol')
     def protocol_page():

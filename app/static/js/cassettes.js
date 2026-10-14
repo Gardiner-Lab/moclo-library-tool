@@ -128,6 +128,9 @@ function createCassetteCard(cassette) {
         <button class="btn-export" onclick="exportCassette('${cassette.id}', 'genbank')" title="Export as GenBank">
             📄 GenBank
         </button>
+        <button class="btn-export" onclick="exportCassette('${cassette.id}', 'snapgene')" title="Export as SnapGene (.dna)">
+            📄 SnapGene
+        </button>
         <button class="btn-export" onclick="exportCassette('${cassette.id}', 'svg')" title="Export as SVG image">
             🖼️ SVG
         </button>
@@ -562,6 +565,9 @@ function renderCassetteDetail(cassette) {
             </button>
             <button class="btn btn-primary" onclick="exportCassette('${cassette.id}', 'genbank')">
                 📄 Export GenBank
+            </button>
+            <button class="btn btn-primary" onclick="exportCassette('${cassette.id}', 'snapgene')">
+                📄 Export SnapGene
             </button>
             <button class="btn btn-primary" onclick="exportCassette('${cassette.id}', 'svg')">
                 🖼️ Export SVG

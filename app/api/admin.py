@@ -18,6 +18,15 @@ import json
 admin_bp = Blueprint('admin', __name__)
 
 
+@admin_bp.before_request
+def accounts_are_the_suites():
+    """Inside the lab suite, accounts are managed on its dashboard, not here."""
+    from app.services import suite_auth
+    if suite_auth.enabled() and request.path.startswith('/api/admin/users'):
+        return jsonify({'error': 'Accounts are managed on the lab tools dashboard',
+                        'dashboard_url': suite_auth.dashboard_url('users')}), 403
+
+
 def require_admin(f):
     """Decorator that requires the authenticated user to be an admin."""
     from functools import wraps
@@ -640,10 +649,12 @@ def reparse_parts_from_genbank(user):
     
     db = get_parts_database()
     
+    from app.services.file_formats import uploaded_genbank
     for file in files:
         filename = file.filename or ''
         try:
-            content = file.read().decode('utf-8')
+            # GenBank, or SnapGene converted to it
+            content = uploaded_genbank(file)
             handle = StringIO(content)
             record = SeqIO.read(handle, "genbank")
             

@@ -472,10 +472,11 @@ def export_fasta(user, cassette, cassette_id):
 
 
 @cassettes_bp.route('/<cassette_id>/export/genbank', methods=['GET'])
+@cassettes_bp.route('/<cassette_id>/export/snapgene', methods=['GET'])
 @require_cassette_ownership
 def export_genbank(user, cassette, cassette_id):
     """
-    Export a cassette as GenBank format.
+    Export a cassette as GenBank format, or at .../snapgene as a SnapGene (.dna) file.
     
     Path Parameters:
         cassette_id: Cassette ID
@@ -496,19 +497,8 @@ def export_genbank(user, cassette, cassette_id):
     try:
         # Generate GenBank content
         genbank_content = generate_genbank(cassette)
-        
-        # Create a file-like object
-        genbank_bytes = BytesIO(genbank_content.encode('utf-8'))
-        
-        # Generate filename (replace spaces with underscores)
-        filename = f"{cassette.name.replace(' ', '_')}.gb"
-        
-        return send_file(
-            genbank_bytes,
-            mimetype='text/plain',
-            as_attachment=True,
-            download_name=filename
-        )
+        from app.services.file_formats import genbank_download
+        return genbank_download(genbank_content, cassette.name)
         
     except Exception as e:
         return jsonify({

@@ -353,6 +353,19 @@ function renderPartDetails(part) {
         downloadPartGenBank(part.id);
     };
     modalHeader.insertBefore(downloadBtn, document.getElementById('closeModal'));
+
+    // The same, as a SnapGene file
+    document.getElementById('downloadPartSnapGeneBtn')?.remove();
+    const snapGeneBtn = document.createElement('button');
+    snapGeneBtn.id = 'downloadPartSnapGeneBtn';
+    snapGeneBtn.className = 'btn btn-secondary btn-sm';
+    snapGeneBtn.textContent = 'Download SnapGene';
+    snapGeneBtn.style.marginRight = '10px';
+    snapGeneBtn.onclick = (e) => {
+        e.stopPropagation();
+        downloadPartGenBank(part.id, 'snapgene');
+    };
+    modalHeader.insertBefore(snapGeneBtn, document.getElementById('closeModal'));
     
     // Add edit button for user-uploaded parts (not system parts) or if user is admin
     const isAdmin = document.body.dataset.isAdmin === 'true';
@@ -810,12 +823,12 @@ async function deletePart(partId, partName) {
 }
 
 /**
- * Download part as GenBank file
+ * Download part as a GenBank file, or a SnapGene (.dna) file with format 'snapgene'
  */
-function downloadPartGenBank(partId) {
+function downloadPartGenBank(partId, format = 'genbank') {
     // Create a temporary link and trigger download
     const link = document.createElement('a');
-    link.href = `/api/parts/${partId}/download/genbank`;
+    link.href = `/api/parts/${partId}/download/${format}`;
     link.download = '';  // Filename will be set by server
     document.body.appendChild(link);
     link.click();
