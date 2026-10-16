@@ -277,12 +277,31 @@ async function runDesign() {
     }
 }
 
-function copyToClipboard(text, btn) {
-    navigator.clipboard.writeText(text).then(() => {
-        const orig = btn.textContent;
-        btn.textContent = 'Copied!';
-        setTimeout(() => { btn.textContent = orig; }, 1200);
-    });
+// Browsers give pages the clipboard API only over https (or on localhost);
+// elsewhere a selected text field and the copy command still work in a click.
+function copyByCommand(text) {
+    const field = document.createElement('textarea');
+    field.value = text;
+    field.setAttribute('readonly', '');
+    field.style.position = 'fixed';
+    field.style.opacity = '0';
+    document.body.append(field);
+    field.select();
+    let copied = false;
+    try { copied = document.execCommand('copy'); } catch (e) { copied = false; }
+    field.remove();
+    return copied;
+}
+
+async function copyToClipboard(text, btn) {
+    let copied = false;
+    if (window.isSecureContext && navigator.clipboard) {
+        try { await navigator.clipboard.writeText(text); copied = true; } catch (e) { copied = false; }
+    }
+    if (!copied) copied = copyByCommand(text);
+    const orig = btn.textContent;
+    btn.textContent = copied ? 'Copied!' : 'Copy failed';
+    setTimeout(() => { btn.textContent = orig; }, 1200);
 }
 
 function esc(s) {
