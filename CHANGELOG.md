@@ -5,6 +5,16 @@ All notable changes to the MoClo Library Tool project will be documented in this
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.14.1] - 2026-10-19
+
+### Changed
+- **Plasmid maps are drawn as the Plasmid Editor draws them**: the same feature arcs, colours and
+  labels, and the unique cutters of the editor's default enzymes. A plasmid's window now shows its
+  map (hover a feature or site to name it), and the map downloads as PNG (as before, with its
+  cassettes) or SVG. New: `GET /api/plasmids/<id>/map.svg` (`?download=1` to save it).
+- The v1.14.0 tag was made by mistake before the version number was raised; 1.14.1 is the
+  same code with the right number.
+
 ## [1.13.1] - 2026-10-16
 
 ### Fixed
@@ -354,12 +364,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - 7.6: All necessary dependencies included
 
 ## [Unreleased]
-
-### Changed
-- **Plasmid maps are drawn as the Plasmid Editor draws them**: the same feature arcs, colours and
-  labels, and the unique cutters of the editor's default enzymes. A plasmid's window now shows its
-  map (hover a feature or site to name it), and the map downloads as PNG (as before, with its
-  cassettes) or SVG. New: `GET /api/plasmids/<id>/map.svg` (`?download=1` to save it).
 
 ### Planned
 - Database schema and models (Task 2)
