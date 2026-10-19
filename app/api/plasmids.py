@@ -12,7 +12,7 @@ This module provides REST API endpoints for:
 - GET /api/plasmids/:id/export/image - Export circular map as PNG
 """
 
-from flask import Blueprint, request, jsonify, send_file
+from flask import Blueprint, Response, request, jsonify, send_file
 from io import BytesIO
 from app.models.backbone import Backbone
 from app.models.cassette import Cassette
@@ -27,7 +27,7 @@ from app.services.plasmid_assembly import (
     AssemblyError
 )
 from app.services.genbank_parser import format_genbank_output
-from app.services.circular_map import generate_circular_map
+from app.services.plasmid_map import plasmid_map_svg
 from app.services.export import svg_to_png
 
 
@@ -627,6 +627,25 @@ def export_fasta(user, plasmid_id):
         }), 500
 
 
+@plasmids_bp.route('/<plasmid_id>/map.svg', methods=['GET'])
+@require_auth
+def plasmid_map(user, plasmid_id):
+    """
+    The plasmid's circular map, drawn as the Plasmid Editor draws it: features,
+    and the unique cutters of the editor's default enzymes. ?download=1 saves it.
+    """
+    plasmid = FinalPlasmid.get_by_id(plasmid_id)
+    if plasmid is None:
+        return jsonify({'error': 'Not found', 'message': f'Plasmid {plasmid_id} not found'}), 404
+    if not can_view_plasmid(user, plasmid):
+        return jsonify({'error': 'Forbidden', 'message': 'Access denied to this plasmid'}), 403
+    svg = plasmid_map_svg(plasmid.name, plasmid.assembled_sequence, plasmid.features)
+    headers = {}
+    if request.args.get('download'):
+        headers['Content-Disposition'] = f'attachment; filename="{plasmid.name.replace(" ", "_")}_map.svg"'
+    return Response(svg, mimetype='image/svg+xml', headers=headers)
+
+
 @plasmids_bp.route('/<plasmid_id>/export/image', methods=['GET'])
 @require_auth
 def export_image(user, plasmid_id):
@@ -681,24 +700,8 @@ def export_image(user, plasmid_id):
                 'error': 'Width must be between 100 and 4000 pixels'
             }), 400
         
-        # Generate SVG map
-        # Prepare cassette regions for highlighting
-        cassette_regions = []
-        if plasmid.metadata and plasmid.metadata.get('cassette_positions'):
-            for pos_info in plasmid.metadata['cassette_positions']:
-                cassette_regions.append({
-                    'start': pos_info.get('start', 0),
-                    'end': pos_info.get('end', 0),
-                    'name': pos_info.get('cassette_name', 'Cassette')
-                })
-        
-        svg_content = generate_circular_map(
-            plasmid_name=plasmid.name,
-            sequence=plasmid.assembled_sequence,
-            features=plasmid.features,
-            width=width,
-            cassette_regions=cassette_regions if cassette_regions else None
-        )
+        # The Plasmid Editor's map of it (app/services/plasmid_map.py).
+        svg_content = plasmid_map_svg(plasmid.name, plasmid.assembled_sequence, plasmid.features)
         
         # Convert to PNG
         try:

@@ -355,6 +355,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **Plasmid maps are drawn as the Plasmid Editor draws them**: the same feature arcs, colours and
+  labels, and the unique cutters of the editor's default enzymes. A plasmid's window now shows its
+  map (hover a feature or site to name it), and the map downloads as PNG (as before, with its
+  cassettes) or SVG. New: `GET /api/plasmids/<id>/map.svg` (`?download=1` to save it).
+
 ### Planned
 - Database schema and models (Task 2)
 - Core business logic services (Task 3)

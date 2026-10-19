@@ -314,6 +314,14 @@ function showPlasmidModal(plasmid) {
         `;
     }
 
+    // The map, drawn as the Plasmid Editor draws it; filled in once loaded.
+    html += `
+        <div class="detail-section">
+            <h3>Map</h3>
+            <div class="plasmid-map" id="plasmidMap"><div class="text-muted">Drawing the map...</div></div>
+        </div>
+    `;
+
     // MoClo assembly strategy — the full fragment breakdown (promoter + all
     // Level 0 parts) with sizes and overhangs, for ALL plasmids. Rendered from
     // metadata.moclo_strategy (preferred) or built from cassette_details.
@@ -401,8 +409,11 @@ function showPlasmidModal(plasmid) {
                     Download FASTA
                 </button>
                 <button class="btn btn-primary" onclick="exportPlasmid('${plasmid.id}', 'image')">
-                    Download Circular Map
+                    Download Map (PNG)
                 </button>
+                <a class="btn btn-primary" href="/api/plasmids/${plasmid.id}/map.svg?download=1" download>
+                    Download Map (SVG)
+                </a>
             </div>
         </div>
     `;
@@ -444,6 +455,25 @@ function showPlasmidModal(plasmid) {
         loadPlasmidShares(plasmid.id);
     }
     loadPlasmidTranslation(plasmid.id);
+    loadPlasmidMap(plasmid.id);
+}
+
+/**
+ * The plasmid's map, as the Plasmid Editor draws it, put in the page (not an
+ * <img>) so hovering a feature or site names it.
+ */
+async function loadPlasmidMap(plasmidId) {
+    const box = document.getElementById('plasmidMap');
+    if (!box) return;
+    try {
+        const res = await fetch(`/api/plasmids/${plasmidId}/map.svg`, { credentials: 'same-origin' });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const svg = new DOMParser().parseFromString(await res.text(), 'image/svg+xml').documentElement;
+        if (svg.nodeName !== 'svg') throw new Error('not a map');
+        if (document.getElementById('plasmidMap') === box) box.replaceChildren(document.importNode(svg, true));
+    } catch (error) {
+        box.innerHTML = `<div class="text-muted">The map could not be drawn (${escapeHtml(error.message)}).</div>`;
+    }
 }
 
 // Keep the editable metadata keys in sync with the backend allowlist
