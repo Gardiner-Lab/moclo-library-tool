@@ -69,7 +69,7 @@ def register():
     
     Requirements: 9.1, 9.2
     """
-    # Inside the Gardiner Lab suite, accounts are created on the suite's one
+    # Inside Trellis Tools, accounts are created on the suite's one
     # registration page, which asks for the lab and its registration code.
     external = os.environ.get('REGISTRATION_URL', '').strip()
     if external:

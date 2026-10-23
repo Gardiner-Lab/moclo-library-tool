@@ -1,5 +1,5 @@
 """
-Settings for running inside the Gardiner Lab suite.
+Settings for running inside Trellis Tools.
 
 All of them are off unless set, so a standalone MoClo behaves exactly as before:
 
