@@ -380,6 +380,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- The suite it runs in is called Trellis Tools, as its docs now say.
+
 ### Planned
 - Database schema and models (Task 2)
 - Core business logic services (Task 3)

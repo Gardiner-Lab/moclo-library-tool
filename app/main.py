@@ -72,7 +72,7 @@ def create_app():
     def inject_app_version():
         return {
             'app_version': APP_VERSION,
-            # Set when this tool runs inside the Gardiner Lab suite: a link back
+            # Set when this tool runs inside Trellis Tools: a link back
             # to the suite's landing page, and the suite's one registration page.
             'suite_home': os.environ.get('SUITE_HOME_URL', '').strip(),
             # The suite's Lab Notebook ("/notebook"): a part, a plasmid's map

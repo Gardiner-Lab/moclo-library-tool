@@ -1,5 +1,5 @@
 """
-Signing in through the Gardiner Lab suite (SUITE_AUTH=proxy).
+Signing in through Trellis Tools (SUITE_AUTH=proxy).
 
 The suite's proxy names the signed-in user in X-Suite-User. MoClo follows it:
 no header, nobody signed in; a header, that user. Off unless set, so a

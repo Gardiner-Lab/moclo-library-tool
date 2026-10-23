@@ -1,5 +1,5 @@
 /**
- * The Lab Notebook beside MoClo in the Gardiner Lab suite: a plasmid's map or a
+ * The Lab Notebook beside MoClo in Trellis Tools: a plasmid's map or a
  * cassette's diagram, with what it shows, put into a day's page there (the
  * notebook's /api/days/import). NOTEBOOK_URL tells MoClo where the notebook is;
  * without it the buttons are not shown.

@@ -88,7 +88,7 @@ On a new installation an `admin` account is created. Set `ADMIN_PASSWORD` to cho
 password; otherwise it is the published default `admin123`, which you must change at once.
 
 To run it together with the Plasmid Editor, one port and one set of accounts for both, use the
-[Gardiner Lab tool suite](https://github.com/Gardiner-Lab/gardiner-lab-suite) instead: its
+[Trellis Tools](https://github.com/Gardiner-Lab/gardiner-lab-suite) instead: its
 installer takes over an existing MoClo installation with its users and data. The suite sets
 `SUITE_HOME_URL` (a "Lab tools" link back to its landing page), `REGISTRATION_URL` (sign-up on
 its shared registration page), `NOTEBOOK_URL` (a part, a plasmid's map or a cassette's diagram can be put into a day's page of the suite's Lab Notebook) and `SUITE_AUTH=proxy` (see below); all are off unless set.
