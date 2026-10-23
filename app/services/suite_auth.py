@@ -60,11 +60,11 @@ def embedded() -> bool:
 MANIFEST = {
     'tool': 'MoClo Library Tool',
     'tabs': [
-        {'id': 'moclo-parts', 'title': 'My parts', 'icon': '🧩', 'section': 'me',
+        {'id': 'moclo-parts', 'title': 'My parts', 'icon': '🧩', 'glyph': 'part', 'section': 'me',
          'src': '/dashboard?embed=1&tab=parts'},
-        {'id': 'moclo-saved', 'title': 'Saved constructs', 'icon': '⭐', 'section': 'me',
+        {'id': 'moclo-saved', 'title': 'Saved constructs', 'icon': '⭐', 'glyph': 'cassette', 'section': 'me',
          'src': '/dashboard?embed=1&tab=saved'},
-        {'id': 'moclo-library', 'title': 'MoClo library', 'icon': '🧬', 'section': 'admin',
+        {'id': 'moclo-library', 'title': 'MoClo library', 'icon': '🧬', 'glyph': 'library', 'section': 'admin',
          'roles': ['admin'], 'src': '/admin?embed=1&tab=parts'},
     ],
 }

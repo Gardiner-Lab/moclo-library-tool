@@ -72,8 +72,8 @@
 
 {# In a dashboard tab, the suite shows one section per tab, and your account is its own. #}
 <div class="dash-tabs"{% if embed %} style="display:none"{% endif %}>
-  {% if not suite_mode %}<button class="dash-tab active" data-tab="account">👤 My Account</button>{% endif %}
-  <button class="dash-tab" data-tab="parts">🧩 My Parts</button>
+  {% if not suite_mode %}<button class="dash-tab active" data-tab="account"><img class="tt-glyph" src="{{ url_for('static', filename='trellis/glyphs/person.svg') }}" alt=""> My Account</button>{% endif %}
+  <button class="dash-tab" data-tab="parts"><img class="tt-glyph" src="{{ url_for('static', filename='trellis/glyphs/cassette.svg') }}" alt=""> My Parts</button>
   <button class="dash-tab" data-tab="saved">⭐ Saved</button>
 </div>
 

@@ -58,7 +58,7 @@
 
 {% block content %}
 {% if not suite_mode %}
-<h1>⚙️ Admin Dashboard</h1>
+<h1><img class="tt-glyph" src="{{ url_for('static', filename='trellis/glyphs/gear.svg') }}" alt=""> Admin Dashboard</h1>
 
 <!-- Version & Update Check -->
 <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 1.5rem; padding: 0.75rem 1rem; background: var(--bg-color); border-radius: 0.5rem;">
@@ -72,11 +72,11 @@
 
 <div class="admin-tabs">
   {# Inside the suite, accounts are managed on its dashboard. #}
-  {% if not suite_mode %}<button class="admin-tab active" data-tab="users">👥 Users</button>{% endif %}
-  <button class="admin-tab" data-tab="parts">🧩 Parts</button>
-  <button class="admin-tab" data-tab="cassettes">🔗 Cassettes</button>
-  <button class="admin-tab" data-tab="backbones">🦴 Backbones</button>
-  <button class="admin-tab" data-tab="plasmids">🧬 Plasmids</button>
+  {% if not suite_mode %}<button class="admin-tab active" data-tab="users"><img class="tt-glyph" src="{{ url_for('static', filename='trellis/glyphs/people.svg') }}" alt=""> Users</button>{% endif %}
+  <button class="admin-tab" data-tab="parts"><img class="tt-glyph" src="{{ url_for('static', filename='trellis/glyphs/cassette.svg') }}" alt=""> Parts</button>
+  <button class="admin-tab" data-tab="cassettes"><img class="tt-glyph" src="{{ url_for('static', filename='trellis/glyphs/cassette.svg') }}" alt=""> Cassettes</button>
+  <button class="admin-tab" data-tab="backbones"><img class="tt-glyph" src="{{ url_for('static', filename='trellis/glyphs/plasmid.svg') }}" alt=""> Backbones</button>
+  <button class="admin-tab" data-tab="plasmids"><img class="tt-glyph" src="{{ url_for('static', filename='trellis/glyphs/plasmid.svg') }}" alt=""> Plasmids</button>
 </div>
 
 <!-- ── USERS ── -->
@@ -96,9 +96,9 @@
   <div class="section-header">
     <h2>Parts <span class="count-badge" id="parts-count">0</span></h2>
     <div style="display: flex; gap: 0.5rem;">
-      <button class="btn-sm btn-primary" onclick="fetchGenbankFeatures()">🧬 Fetch Features from GitHub</button>
+      <button class="btn-sm btn-primary" onclick="fetchGenbankFeatures()"><img class="tt-glyph" src="{{ url_for('static', filename='trellis/glyphs/line.svg') }}" alt=""> Fetch Features from GitHub</button>
       <label class="btn-sm btn-primary" style="cursor: pointer;">
-        📄 Re-upload .gb Files
+        <img class="tt-glyph" src="{{ url_for('static', filename='trellis/glyphs/doc.svg') }}" alt=""> Re-upload .gb Files
         <input type="file" id="reparseFiles" multiple accept=".gb,.gbk,.genbank,.dna" style="display:none" onchange="reparsePartsFromGB(this.files)">
       </label>
     </div>

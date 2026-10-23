@@ -582,7 +582,7 @@ function showBackboneModal(backbone) {
     html += `
         <div class="detail-section">
             <button class="btn btn-primary" onclick="editBackbone('${backbone.id}')">
-                ✏️ Edit Metadata
+                <img class="tt-glyph" src="/static/trellis/glyphs/pencil.svg" alt=""> Edit Metadata
             </button>
         </div>
     `;

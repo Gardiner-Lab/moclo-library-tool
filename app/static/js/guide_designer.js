@@ -358,7 +358,7 @@ function renderPlan(plan, opts) {
                 ${o.hairpin.pads_identical ? '(identical)' : '(independent)'} &middot;
                 hairpin fwd ΔG ${o.hairpin.top_strand_dg} kcal/mol${o.hairpin.top_strand_tm != null ? ', Tm ' + o.hairpin.top_strand_tm + '°C' : ''};
                 rev ΔG ${o.hairpin.bottom_strand_dg} kcal/mol${o.hairpin.bottom_strand_tm != null ? ', Tm ' + o.hairpin.bottom_strand_tm + '°C' : ''}</div>
-            ${(o.warnings || []).map(w => `<div class="gd-warn">⚠ ${esc(w)}</div>`).join('')}
+            ${(o.warnings || []).map(w => `<div class="gd-warn"><img class="tt-glyph" src="/static/trellis/glyphs/hazard.svg" alt=""> ${esc(w)}</div>`).join('')}
         </div>`;
     });
     html += `</div>`;
@@ -703,7 +703,7 @@ function renderConstructResult(res) {
             </li>`).join('');
         problemsHtml = `
             <div style="border:1px solid #dc3545; background:#fdf1f2; border-radius:6px; padding:0.75rem 1rem; margin-bottom:0.75rem;">
-                <strong style="color:#b02a37;">⚠ This construct could not be fully created</strong>
+                <strong style="color:#b02a37;"><img class="tt-glyph" src="/static/trellis/glyphs/hazard.svg" alt=""> This construct could not be fully created</strong>
                 <ul style="margin:0.5rem 0 0; padding-left:1.25rem;">${items}</ul>
             </div>`;
     }
@@ -711,7 +711,7 @@ function renderConstructResult(res) {
     const complete = res.complete !== false && !problems.length;
     const header = complete
         ? '<h3>✓ Construct created</h3>'
-        : '<h3 style="color:#b02a37;">⚠ Construct incomplete</h3>';
+        : '<h3 style="color:#b02a37;"><img class="tt-glyph" src="/static/trellis/glyphs/hazard.svg" alt=""> Construct incomplete</h3>';
     const info = res.info || (problems.length ? [] : (res.messages || []));
 
     panel.innerHTML = `

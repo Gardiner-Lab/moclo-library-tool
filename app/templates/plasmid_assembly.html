@@ -386,7 +386,7 @@
         <div class="preview-header">
             <h2>Assembly Preview</h2>
             <button id="simulateBtn" class="btn btn-secondary" onclick="simulateAssembly()">
-                🔬 Simulate Assembly
+                <img class="tt-glyph" src="{{ url_for('static', filename='trellis/glyphs/cassette.svg') }}" alt=""> Simulate Assembly
             </button>
         </div>
 
@@ -414,7 +414,7 @@
             <div class="assembly-actions">
                 <button class="btn btn-secondary" onclick="resetAssembly()">Reset</button>
                 <button id="assembleBtn" class="btn btn-primary" onclick="performAssembly()" disabled>
-                    🧬 Assemble Plasmid
+                    <img class="tt-glyph" src="{{ url_for('static', filename='trellis/glyphs/plasmid.svg') }}" alt=""> Assemble Plasmid
                 </button>
             </div>
         </div>

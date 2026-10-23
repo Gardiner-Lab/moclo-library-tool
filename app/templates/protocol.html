@@ -309,7 +309,7 @@
             
             <div class="materials-grid">
                 <div class="materials-card">
-                    <h4>🧪 Reagents</h4>
+                    <h4><img class="tt-glyph" src="{{ url_for('static', filename='trellis/glyphs/protocol.svg') }}" alt=""> Reagents</h4>
                     <ul>
                         <li>10x Buffer G (Thermo)</li>
                         <li>100 mM ATP (Thermo)</li>
@@ -321,7 +321,7 @@
                 </div>
 
                 <div class="materials-card">
-                    <h4>🔬 Equipment</h4>
+                    <h4><img class="tt-glyph" src="{{ url_for('static', filename='trellis/glyphs/gear.svg') }}" alt=""> Equipment</h4>
                     <ul>
                         <li>PCR machine/thermal cycler</li>
                         <li>PCR tubes (0.2 mL)</li>
@@ -333,7 +333,7 @@
                 </div>
 
                 <div class="materials-card">
-                    <h4>⚠️ Safety Equipment</h4>
+                    <h4><img class="tt-glyph" src="{{ url_for('static', filename='trellis/glyphs/hazard.svg') }}" alt=""> Safety Equipment</h4>
                     <ul>
                         <li>Lab coat</li>
                         <li>Gloves</li>
@@ -549,7 +549,7 @@
             
             <div class="storage-grid">
                 <div class="storage-card">
-                    <h4>📦 Storage</h4>
+                    <h4><img class="tt-glyph" src="{{ url_for('static', filename='trellis/glyphs/box.svg') }}" alt=""> Storage</h4>
                     <ul>
                         <li><strong>Enzymes:</strong> Store at -20°C</li>
                         <li><strong>Reaction mix:</strong> 4°C (short-term) or -20°C (long-term)</li>
@@ -559,7 +559,7 @@
                 </div>
 
                 <div class="storage-card">
-                    <h4>🗑️ Disposal</h4>
+                    <h4><img class="tt-glyph" src="{{ url_for('static', filename='trellis/glyphs/trash.svg') }}" alt=""> Disposal</h4>
                     <ul>
                         <li>Inactivate enzymes by autoclaving before disposal</li>
                         <li>Decontaminate bacterial cultures before discarding</li>
@@ -590,7 +590,7 @@
         
         <div class="reference-grid">
             <div class="reference-card">
-                <h3>🧬 Level 0</h3>
+                <h3><img class="tt-glyph" src="{{ url_for('static', filename='trellis/glyphs/part.svg') }}" alt=""> Level 0</h3>
                 <ul>
                     <li><strong>Purpose:</strong> Individual genetic parts</li>
                     <li><strong>Enzyme:</strong> BsaI</li>
@@ -600,7 +600,7 @@
             </div>
 
             <div class="reference-card">
-                <h3>🔗 Level 1</h3>
+                <h3><img class="tt-glyph" src="{{ url_for('static', filename='trellis/glyphs/cassette.svg') }}" alt=""> Level 1</h3>
                 <ul>
                     <li><strong>Purpose:</strong> Transcriptional cassettes</li>
                     <li><strong>Enzyme:</strong> BsaI (assembly)</li>
@@ -610,7 +610,7 @@
             </div>
 
             <div class="reference-card">
-                <h3>🏗️ Level 2</h3>
+                <h3><img class="tt-glyph" src="{{ url_for('static', filename='trellis/glyphs/plasmid.svg') }}" alt=""> Level 2</h3>
                 <ul>
                     <li><strong>Purpose:</strong> Multi-gene constructs</li>
                     <li><strong>Enzyme:</strong> BpiI (assembly)</li>
@@ -663,13 +663,13 @@
             </div>
 
             <div class="tip-card">
-                <div class="tip-icon">⚠️</div>
+                <div class="tip-icon"><img class="tt-glyph" src="{{ url_for('static', filename='trellis/glyphs/hazard.svg') }}" alt=""></div>
                 <h4>Frameshift Considerations</h4>
                 <p>When designing parts that fuse to coding sequences, the 4bp overhang must be considered to avoid frameshifts. The last base pair of the overhang needs to be included in the last amino acid triplet of your coding sequence.</p>
             </div>
 
             <div class="tip-card">
-                <div class="tip-icon">📝</div>
+                <div class="tip-icon"><img class="tt-glyph" src="{{ url_for('static', filename='trellis/glyphs/pencil.svg') }}" alt=""></div>
                 <h4>Intron Annotation</h4>
                 <p>If your coding sequences contain introns, proper GenBank annotation is essential for accurate translation analysis. <a href="{{ url_for('annotation_guide') }}" style="color: var(--primary-color); text-decoration: underline;">Learn about annotation best practices →</a></p>
             </div>
@@ -678,7 +678,7 @@
 
     <!-- Reaction Mix Calculator -->
     <section class="protocol-section">
-        <h2>🧮 Reaction Mix Calculator</h2>
+        <h2><img class="tt-glyph" src="{{ url_for('static', filename='trellis/glyphs/protocol.svg') }}" alt=""> Reaction Mix Calculator</h2>
         <div class="level-description">
             <p>
                 Calculate the exact volumes needed for your MoClo assembly reaction. Enter your DNA concentrations 
@@ -722,11 +722,11 @@
                     <strong>Formula:</strong> ng = (fmol × bp × 660) / 1,000,000
                 </div>
 
-                <details style="margin-bottom: 1rem; background: #f8f9fa; border: 1px solid #e2e8f0; border-radius: 0.5rem; padding: 0.75rem 1rem;">
-                    <summary style="cursor: pointer; font-weight: 600; font-size: 0.9rem;">📐 Formula Explanation — What Each Part Means</summary>
-                    <div style="margin-top: 0.75rem; font-size: 0.85rem; line-height: 1.7; color: #4a5568;">
+                <details style="margin-bottom: 1rem; background: var(--tt-sunk); border: 1px solid var(--tt-border); border-radius: 0.5rem; padding: 0.75rem 1rem;">
+                    <summary style="cursor: pointer; font-weight: 600; font-size: 0.9rem;"><img class="tt-glyph" src="{{ url_for('static', filename='trellis/glyphs/ratio.svg') }}" alt=""> Formula Explanation — What Each Part Means</summary>
+                    <div style="margin-top: 0.75rem; font-size: 0.85rem; line-height: 1.7; color: var(--tt-muted);">
                         <p style="margin: 0 0 0.75rem;"><strong>Step 1 — Calculate mass of DNA needed (ng):</strong></p>
-                        <code style="display: block; background: #fff; padding: 0.5rem 0.75rem; border-radius: 0.25rem; border: 1px solid #e2e8f0; margin-bottom: 0.5rem;">
+                        <code style="display: block; background: #fff; padding: 0.5rem 0.75rem; border-radius: 0.25rem; border: 1px solid var(--tt-border); margin-bottom: 0.5rem;">
                             ng = (fmol × size in bp × 660) ÷ 1,000,000
                         </code>
                         <ul style="margin: 0.25rem 0 1rem 1.25rem; padding: 0;">
@@ -737,7 +737,7 @@
                         </ul>
 
                         <p style="margin: 0 0 0.75rem;"><strong>Step 2 — Calculate volume to pipette (µL):</strong></p>
-                        <code style="display: block; background: #fff; padding: 0.5rem 0.75rem; border-radius: 0.25rem; border: 1px solid #e2e8f0; margin-bottom: 0.5rem;">
+                        <code style="display: block; background: #fff; padding: 0.5rem 0.75rem; border-radius: 0.25rem; border: 1px solid var(--tt-border); margin-bottom: 0.5rem;">
                             µL = ng ÷ concentration (ng/µL)
                         </code>
                         <ul style="margin: 0.25rem 0 1rem 1.25rem; padding: 0;">
@@ -756,7 +756,7 @@
                         </p>
                     </div>
                 </details>
-                <div id="calcPrefillBanner" class="info-box" style="display:none; background:#eff6ff; border-color:#bfdbfe; color:#1e40af; margin-bottom:1rem;"></div>
+                <div id="calcPrefillBanner" class="info-box" style="display:none; background:color-mix(in srgb, var(--tt-moclo) 10%, white); border-color:color-mix(in srgb, var(--tt-moclo) 30%, white); color:color-mix(in srgb, var(--tt-moclo) 70%, black); margin-bottom:1rem;"></div>
                 <div id="dnaFragments">
                     <div class="dna-fragment-row">
                         <div class="frag-field">
@@ -789,7 +789,7 @@
             </div>
 
             <div id="calcResults" class="calc-results" style="display: none;">
-                <h3>📋 Reaction Mix</h3>
+                <h3><img class="tt-glyph" src="{{ url_for('static', filename='trellis/glyphs/steps.svg') }}" alt=""> Reaction Mix</h3>
                 <div id="calcResultsContent"></div>
             </div>
         </div>
@@ -890,7 +890,7 @@
                 </ul>
 
                 <div class="info-box">
-                    <strong>💡 Key Advantage:</strong> This digital approach lets you design, validate, and optimize your constructs before spending time and resources in the lab. You can test multiple designs, catch errors early, and ensure compatibility—all in silico.
+                    <strong><img class="tt-glyph" src="{{ url_for('static', filename='trellis/glyphs/tip.svg') }}" alt=""> Key Advantage:</strong> This digital approach lets you design, validate, and optimize your constructs before spending time and resources in the lab. You can test multiple designs, catch errors early, and ensure compatibility—all in silico.
                 </div>
             </div>
         </div>
@@ -906,24 +906,29 @@
         padding: 2rem 1rem;
     }
 
+    /* A quiet card, MoClo's accent along its edge. */
     .protocol-hero {
-        text-align: center;
-        padding: 3rem 0;
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white;
-        border-radius: 1rem;
+        text-align: left;
+        padding: 2rem 2.25rem;
+        background: color-mix(in srgb, var(--tt-moclo) 5%, var(--tt-card));
+        color: var(--tt-text);
+        border: 1px solid var(--tt-border);
+        border-left: 6px solid var(--tt-moclo);
+        box-shadow: var(--tt-shadow);
+        border-radius: var(--tt-radius-lg);
         margin-bottom: 3rem;
     }
 
     .protocol-hero h1 {
-        font-size: 2.5rem;
-        margin-bottom: 1rem;
+        font-size: 2.25rem;
+        margin-bottom: .5rem;
         font-weight: 700;
+        color: var(--tt-text);
     }
 
     .hero-subtitle {
-        font-size: 1.25rem;
-        opacity: 0.95;
+        font-size: 1.2rem;
+        color: var(--tt-muted);
     }
 
     .protocol-section {
@@ -955,16 +960,16 @@
     }
 
     .info-box {
-        background-color: #dbeafe;
-        border: 1px solid #3b82f6;
+        background-color: color-mix(in srgb, var(--tt-moclo) 10%, white);
+        border: 1px solid color-mix(in srgb, var(--tt-moclo) 35%, white);
         border-radius: 0.5rem;
         padding: 1rem 1.5rem;
         margin: 1.5rem 0;
     }
 
     .info-box.warning {
-        background-color: #fef3c7;
-        border-color: #f59e0b;
+        background-color: var(--tt-warn-soft);
+        border-color: var(--tt-warn);
     }
 
     .protocol-graphic {
@@ -986,7 +991,7 @@
         display: flex;
         align-items: center;
         justify-content: center;
-        background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+        background: linear-gradient(135deg, var(--tt-bg) 0%, color-mix(in srgb, var(--tt-moclo) 16%, white) 100%);
         border-radius: 0.5rem;
     }
 
@@ -1041,23 +1046,23 @@
     }
 
     .part-badge.promoter {
-        background-color: #10b981;
+        background-color: var(--tt-green);
     }
 
     .part-badge.utr {
-        background-color: #3b82f6;
+        background-color: var(--tt-editor);
     }
 
     .part-badge.cds {
-        background-color: #8b5cf6;
+        background-color: var(--tt-booking);
     }
 
     .part-badge.terminator {
-        background-color: #ef4444;
+        background-color: var(--tt-danger);
     }
 
     .part-badge.other {
-        background-color: #6b7280;
+        background-color: var(--tt-muted);
     }
 
     code {
@@ -1066,7 +1071,7 @@
         border-radius: 0.25rem;
         font-family: 'Courier New', monospace;
         font-weight: 600;
-        color: #dc2626;
+        color: var(--tt-danger);
     }
 
     .protocol-steps ol {
@@ -1129,23 +1134,23 @@
     }
 
     .part-icon.promoter {
-        background-color: #10b981;
+        background-color: var(--tt-green);
     }
 
     .part-icon.utr {
-        background-color: #3b82f6;
+        background-color: var(--tt-editor);
     }
 
     .part-icon.cds {
-        background-color: #8b5cf6;
+        background-color: var(--tt-booking);
     }
 
     .part-icon.terminator {
-        background-color: #ef4444;
+        background-color: var(--tt-danger);
     }
 
     .part-icon.tu {
-        background-color: #f59e0b;
+        background-color: var(--tt-warn);
     }
 
     .part-name {
@@ -1169,7 +1174,7 @@
     }
 
     .example-result {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        background: var(--tt-green);
         color: white;
         border: none;
         padding: 1.5rem;
@@ -1265,17 +1270,21 @@
         line-height: 1.5;
     }
 
+    /* As the header: a quiet card, MoClo's accent along its edge. */
     .protocol-cta {
         text-align: center;
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white;
-        padding: 3rem 2rem;
-        border-radius: 1rem;
+        background: color-mix(in srgb, var(--tt-moclo) 5%, var(--tt-card));
+        color: var(--tt-text);
+        border: 1px solid var(--tt-border);
+        border-left: 6px solid var(--tt-moclo);
+        box-shadow: var(--tt-shadow);
+        padding: 2.5rem 2rem;
+        border-radius: var(--tt-radius-lg);
         margin-top: 4rem;
     }
 
     .protocol-cta h2 {
-        color: white;
+        color: var(--tt-text);
         border: none;
         margin-bottom: 1rem;
     }
@@ -1283,7 +1292,7 @@
     .protocol-cta p {
         font-size: 1.125rem;
         margin-bottom: 2rem;
-        opacity: 0.95;
+        color: var(--tt-muted);
     }
 
     .cta-buttons {
@@ -1296,13 +1305,13 @@
     .protocol-cta .btn-large {
         padding: 0.875rem 2rem;
         font-size: 1.125rem;
-        background-color: white !important;
-        color: var(--primary-color) !important;
+        background-color: var(--tt-green) !important;
+        color: #fff !important;
     }
 
     .protocol-cta .btn-large:hover {
-        background-color: var(--bg-color) !important;
-        color: var(--primary-color) !important;
+        background-color: var(--tt-green-dark) !important;
+        color: #fff !important;
         transform: translateY(-2px);
         box-shadow: var(--shadow-lg);
     }
@@ -1400,7 +1409,7 @@
     .safety-note {
         margin-top: 1rem;
         padding: 0.75rem;
-        background-color: #fef3c7;
+        background-color: var(--tt-warn-soft);
         border-radius: 0.375rem;
         font-size: 0.875rem;
         color: #92400e;
@@ -1476,7 +1485,7 @@
         width: 50px;
         height: 50px;
         border-radius: 50%;
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        background: var(--tt-green);
         color: white;
         display: flex;
         align-items: center;
@@ -1644,7 +1653,7 @@
         box-sizing: border-box;
     }
     .btn-remove-frag {
-        background: #ef4444;
+        background: var(--tt-danger);
         color: white;
         border: none;
         border-radius: 50%;
@@ -1658,7 +1667,7 @@
         flex-shrink: 0;
         margin-bottom: 2px;
     }
-    .btn-remove-frag:hover { background: #dc2626; }
+    .btn-remove-frag:hover { background: var(--tt-danger); }
     .calc-actions {
         margin: 1.5rem 0;
         text-align: center;
@@ -1699,7 +1708,7 @@
     .result-notes {
         margin-top: 1rem;
         padding: 1rem;
-        background-color: #dbeafe;
+        background-color: color-mix(in srgb, var(--tt-moclo) 10%, white);
         border-radius: 0.5rem;
         font-size: 0.9rem;
     }
@@ -1763,7 +1772,7 @@
         align-items: center;
         padding: 1.5rem 2rem;
         border-bottom: 2px solid var(--border-color);
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        background: var(--tt-green);
         color: white;
         border-radius: 1rem 1rem 0 0;
     }
@@ -1852,7 +1861,7 @@
         width: 50px;
         height: 50px;
         border-radius: 50%;
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        background: var(--tt-green);
         color: white;
         display: flex;
         align-items: center;

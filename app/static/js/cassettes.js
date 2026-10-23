@@ -52,7 +52,7 @@ function renderCassettes() {
     if (cassettes.length === 0) {
         container.innerHTML = `
             <div class="empty-cassettes">
-                <div class="empty-cassettes-icon">🧬</div>
+                <div class="empty-cassettes-icon"><img class="tt-glyph" src="/static/trellis/glyphs/line.svg" alt=""></div>
                 <h2>No Cassettes Yet</h2>
                 <p>You haven't created any cassettes yet. Start by assembling compatible parts.</p>
                 <a href="/assembly" class="btn btn-primary">Create Your First Cassette</a>
@@ -90,15 +90,15 @@ function createCassetteCard(cassette) {
         <div class="cassette-name">${escapeHtml(cassette.name)}</div>
         <div class="cassette-meta">
             <span class="cassette-meta-item">
-                <span>📅</span>
+                <span><img class="tt-glyph" src="/static/trellis/glyphs/calendar.svg" alt=""></span>
                 <span>${createdDate}</span>
             </span>
             <span class="cassette-meta-item">
-                <span>🧩</span>
+                <span><img class="tt-glyph" src="/static/trellis/glyphs/cassette.svg" alt=""></span>
                 <span>${cassette.part_count} parts</span>
             </span>
             <span class="cassette-meta-item">
-                <span>📏</span>
+                <span><img class="tt-glyph" src="/static/trellis/glyphs/ruler.svg" alt=""></span>
                 <span>${cassette.length} bp</span>
             </span>
         </div>
@@ -123,19 +123,19 @@ function createCassetteCard(cassette) {
     actions.className = 'cassette-actions';
     actions.innerHTML = `
         <button class="btn-export" onclick="exportCassette('${cassette.id}', 'fasta')" title="Export as FASTA">
-            📄 FASTA
+            <img class="tt-glyph" src="/static/trellis/glyphs/doc.svg" alt=""> FASTA
         </button>
         <button class="btn-export" onclick="exportCassette('${cassette.id}', 'genbank')" title="Export as GenBank">
-            📄 GenBank
+            <img class="tt-glyph" src="/static/trellis/glyphs/doc.svg" alt=""> GenBank
         </button>
         <button class="btn-export" onclick="exportCassette('${cassette.id}', 'snapgene')" title="Export as SnapGene (.dna)">
-            📄 SnapGene
+            <img class="tt-glyph" src="/static/trellis/glyphs/doc.svg" alt=""> SnapGene
         </button>
         <button class="btn-export" onclick="exportCassette('${cassette.id}', 'svg')" title="Export as SVG image">
-            🖼️ SVG
+            <img class="tt-glyph" src="/static/trellis/glyphs/image.svg" alt=""> SVG
         </button>
         <button class="btn-delete" onclick="deleteCassette('${cassette.id}')" title="Delete cassette">
-            🗑️
+            <img class="tt-glyph" src="/static/trellis/glyphs/trash.svg" alt="">
         </button>
     `;
 
@@ -273,7 +273,7 @@ function renderCassetteDetail(cassette) {
                 const t = unit.translation;
                 const protein = t.protein_sequence_spliced || t.protein_sequence || '';
                 if (t.requires_splicing) {
-                    html += `<div class="translation-item" style="font-size:0.8rem; color:#6b21a8;">🧬 Contains introns/exons — splicing required; protein shown is from genomic DNA.</div>`;
+                    html += `<div class="translation-item" style="font-size:0.8rem; color:#6b21a8;"><img class="tt-glyph" src="/static/trellis/glyphs/line.svg" alt=""> Contains introns/exons — splicing required; protein shown is from genomic DNA.</div>`;
                 }
                 if (protein) {
                     html += `
@@ -328,7 +328,7 @@ function renderCassetteDetail(cassette) {
         if (trans.requires_splicing) {
             html += `
                 <div class="splicing-notice">
-                    <div class="splicing-icon">🧬</div>
+                    <div class="splicing-icon"><img class="tt-glyph" src="/static/trellis/glyphs/line.svg" alt=""></div>
                     <div class="splicing-content">
                         <div class="splicing-title">RNA Splicing Required</div>
                         <div class="splicing-message">
@@ -400,7 +400,7 @@ function renderCassetteDetail(cassette) {
             trans.warnings.forEach(warning => {
                 html += `
                         <div class="warning-message">
-                            <span class="warning-icon">⚠️</span>
+                            <span class="warning-icon"><img class="tt-glyph" src="/static/trellis/glyphs/hazard.svg" alt=""></span>
                             <span>${escapeHtml(warning)}</span>
                         </div>
                 `;
@@ -543,7 +543,7 @@ function renderCassetteDetail(cassette) {
     const addBackboneNudge = String(cassette.level) === '2'
         ? `<a href="/plasmid-assembly?cassette=${encodeURIComponent(cassette.id)}"
               class="btn btn-primary" title="Assemble into a Level 2 acceptor backbone to create the final plasmid">
-              🧬 Add backbone &amp; create plasmid</a>`
+              <img class="tt-glyph" src="/static/trellis/glyphs/plasmid.svg" alt=""> Add backbone &amp; create plasmid</a>`
         : '';
     html += `
         <div class="detail-section">
@@ -561,20 +561,20 @@ function renderCassetteDetail(cassette) {
     html += `
         <div class="detail-actions">
             <button class="btn btn-primary" onclick="exportCassette('${cassette.id}', 'fasta')">
-                📄 Export FASTA
+                <img class="tt-glyph" src="/static/trellis/glyphs/doc.svg" alt=""> Export FASTA
             </button>
             <button class="btn btn-primary" onclick="exportCassette('${cassette.id}', 'genbank')">
-                📄 Export GenBank
+                <img class="tt-glyph" src="/static/trellis/glyphs/doc.svg" alt=""> Export GenBank
             </button>
             <button class="btn btn-primary" onclick="exportCassette('${cassette.id}', 'snapgene')">
-                📄 Export SnapGene
+                <img class="tt-glyph" src="/static/trellis/glyphs/doc.svg" alt=""> Export SnapGene
             </button>
             <button class="btn btn-primary" onclick="exportCassette('${cassette.id}', 'svg')">
-                🖼️ Export SVG
+                <img class="tt-glyph" src="/static/trellis/glyphs/image.svg" alt=""> Export SVG
             </button>
             ${notebookButtonHtml('addShownCassetteToNotebook()')}
             <button class="btn btn-danger" onclick="deleteCassetteFromDetail('${cassette.id}')">
-                🗑️ Delete Cassette
+                <img class="tt-glyph" src="/static/trellis/glyphs/trash.svg" alt=""> Delete Cassette
             </button>
         </div>
     `;
@@ -720,7 +720,7 @@ async function loadCompatibleBackbones(cassetteId) {
                     <div>
                         <a href="/plasmid-assembly?backbone=${backbone.backbone_id}&cassette=${cassetteId}" 
                            class="btn btn-primary" style="white-space: nowrap;">
-                            🧬 Assemble
+                            <img class="tt-glyph" src="/static/trellis/glyphs/plasmid.svg" alt=""> Assemble
                         </a>
                     </div>
                 </div>

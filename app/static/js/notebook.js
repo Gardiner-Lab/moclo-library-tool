@@ -127,10 +127,10 @@ function addToNotebook(what, make) {
     });
 }
 
-/** The "📓 Add to notebook" button's HTML, calling `call` (a global function call, as a string); '' without a notebook. */
+/** The "Add to notebook" button's HTML, calling `call` (a global function call, as a string); '' without a notebook. */
 function notebookButtonHtml(call, className = 'btn btn-primary') {
     return notebookEnabled()
-        ? `<button class="${className}" type="button" onclick="${call}" title="Put this into a day's page of your Lab Notebook">📓 Add to notebook</button>`
+        ? `<button class="${className}" type="button" onclick="${call}" title="Put this into a day's page of your Lab Notebook"><img class="tt-glyph" src="/static/trellis/glyphs/notebook.svg" alt=""> Add to notebook</button>`
         : '';
 }
 

@@ -374,7 +374,7 @@ function renderPartDetails(part) {
         const notebookBtn = document.createElement('button');
         notebookBtn.id = 'notebookPartBtn';
         notebookBtn.className = 'btn btn-secondary btn-sm';
-        notebookBtn.textContent = '📓 Add to notebook';
+        notebookBtn.innerHTML = '<img class="tt-glyph" src="/static/trellis/glyphs/notebook.svg" alt=""> Add to notebook';
         notebookBtn.title = "Put this part into a day's page of your Lab Notebook";
         notebookBtn.style.marginRight = '10px';
         notebookBtn.onclick = (e) => {
