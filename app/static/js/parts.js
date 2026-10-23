@@ -366,6 +366,23 @@ function renderPartDetails(part) {
         downloadPartGenBank(part.id, 'snapgene');
     };
     modalHeader.insertBefore(snapGeneBtn, document.getElementById('closeModal'));
+
+    // Into a day's page of the suite's Lab Notebook: its diagram and details.
+    document.getElementById('notebookPartBtn')?.remove();
+    window._shownPart = part;
+    if (notebookEnabled()) {
+        const notebookBtn = document.createElement('button');
+        notebookBtn.id = 'notebookPartBtn';
+        notebookBtn.className = 'btn btn-secondary btn-sm';
+        notebookBtn.textContent = '📓 Add to notebook';
+        notebookBtn.title = "Put this part into a day's page of your Lab Notebook";
+        notebookBtn.style.marginRight = '10px';
+        notebookBtn.onclick = (e) => {
+            e.stopPropagation();
+            addShownPartToNotebook();
+        };
+        modalHeader.insertBefore(notebookBtn, document.getElementById('closeModal'));
+    }
     
     // Add edit button for user-uploaded parts (not system parts) or if user is admin
     const isAdmin = document.body.dataset.isAdmin === 'true';

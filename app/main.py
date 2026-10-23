@@ -75,6 +75,9 @@ def create_app():
             # Set when this tool runs inside the Gardiner Lab suite: a link back
             # to the suite's landing page, and the suite's one registration page.
             'suite_home': os.environ.get('SUITE_HOME_URL', '').strip(),
+            # The suite's Lab Notebook ("/notebook"): a part, a plasmid's map
+            # or a cassette's diagram can be put into a day's page there.
+            'notebook_url': os.environ.get('NOTEBOOK_URL', '').strip().rstrip('/'),
             'registration_url': os.environ.get('REGISTRATION_URL', '').strip() or '/register',
             # Inside the suite, accounts and the library are managed on its
             # dashboard, which shows MoClo's pages without their navigation.

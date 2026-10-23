@@ -91,7 +91,7 @@ To run it together with the Plasmid Editor, one port and one set of accounts for
 [Gardiner Lab tool suite](https://github.com/Gardiner-Lab/gardiner-lab-suite) instead: its
 installer takes over an existing MoClo installation with its users and data. The suite sets
 `SUITE_HOME_URL` (a "Lab tools" link back to its landing page), `REGISTRATION_URL` (sign-up on
-its shared registration page) and `SUITE_AUTH=proxy` (see below); all are off unless set.
+its shared registration page), `NOTEBOOK_URL` (a part, a plasmid's map or a cassette's diagram can be put into a day's page of the suite's Lab Notebook) and `SUITE_AUTH=proxy` (see below); all are off unless set.
 
 With `SUITE_AUTH=proxy`, MoClo has no sign-in of its own: the suite's proxy names the signed-in
 user in an `X-Suite-User` header, and MoClo's Login and Logout send people to the suite's pages
