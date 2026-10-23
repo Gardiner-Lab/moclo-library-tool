@@ -5,6 +5,18 @@ All notable changes to the MoClo Library Tool project will be documented in this
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Changed
+- **Trellis Tools' look**: the header every module shares (Trellis Tools, then this module's icon and name,
+  its tabs, the person and Log out), and the suite's palette - green for what you do, brown for structure,
+  on warm paper-white - from static/trellis/trellis.css, copied in from the suite (design/sync.sh). Its info and feature
+  boxes in MoClo's own moss olive; the protocol opens and closes on a quiet card.
+- The protocol's Level 0, 1 and 2 diagrams in the suite's colours and font; part types coloured alike in
+  the diagrams, the examples and the table; light text on its dark green table headers.
+- Trellis Tools' small icons instead of emoji, on every page; its dashboard tabs name theirs ("glyph").
+- The footer gives MoClo's real version (it said v0.1.0).
+
 ## [1.15.1] - 2026-10-23
 
 ### Changed

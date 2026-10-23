@@ -24,8 +24,8 @@ def test_standalone_pages_are_unchanged(monkeypatch, client):
 def test_lab_tools_link(monkeypatch, client):
     monkeypatch.setenv('SUITE_HOME_URL', '/')
     page = client.get('/login').get_data(as_text=True)
-    assert 'class="navbar-home"' in page
-    assert 'Lab tools' in page
+    assert 'class="tt-home"' in page
+    assert 'Trellis Tools' in page
 
 
 def test_registration_goes_to_the_suite(monkeypatch, client):

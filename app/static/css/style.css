@@ -6,22 +6,21 @@
 }
 
 :root {
-    --primary-color: #2563eb;
-    --primary-hover: #1d4ed8;
-    --success-color: #10b981;
-    --error-color: #ef4444;
-    --warning-color: #f59e0b;
-    --text-color: #1f2937;
-    --text-secondary: #6b7280;
-    --border-color: #e5e7eb;
-    --bg-color: #f9fafb;
-    --card-bg: #ffffff;
-    --shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
-    --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+    --primary-color: var(--tt-green);
+    --primary-hover: var(--tt-green-dark);
+    --success-color: var(--tt-ok);
+    --error-color: var(--tt-danger);
+    --warning-color: var(--tt-warn);
+    --text-color: var(--tt-text);
+    --text-secondary: var(--tt-muted);
+    --border-color: var(--tt-border);
+    --bg-color: var(--tt-bg);
+    --card-bg: var(--tt-card);
+    --shadow: var(--tt-shadow);
+    --shadow-lg: var(--tt-shadow-lg);
 }
 
 body {
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
     line-height: 1.6;
     color: var(--text-color);
     background-color: var(--bg-color);
@@ -52,110 +51,7 @@ a:visited {
 }
 
 /* Navigation */
-.navbar {
-    background-color: var(--card-bg);
-    border-bottom: 1px solid var(--border-color);
-    padding: 0.75rem 0;
-    box-shadow: var(--shadow);
-    position: sticky;
-    top: 0;
-    z-index: 100;
-}
-
-.navbar .container {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: 2rem;
-}
-
-.navbar-brand {
-    font-size: 1.25rem;
-    font-weight: 600;
-    flex-shrink: 0;
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-}
-
-/* Back to the suite's launch page, when SUITE_HOME_URL is set. */
-.navbar-home {
-    color: var(--text-secondary);
-    font-size: 0.875rem;
-    font-weight: 500;
-    padding: 0.3rem 0.6rem;
-    border-radius: 0.375rem;
-    text-decoration: none;
-    white-space: nowrap;
-}
-
-.navbar-home:hover {
-    background-color: var(--bg-color);
-    color: var(--primary-color);
-    text-decoration: none;
-}
-
-.navbar-logo {
-    color: var(--primary-color);
-    text-decoration: none;
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    font-weight: 700;
-}
-
-.navbar-logo:hover {
-    color: var(--primary-hover);
-    text-decoration: none;
-}
-
-.navbar-menu {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    flex-wrap: wrap;
-}
-
-.navbar-link {
-    color: var(--text-color);
-    text-decoration: none;
-    padding: 0.5rem 0.75rem;
-    border-radius: 0.375rem;
-    transition: background-color 0.2s, color 0.2s;
-    font-size: 0.9375rem;
-    white-space: nowrap;
-}
-
-.navbar-link:hover {
-    background-color: var(--bg-color);
-    color: var(--primary-color);
-    text-decoration: none;
-}
-
-.navbar-link-action {
-    background-color: var(--bg-color);
-    font-weight: 500;
-}
-
-.navbar-link-action:hover {
-    background-color: var(--primary-color);
-    color: white;
-}
-
-.navbar-divider {
-    width: 1px;
-    height: 1.5rem;
-    background-color: var(--border-color);
-    margin: 0 0.25rem;
-}
-
-.navbar-user {
-    color: var(--text-secondary);
-    font-weight: 500;
-    padding: 0.5rem 0.75rem;
-    font-size: 0.9375rem;
-    white-space: nowrap;
-}
+/* The header is the one every module shares (static/trellis/trellis.css). */
 
 /* Main Content */
 .main-content {
@@ -182,27 +78,27 @@ a:visited {
 }
 
 .alert-success {
-    background-color: #d1fae5;
+    background-color: var(--tt-green-soft);
     border-color: var(--success-color);
-    color: #065f46;
+    color: var(--tt-green-ink);
 }
 
 .alert-error {
-    background-color: #fee2e2;
+    background-color: var(--tt-danger-soft);
     border-color: var(--error-color);
-    color: #991b1b;
+    color: var(--tt-danger);
 }
 
 .alert-warning {
-    background-color: #fef3c7;
+    background-color: var(--tt-warn-soft);
     border-color: var(--warning-color);
-    color: #92400e;
+    color: var(--tt-warn);
 }
 
 .alert-info {
-    background-color: #dbeafe;
+    background-color: var(--tt-green-soft);
     border-color: var(--primary-color);
-    color: #1e40af;
+    color: var(--tt-green-ink);
 }
 
 /* Authentication Pages */
@@ -481,7 +377,7 @@ a.btn:hover {
 }
 
 .btn-secondary:hover:not(:disabled) {
-    background-color: #4b5563;
+    background-color: var(--tt-muted);
 }
 
 /* Ensure anchor tags styled as buttons have white text */
@@ -595,23 +491,23 @@ a.btn-secondary:active {
 }
 
 .type-badge.type-coding {
-    background-color: #2563eb;
+    background-color: var(--tt-green-dark);
 }
 
 .type-badge.type-noncodingpromoter {
-    background-color: #10b981;
+    background-color: var(--tt-green);
 }
 
 .type-badge.type-noncodingterminator {
-    background-color: #ef4444;
+    background-color: var(--tt-danger);
 }
 
 .type-badge.type-noncodingintron {
-    background-color: #f59e0b;
+    background-color: var(--tt-warn);
 }
 
 .type-badge.type-noncodingother {
-    background-color: #6b7280;
+    background-color: var(--tt-muted);
 }
 
 .part-compatibility {
@@ -846,7 +742,7 @@ a.btn-secondary:active {
 }
 
 .compatible-part-item:hover {
-    background-color: #e5e7eb;
+    background-color: var(--tt-border);
 }
 
 .compatible-part-item .part-name {
@@ -862,7 +758,7 @@ a.btn-secondary:active {
     margin-bottom: 0.5rem;
     background-color: var(--bg-color);
     border-radius: 0.375rem;
-    border: 1px solid #e5e7eb;
+    border: 1px solid var(--tt-border);
     transition: all 0.2s;
 }
 
@@ -871,7 +767,7 @@ a.btn-secondary:active {
 }
 
 .part-list-item.clickable:hover {
-    background-color: #f3f4f6;
+    background-color: var(--tt-sunk);
     border-color: var(--primary-color);
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
     transform: translateY(-1px);
@@ -965,12 +861,12 @@ a.btn-secondary:active {
     padding: 0.1rem 0.45rem;
     border-radius: 1rem;
 }
-.strategy-role-vector { background: #e0e7ff; color: #3730a3; }
-.strategy-role-insert { background: #dcfce7; color: #166534; }
+.strategy-role-vector { background: var(--tt-green-soft); color: var(--tt-green-ink); }
+.strategy-role-insert { background: var(--tt-green-soft); color: var(--tt-green-ink); }
 
 .protein-sequence {
-    background-color: #f0f9ff;
-    color: #1e40af;
+    background-color: color-mix(in srgb, var(--tt-moclo) 6%, white);
+    color: var(--tt-green-ink);
     font-family: 'Courier New', monospace;
     font-size: 0.875rem;
     line-height: 1.6;
@@ -991,8 +887,8 @@ a.btn-secondary:active {
 .stop-codon-badge {
     display: inline-block;
     padding: 0.25rem 0.75rem;
-    background-color: #fee2e2;
-    color: #991b1b;
+    background-color: var(--tt-danger-soft);
+    color: var(--tt-danger);
     border-radius: 0.25rem;
     font-size: 0.875rem;
     font-weight: 500;
@@ -1000,8 +896,8 @@ a.btn-secondary:active {
 }
 
 .translation-warnings {
-    background-color: #fef3c7;
-    border-left: 4px solid #f59e0b;
+    background-color: var(--tt-warn-soft);
+    border-left: 4px solid var(--tt-warn);
     padding: 1rem;
     border-radius: 0.375rem;
 }
@@ -1011,7 +907,7 @@ a.btn-secondary:active {
     align-items: flex-start;
     gap: 0.5rem;
     margin-bottom: 0.5rem;
-    color: #92400e;
+    color: var(--tt-warn);
 }
 
 .warning-message:last-child {
@@ -1162,7 +1058,7 @@ a.btn-view:active {
 }
 
 .btn-danger:hover:not(:disabled) {
-    background-color: #dc2626;
+    background-color: var(--tt-danger);
 }
 
 /* Ensure anchor tags styled as buttons have white text */
@@ -1239,12 +1135,12 @@ a.btn-danger:active {
 
 .file-input-label:hover {
     border-color: var(--primary-color);
-    background-color: #f3f4f6;
+    background-color: var(--tt-sunk);
 }
 
 .file-input-label.has-file {
     border-color: var(--success-color);
-    background-color: #d1fae5;
+    background-color: var(--tt-green-soft);
 }
 
 .file-input {
@@ -1299,8 +1195,8 @@ a.btn-danger:active {
 
 .plasmid-features .feature-label {
     display: inline-block;
-    background-color: #dbeafe;
-    color: #1e40af;
+    background-color: var(--tt-green-soft);
+    color: var(--tt-green-ink);
     font-size: 0.75rem;
     padding: 0.2rem 0.5rem;
     border-radius: 0.25rem;
@@ -1340,7 +1236,7 @@ a.btn-danger:active {
 }
 
 .plasmid-visualization:hover {
-    background-color: #e5e7eb;
+    background-color: var(--tt-border);
 }
 
 .plasmid-visualization img {
@@ -1630,21 +1526,21 @@ a.btn-danger:active {
     text-decoration: none !important;
 }
 
-/* Exception for protocol-cta buttons - they have custom white background with blue text */
+/* The protocol's closing card is light: its buttons are the usual green ones. */
 .protocol-cta a.btn-large,
 .protocol-cta a.btn-large:link,
 .protocol-cta a.btn-large:visited,
 .protocol-cta button.btn-large {
-    background-color: white !important;
-    color: var(--primary-color) !important;
+    background-color: var(--tt-green) !important;
+    color: #ffffff !important;
 }
 
 .protocol-cta a.btn-large:hover,
 .protocol-cta a.btn-large:active,
 .protocol-cta button.btn-large:hover,
 .protocol-cta button.btn-large:active {
-    background-color: var(--bg-color) !important;
-    color: var(--primary-color) !important;
+    background-color: var(--tt-green-dark) !important;
+    color: #ffffff !important;
 }
 
 /* Edit Backbone Form Styles */
@@ -1704,8 +1600,8 @@ a.btn-danger:active {
 
 /* GenBank Upload Styles */
 .info-banner {
-    background-color: #e0f2fe;
-    border: 1px solid #0ea5e9;
+    background-color: color-mix(in srgb, var(--tt-moclo) 10%, white);
+    border: 1px solid var(--tt-moclo);
     border-radius: 0.5rem;
     padding: 1.5rem;
     margin-bottom: 2rem;
@@ -1744,12 +1640,12 @@ a.btn-danger:active {
 
 .file-upload-area:hover {
     border-color: var(--primary-color);
-    background-color: #f0f9ff;
+    background-color: color-mix(in srgb, var(--tt-moclo) 6%, white);
 }
 
 .file-upload-area.drag-over {
     border-color: var(--primary-color);
-    background-color: #dbeafe;
+    background-color: var(--tt-green-soft);
 }
 
 .file-upload-prompt {
@@ -1813,7 +1709,7 @@ a.btn-danger:active {
 }
 
 .btn-remove-file:hover {
-    background-color: #dc2626;
+    background-color: var(--tt-danger);
 }
 
 @media (max-width: 768px) {
@@ -1828,8 +1724,8 @@ a.btn-danger:active {
 
 /* Splicing Notice Styles */
 .splicing-notice {
-    background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
-    border: 2px solid #f59e0b;
+    background: linear-gradient(135deg, var(--tt-warn-soft) 0%, #ecd5a0 100%);
+    border: 2px solid var(--tt-warn);
     border-radius: 0.5rem;
     padding: 1.5rem;
     margin-bottom: 1.5rem;
@@ -1851,19 +1747,19 @@ a.btn-danger:active {
 .splicing-title {
     font-size: 1.125rem;
     font-weight: 700;
-    color: #92400e;
+    color: var(--tt-warn);
     margin-bottom: 0.5rem;
 }
 
 .splicing-message {
-    color: #78350f;
+    color: var(--tt-warn);
     font-size: 0.9375rem;
     line-height: 1.6;
     margin-bottom: 0.75rem;
 }
 
 .splicing-parts {
-    color: #78350f;
+    color: var(--tt-warn);
     font-size: 0.875rem;
     margin-top: 0.5rem;
     padding: 0.5rem;
@@ -1873,7 +1769,7 @@ a.btn-danger:active {
 
 .splicing-parts strong {
     font-weight: 600;
-    color: #92400e;
+    color: var(--tt-warn);
 }
 
 @media (max-width: 768px) {
@@ -1889,8 +1785,8 @@ a.btn-danger:active {
 
 /* Intron Predictions Styles */
 .intron-predictions {
-    background: linear-gradient(135deg, #e0f2fe 0%, #bae6fd 100%);
-    border: 2px solid #0ea5e9;
+    background: linear-gradient(135deg, color-mix(in srgb, var(--tt-moclo) 10%, white) 0%, color-mix(in srgb, var(--tt-moclo) 24%, white) 100%);
+    border: 2px solid var(--tt-moclo);
     border-radius: 0.5rem;
     padding: 1.5rem;
     margin-top: 1.5rem;
@@ -1912,13 +1808,13 @@ a.btn-danger:active {
 .intron-predictions-title {
     font-size: 1.125rem;
     font-weight: 700;
-    color: #075985;
+    color: color-mix(in srgb, var(--tt-moclo) 75%, black);
     margin-bottom: 0.25rem;
 }
 
 .intron-predictions-subtitle {
     font-size: 0.9375rem;
-    color: #0c4a6e;
+    color: color-mix(in srgb, var(--tt-moclo) 65%, black);
     line-height: 1.5;
 }
 
@@ -1927,20 +1823,20 @@ a.btn-danger:active {
     border-radius: 0.375rem;
     padding: 1rem;
     margin-bottom: 1rem;
-    border-left: 4px solid #94a3b8;
+    border-left: 4px solid var(--tt-muted);
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
 .intron-prediction-item.confidence-high {
-    border-left-color: #10b981;
+    border-left-color: var(--tt-green);
 }
 
 .intron-prediction-item.confidence-medium {
-    border-left-color: #f59e0b;
+    border-left-color: var(--tt-warn);
 }
 
 .intron-prediction-item.confidence-low {
-    border-left-color: #ef4444;
+    border-left-color: var(--tt-danger);
 }
 
 .intron-prediction-header {
@@ -1961,18 +1857,18 @@ a.btn-danger:active {
 }
 
 .confidence-badge.confidence-high {
-    background-color: #d1fae5;
-    color: #065f46;
+    background-color: var(--tt-green-soft);
+    color: var(--tt-green-ink);
 }
 
 .confidence-badge.confidence-medium {
-    background-color: #fef3c7;
-    color: #92400e;
+    background-color: var(--tt-warn-soft);
+    color: var(--tt-warn);
 }
 
 .confidence-badge.confidence-low {
-    background-color: #fee2e2;
-    color: #991b1b;
+    background-color: var(--tt-danger-soft);
+    color: var(--tt-danger);
 }
 
 .intron-position {
@@ -2019,11 +1915,11 @@ a.btn-danger:active {
     border-radius: 0.25rem;
     font-family: 'Courier New', monospace;
     font-weight: 600;
-    color: #0ea5e9;
+    color: var(--tt-moclo);
 }
 
 .intron-detail-value.removes-stop {
-    color: #10b981;
+    color: var(--tt-green);
     font-weight: 600;
 }
 
@@ -2032,19 +1928,19 @@ a.btn-danger:active {
     border-radius: 0.375rem;
     padding: 1rem;
     font-size: 0.875rem;
-    color: #0c4a6e;
+    color: color-mix(in srgb, var(--tt-moclo) 65%, black);
     line-height: 1.6;
     margin-top: 0.5rem;
 }
 
 .intron-predictions-note strong {
     font-weight: 700;
-    color: #075985;
+    color: color-mix(in srgb, var(--tt-moclo) 75%, black);
 }
 
 .protein-sequence.spliced {
-    background-color: #d1fae5;
-    color: #065f46;
+    background-color: var(--tt-green-soft);
+    color: var(--tt-green-ink);
 }
 
 @media (max-width: 768px) {
@@ -2077,9 +1973,9 @@ a.btn-danger:active {
 .splice-sites-info {
     margin-top: 1rem;
     padding: 1rem;
-    background-color: #f0f9ff;
+    background-color: color-mix(in srgb, var(--tt-moclo) 6%, white);
     border-radius: 0.375rem;
-    border: 1px solid #0ea5e9;
+    border: 1px solid var(--tt-moclo);
 }
 
 .splice-sites-table {
@@ -2094,7 +1990,7 @@ a.btn-danger:active {
 }
 
 .splice-sites-table th {
-    background-color: #0ea5e9;
+    background-color: var(--tt-moclo);
     color: white;
     padding: 0.5rem;
     text-align: left;
@@ -2103,11 +1999,11 @@ a.btn-danger:active {
 
 .splice-sites-table td {
     padding: 0.5rem;
-    border-bottom: 1px solid #e0f2fe;
+    border-bottom: 1px solid color-mix(in srgb, var(--tt-moclo) 10%, white);
 }
 
 .splice-sites-table tr:hover {
-    background-color: #e0f2fe;
+    background-color: color-mix(in srgb, var(--tt-moclo) 10%, white);
 }
 
 .splice-sites-table code {
@@ -2116,13 +2012,13 @@ a.btn-danger:active {
     border-radius: 0.25rem;
     font-family: 'Courier New', monospace;
     font-weight: 600;
-    color: #0c4a6e;
-    border: 1px solid #bae6fd;
+    color: color-mix(in srgb, var(--tt-moclo) 65%, black);
+    border: 1px solid color-mix(in srgb, var(--tt-moclo) 24%, white);
 }
 
 .splice-note {
     margin-top: 0.5rem;
-    color: #0c4a6e;
+    color: color-mix(in srgb, var(--tt-moclo) 65%, black);
     font-style: italic;
 }
 
@@ -2144,8 +2040,8 @@ a.btn-danger:active {
 .status-corrected {
     display: inline-block;
     padding: 0.25rem 0.5rem;
-    background-color: #d1fae5;
-    color: #065f46;
+    background-color: var(--tt-green-soft);
+    color: var(--tt-green-ink);
     border-radius: 0.25rem;
     font-size: 0.75rem;
     font-weight: 600;
@@ -2154,15 +2050,15 @@ a.btn-danger:active {
 .status-annotation {
     display: inline-block;
     padding: 0.25rem 0.5rem;
-    background-color: #fef3c7;
-    color: #92400e;
+    background-color: var(--tt-warn-soft);
+    color: var(--tt-warn);
     border-radius: 0.25rem;
     font-size: 0.75rem;
     font-weight: 600;
 }
 
 .splice-sites-table td small {
-    color: #6b7280;
+    color: var(--tt-muted);
     font-style: italic;
 }
 
@@ -2181,9 +2077,9 @@ a.btn-danger:active {
 }
 .notebook-dialog-box h3 { margin: 0 0 0.6rem; font-size: 1.1rem; }
 .notebook-dialog-box label { display: block; font-weight: 600; font-size: 0.85rem; margin: 0.6rem 0 0.25rem; }
-.notebook-dialog-box input[type=date] { padding: 0.35rem 0.5rem; border: 1px solid #d1d5db; border-radius: 0.375rem; }
-.notebook-dialog-hint { color: #6b7280; font-size: 0.8rem; margin: 0.3rem 0 0; }
-.notebook-dialog-error { color: #b91c1c; font-size: 0.85rem; margin: 0.6rem 0 0; }
+.notebook-dialog-box input[type=date] { padding: 0.35rem 0.5rem; border: 1px solid var(--tt-border); border-radius: 0.375rem; }
+.notebook-dialog-hint { color: var(--tt-muted); font-size: 0.8rem; margin: 0.3rem 0 0; }
+.notebook-dialog-error { color: var(--tt-danger); font-size: 0.85rem; margin: 0.6rem 0 0; }
 .notebook-dialog-buttons { display: flex; justify-content: flex-end; gap: 0.5rem; margin-top: 1rem; }
 
 /* A plasmid's export options: one row of matching buttons (links and buttons alike), wrapping as needed. */
@@ -2194,6 +2090,6 @@ a.btn-danger:active {
     padding: 0.5rem 0.9rem; font-family: inherit; font-size: 0.9rem; font-weight: 500; line-height: 1.25;
     box-sizing: border-box;
 }
-.export-buttons .export-label { align-self: center; font-weight: 600; color: var(--text-secondary, #6b7280); margin-right: 0.15rem; }
+.export-buttons .export-label { align-self: center; font-weight: 600; color: var(--text-secondary, var(--tt-muted)); margin-right: 0.15rem; }
 /* The notebook is not a download: set a little apart, at the end of the row. */
 .export-buttons .export-notebook { margin-left: 0.75rem; }

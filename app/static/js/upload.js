@@ -968,14 +968,14 @@ async function handleBulkSubmit(event) {
                 const renameNote = renamed ? ` <span style="color:#6b7280;">— renamed to ${escapeHtml(file.name)}</span>` : '';
                 resultsDiv.innerHTML += `<div style="color: #16a34a;">✓ ${escapeHtml(objName)}${kindNote} — uploaded${renameNote}</div>`;
                 if (data.coding_warning) {
-                    resultsDiv.innerHTML += `<div style="color: #d97706; margin-left: 1rem;">⚠ ${escapeHtml(data.coding_warning)}</div>`;
+                    resultsDiv.innerHTML += `<div style="color: #d97706; margin-left: 1rem;"><img class="tt-glyph" src="/static/trellis/glyphs/hazard.svg" alt=""> ${escapeHtml(data.coding_warning)}</div>`;
                 }
                 if (data.restriction_warning) {
                     resultsDiv.innerHTML += `<div style="color: #2563eb; margin-left: 1rem;">ℹ ${escapeHtml(data.restriction_warning)}</div>`;
                 }
             } else if (response.status === 409) {
                 duplicateCount++;
-                resultsDiv.innerHTML += `<div style="color: #d97706;">⚠ ${shown} — ${data.error || data.message || 'duplicate'}</div>`;
+                resultsDiv.innerHTML += `<div style="color: #d97706;"><img class="tt-glyph" src="/static/trellis/glyphs/hazard.svg" alt=""> ${shown} — ${data.error || data.message || 'duplicate'}</div>`;
             } else {
                 failCount++;
                 resultsDiv.innerHTML += `<div style="color: #dc2626;">✗ ${shown} — ${data.error || data.message || 'failed'}</div>`;

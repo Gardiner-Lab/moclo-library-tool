@@ -158,7 +158,7 @@
     <!-- GenBank Upload Form -->
     <div class="upload-card" id="genbankUploadCard" style="display: none;">
         <div class="info-banner">
-            <strong>📄 GenBank File Upload</strong>
+            <strong><img class="tt-glyph" src="{{ url_for('static', filename='trellis/glyphs/doc.svg') }}" alt=""> GenBank File Upload</strong>
             <p>Upload a GenBank file (.gb, .gbk, or .genbank) containing your MoClo part. The tool will automatically:</p>
             <ul>
                 <li>Detect BsaI restriction sites (GGTCTC/GAGACC)</li>
@@ -183,7 +183,7 @@
                         style="display: none;"
                     >
                     <div class="file-upload-prompt">
-                        <div class="upload-icon">📁</div>
+                        <div class="upload-icon"><img class="tt-glyph" src="{{ url_for('static', filename='trellis/glyphs/open.svg') }}" alt=""></div>
                         <p>Click to select or drag and drop a GenBank or SnapGene file</p>
                         <p class="file-types">.gb, .gbk, .genbank or SnapGene .dna files</p>
                     </div>
@@ -271,7 +271,7 @@
     <!-- Bulk Upload Card -->
     <div class="upload-card" id="bulkUploadCard" style="display: none;">
         <div class="info-banner">
-            <strong>📦 Bulk GenBank Upload</strong>
+            <strong><img class="tt-glyph" src="{{ url_for('static', filename='trellis/glyphs/box.svg') }}" alt=""> Bulk GenBank Upload</strong>
             <p>Upload multiple GenBank files (.gb, .gbk, or .genbank) at once. Each file will be parsed and added as a separate part.</p>
             <p><strong>Filename tip:</strong> put an <code>L0</code>, <code>L1</code>, <code>L2</code> or
             <code>Lvl1</code> token in the filename (set off by <code>_</code>, <code>-</code>, <code>.</code>
@@ -294,7 +294,7 @@
                         style="display: none;"
                     >
                     <div class="file-upload-prompt" id="bulkFilePrompt">
-                        <div class="upload-icon">📁</div>
+                        <div class="upload-icon"><img class="tt-glyph" src="{{ url_for('static', filename='trellis/glyphs/open.svg') }}" alt=""></div>
                         <p>Click to select or drag and drop multiple GenBank or SnapGene files</p>
                         <p class="file-types">.gb, .gbk, .genbank or SnapGene .dna files — select multiple</p>
                     </div>

@@ -346,7 +346,7 @@ async function simulateAssembly() {
     const messagesContainer = document.getElementById('compatibilityMessages');
     
     btn.disabled = true;
-    btn.textContent = '🔬 Simulating...';
+    btn.innerHTML = '<img class="tt-glyph" src="/static/trellis/glyphs/cassette.svg" alt=""> Simulating...';
     messagesContainer.innerHTML = '<div class="loading-spinner">Simulating assembly...</div>';
 
     try {
@@ -370,7 +370,7 @@ async function simulateAssembly() {
         simulationResult = null;
     } finally {
         btn.disabled = false;
-        btn.textContent = '🔬 Simulate Assembly';
+        btn.innerHTML = '<img class="tt-glyph" src="/static/trellis/glyphs/cassette.svg" alt=""> Simulate Assembly';
         updatePreview();
     }
 }
@@ -746,7 +746,7 @@ function renderAssemblyResult(result, bbConc, partData) {
         </div>
 
         <h3 style="margin: 2rem 0 1rem; font-size: 1.25rem; border-bottom: 2px solid var(--border-color); padding-bottom: 0.5rem;">
-            🧪 Reaction Mix (${totalVolume} µL)
+            <img class="tt-glyph" src="/static/trellis/glyphs/protocol.svg" alt=""> Reaction Mix (${totalVolume} µL)
         </h3>
         <p style="font-size: 0.9rem; color: var(--text-secondary); margin-bottom: 1rem;">
             ${levelLabel} assembly using ${enzyme}. 2:1 molar ratio (${insertFmol} fmol insert : ${vectorFmol} fmol vector).
@@ -754,7 +754,7 @@ function renderAssemblyResult(result, bbConc, partData) {
         </p>
 
         <details style="margin-bottom: 1.5rem; background: var(--bg-color); border: 1px solid var(--border-color); border-radius: 0.5rem; padding: 0.75rem 1rem;">
-            <summary style="cursor: pointer; font-weight: 600; font-size: 0.9rem; color: var(--text-primary);">📐 Formula Explanation</summary>
+            <summary style="cursor: pointer; font-weight: 600; font-size: 0.9rem; color: var(--text-primary);"><img class="tt-glyph" src="/static/trellis/glyphs/ratio.svg" alt=""> Formula Explanation</summary>
             <div style="margin-top: 0.75rem; font-size: 0.85rem; line-height: 1.6; color: var(--text-secondary);">
                 <p style="margin: 0 0 0.5rem;"><strong>Step 1 — Mass needed (ng):</strong></p>
                 <code style="display: block; background: var(--surface-color, #f8f9fa); padding: 0.5rem 0.75rem; border-radius: 0.25rem; margin-bottom: 0.5rem; font-size: 0.85rem;">
@@ -823,7 +823,7 @@ function renderAssemblyResult(result, bbConc, partData) {
             </tbody>
         </table>
 
-        ${waterVol < 0 ? '<div style="background: #fef3c7; border: 1px solid #f59e0b; padding: 0.75rem; border-radius: 0.375rem; margin-top: 1rem; font-size: 0.875rem;"><strong>⚠️ Warning:</strong> DNA volumes exceed reaction volume! Increase total volume or dilute your DNA.</div>' : ''}
+        ${waterVol < 0 ? '<div style="background: #fef3c7; border: 1px solid #f59e0b; padding: 0.75rem; border-radius: 0.375rem; margin-top: 1rem; font-size: 0.875rem;"><strong><img class="tt-glyph" src="/static/trellis/glyphs/hazard.svg" alt=""> Warning:</strong> DNA volumes exceed reaction volume! Increase total volume or dilute your DNA.</div>' : ''}
 
         <div style="background: #dbeafe; padding: 1rem; border-radius: 0.5rem; margin-top: 1rem; font-size: 0.875rem;">
             <strong>Thermal cycling:</strong> 60 cycles of 37°C (10 min) / 22°C (10 min), then 37°C (10 min), 65°C (20 min), hold 12°C.

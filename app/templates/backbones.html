@@ -11,13 +11,13 @@
         </div>
         <div class="page-header-actions">
             <button id="fixBackbonesBtn" class="btn btn-secondary" title="Fix backbone compatibility" onclick="fixBackbones()">
-                🔧 Fix Compatibility
+                <img class="tt-glyph" src="{{ url_for('static', filename='trellis/glyphs/wrench.svg') }}" alt=""> Fix Compatibility
             </button>
             <button id="refreshBtn" class="btn btn-secondary" title="Refresh backbones">
-                🔄 Refresh
+                <img class="tt-glyph" src="{{ url_for('static', filename='trellis/glyphs/refresh.svg') }}" alt=""> Refresh
             </button>
             <button id="showUploadBtn" class="btn btn-primary" onclick="showUploadForm()">
-                ➕ Upload Backbone
+                <img class="tt-glyph" src="{{ url_for('static', filename='trellis/glyphs/add.svg') }}" alt=""> Upload Backbone
             </button>
         </div>
     </div>
@@ -35,7 +35,7 @@
                         <div class="file-input-wrapper">
                             <input type="file" id="backboneFile" name="file" accept=".gb,.gbk,.genbank,.dna" class="file-input" required>
                             <label for="backboneFile" class="file-input-label" id="fileLabel">
-                                📁 Choose a GenBank or SnapGene file, or drag it here
+                                <img class="tt-glyph" src="{{ url_for('static', filename='trellis/glyphs/open.svg') }}" alt=""> Choose a GenBank or SnapGene file, or drag it here
                             </label>
                         </div>
                         <div class="form-help">Supported formats: GenBank (.gb, .gbk, .genbank) and SnapGene (.dna)</div>
@@ -55,7 +55,7 @@
 
                     <div style="display: flex; gap: 1rem;">
                         <button type="submit" class="btn btn-primary" id="uploadBtn">
-                            📤 Upload Backbone
+                            <img class="tt-glyph" src="{{ url_for('static', filename='trellis/glyphs/upload.svg') }}" alt=""> Upload Backbone
                         </button>
                         <button type="button" class="btn btn-secondary" onclick="hideUploadForm()">
                             Cancel
@@ -270,7 +270,7 @@
         document.getElementById('uploadFormContainer').style.display = 'none';
         document.getElementById('showUploadBtn').style.display = 'inline-block';
         document.getElementById('uploadForm').reset();
-        document.getElementById('fileLabel').textContent = '📁 Choose GenBank file or drag here';
+        document.getElementById('fileLabel').innerHTML = '<img class="tt-glyph" src="{{ url_for('static', filename='trellis/glyphs/open.svg') }}" alt=""> Choose GenBank file or drag here';
         document.getElementById('fileLabel').classList.remove('has-file');
     }
 

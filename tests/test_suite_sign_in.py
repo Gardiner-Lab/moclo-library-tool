@@ -137,4 +137,4 @@ def test_standalone_keeps_its_own_dashboards(monkeypatch, client):
     User.create('alice', 'password123')
     client.post('/api/auth/login', json={'username': 'alice', 'password': 'password123'})
     page = client.get('/dashboard?embed=1').get_data(as_text=True)
-    assert 'class="navbar"' in page and 'acc-save' in page
+    assert 'class="tt-bar"' in page and 'acc-save' in page

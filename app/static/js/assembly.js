@@ -330,7 +330,7 @@ function renderAssemblyPreview() {
     if (selectedParts.length === 0) {
         container.innerHTML = `
             <div class="assembly-empty">
-                <div class="assembly-empty-icon">🧬</div>
+                <div class="assembly-empty-icon"><img class="tt-glyph" src="/static/trellis/glyphs/line.svg" alt=""></div>
                 <p>No parts selected</p>
                 <p style="font-size: 0.875rem;">Click on parts from the left panel to add them to your assembly</p>
             </div>
