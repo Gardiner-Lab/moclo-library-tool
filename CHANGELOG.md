@@ -5,7 +5,7 @@ All notable changes to the MoClo Library Tool project will be documented in this
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [1.15.0] - 2026-10-23
 
 ### Added
 - **Into the Lab Notebook.** In the suite, a part's window, a plasmid's and a cassette's have 📓 Add to
