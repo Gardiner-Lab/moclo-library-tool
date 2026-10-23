@@ -572,6 +572,7 @@ function renderCassetteDetail(cassette) {
             <button class="btn btn-primary" onclick="exportCassette('${cassette.id}', 'svg')">
                 🖼️ Export SVG
             </button>
+            ${notebookButtonHtml('addShownCassetteToNotebook()')}
             <button class="btn btn-danger" onclick="deleteCassetteFromDetail('${cassette.id}')">
                 🗑️ Delete Cassette
             </button>

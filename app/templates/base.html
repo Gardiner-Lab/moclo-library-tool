@@ -12,7 +12,7 @@
     {# In a tab of the suite's dashboard, links open their page in the window, not inside the tab. #}
     {% if embed %}<base target="_top">{% endif %}
 </head>
-<body data-is-admin="{{ 'true' if session.get('is_admin') else 'false' }}" data-username="{{ session.get('username', '') }}"{% if embed %} class="embedded"{% endif %}>
+<body data-notebook="{{ notebook_url }}" data-is-admin="{{ 'true' if session.get('is_admin') else 'false' }}" data-username="{{ session.get('username', '') }}"{% if embed %} class="embedded"{% endif %}>
     {% if not embed %}
     {% if suite_mode %}
     <script>
@@ -85,6 +85,7 @@
 
     <script src="https://cdn.jsdelivr.net/npm/animejs@3.2.2/lib/anime.min.js"></script>
     <script src="{{ url_for('static', filename='js/main.js') }}?v=2.0"></script>
+    <script src="{{ url_for('static', filename='js/notebook.js') }}?v={{ app_version }}"></script>
     <script src="{{ url_for('static', filename='js/svg-animate.js') }}?v=1.0"></script>
     {% block extra_js %}{% endblock %}
 </body>

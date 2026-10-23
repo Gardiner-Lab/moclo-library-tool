@@ -250,6 +250,8 @@ function showPlasmidModal(plasmid) {
     const detailsElement = document.getElementById('plasmidDetailContent');
     
     nameElement.textContent = plasmid.name;
+    // Kept for "Add to notebook", which puts this plasmid into a day's page.
+    window._shownPlasmid = plasmid;
     
     // Build details HTML
     let html = `
@@ -394,29 +396,21 @@ function showPlasmidModal(plasmid) {
         </div>
     `;
 
-    // Export buttons
-    html += `
+    // Export options come first, so they are there without scrolling past the map and strategy.
+    html = `
         <div class="detail-section">
             <h3>Export Options</h3>
             <div class="export-buttons">
-                <button class="btn btn-primary" onclick="exportPlasmid('${plasmid.id}', 'genbank')">
-                    Download GenBank
-                </button>
-                <button class="btn btn-primary" onclick="exportPlasmid('${plasmid.id}', 'snapgene')">
-                    Download SnapGene
-                </button>
-                <button class="btn btn-primary" onclick="exportPlasmid('${plasmid.id}', 'fasta')">
-                    Download FASTA
-                </button>
-                <button class="btn btn-primary" onclick="exportPlasmid('${plasmid.id}', 'image')">
-                    Download Map (PNG)
-                </button>
-                <a class="btn btn-primary" href="/api/plasmids/${plasmid.id}/map.svg?download=1" download>
-                    Download Map (SVG)
-                </a>
+                <span class="export-label">Download</span>
+                <button class="btn btn-primary" onclick="exportPlasmid('${plasmid.id}', 'genbank')" title="Download as GenBank">GenBank</button>
+                <button class="btn btn-primary" onclick="exportPlasmid('${plasmid.id}', 'snapgene')" title="Download as a SnapGene file">SnapGene</button>
+                <button class="btn btn-primary" onclick="exportPlasmid('${plasmid.id}', 'fasta')" title="Download as FASTA">FASTA</button>
+                <button class="btn btn-primary" onclick="exportPlasmid('${plasmid.id}', 'image')" title="Download the map as a PNG picture">Map (PNG)</button>
+                <a class="btn btn-primary" href="/api/plasmids/${plasmid.id}/map.svg?download=1" download title="Download the map as an SVG picture">Map (SVG)</a>
+                ${notebookButtonHtml('addShownPlasmidToNotebook()', 'btn btn-primary export-notebook')}
             </div>
         </div>
-    `;
+    ` + html;
 
     // Edit metadata — shown to the owner, an admin, or a shared user.
     if (plasmid.can_edit) {

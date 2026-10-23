@@ -2169,3 +2169,31 @@ a.btn-danger:active {
 /* the plasmid map, drawn as the Plasmid Editor draws it */
 .plasmid-map { display: flex; justify-content: center; }
 .plasmid-map svg { max-width: 100%; height: auto; max-height: 560px; }
+
+/* "Add to the Lab Notebook": which day a map or diagram goes into. */
+.notebook-dialog {
+    position: fixed; inset: 0; z-index: 3000; display: flex; align-items: center; justify-content: center;
+    background: rgba(17, 24, 39, 0.45); padding: 1rem;
+}
+.notebook-dialog-box {
+    background: #fff; border-radius: 0.5rem; padding: 1.25rem 1.4rem; width: 100%; max-width: 28rem;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+}
+.notebook-dialog-box h3 { margin: 0 0 0.6rem; font-size: 1.1rem; }
+.notebook-dialog-box label { display: block; font-weight: 600; font-size: 0.85rem; margin: 0.6rem 0 0.25rem; }
+.notebook-dialog-box input[type=date] { padding: 0.35rem 0.5rem; border: 1px solid #d1d5db; border-radius: 0.375rem; }
+.notebook-dialog-hint { color: #6b7280; font-size: 0.8rem; margin: 0.3rem 0 0; }
+.notebook-dialog-error { color: #b91c1c; font-size: 0.85rem; margin: 0.6rem 0 0; }
+.notebook-dialog-buttons { display: flex; justify-content: flex-end; gap: 0.5rem; margin-top: 1rem; }
+
+/* A plasmid's export options: one row of matching buttons (links and buttons alike), wrapping as needed. */
+.export-buttons { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: stretch; }
+.export-buttons .btn {
+    /* A <button> takes the browser's own font unless told; a link the page's. The same for both. */
+    display: inline-flex; align-items: center; justify-content: center; gap: 0.35rem; margin: 0;
+    padding: 0.5rem 0.9rem; font-family: inherit; font-size: 0.9rem; font-weight: 500; line-height: 1.25;
+    box-sizing: border-box;
+}
+.export-buttons .export-label { align-self: center; font-weight: 600; color: var(--text-secondary, #6b7280); margin-right: 0.15rem; }
+/* The notebook is not a download: set a little apart, at the end of the row. */
+.export-buttons .export-notebook { margin-left: 0.75rem; }

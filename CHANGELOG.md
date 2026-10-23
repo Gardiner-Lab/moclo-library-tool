@@ -5,6 +5,21 @@ All notable changes to the MoClo Library Tool project will be documented in this
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+- **Into the Lab Notebook.** In the suite, a part's window, a plasmid's and a cassette's have 📓 Add to
+  notebook: the diagram or map, and what it shows (a part's type, level, overhangs, where it is kept
+  and its features; a plasmid's backbone, method, enzyme and MoClo assembly strategy, with a column to
+  tick off what was added; a cassette's parts in order, with their overhangs), go into a day's page
+  of the Lab Notebook - today's, unless another day is chosen.
+  NOTEBOOK_URL says where the notebook is; without it the button is not shown.
+
+### Changed
+- A plasmid's window shows its export options first, as one row of matching buttons (Download:
+  GenBank, SnapGene, FASTA, Map PNG, Map SVG, then Add to notebook) instead of below the map and
+  strategy, where the buttons wrapped unevenly.
+
 ## [1.14.1] - 2026-10-19
 
 ### Changed
