@@ -767,8 +767,7 @@ async function deleteBackbone(backboneId, backboneName) {
  * Format date for display
  */
 function formatDate(dateString) {
-    const date = new Date(dateString);
-    return date.toLocaleDateString() + ' ' + date.toLocaleTimeString();
+    return euDate(dateString, true);
 }
 
 // Export functions for use in HTML

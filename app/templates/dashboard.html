@@ -270,7 +270,7 @@ async function loadParts() {
       <td class="truncate" title="${p.name}">${p.name}</td>
       <td>${p.part_type}</td>
       <td>${p.lab_source || '—'}</td>
-      <td>${p.upload_date ? p.upload_date.slice(0,10) : '—'}</td>
+      <td>${p.upload_date ? euDate(p.upload_date) : '—'}</td>
       <td></td>`;
     const actionTd = tr.querySelector('td:last-child');
     actionTd.appendChild(editBtn);
@@ -384,7 +384,7 @@ async function loadSaved() {
     tr.innerHTML = `
       <td class="truncate" title="${escHtml(it.title)}">${escHtml(it.title)}</td>
       <td>${escHtml(it.item_type)}</td>
-      <td>${it.created_at ? it.created_at.slice(0, 10) : '—'}</td>
+      <td>${it.created_at ? euDate(it.created_at) : '—'}</td>
       <td></td>
       <td></td>`;
     tr.children[3].appendChild(rxWrap);

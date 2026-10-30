@@ -7,6 +7,22 @@
 const API_BASE_URL = '/api';
 
 /**
+ * A date as the lab writes it, day-first: 30-10-2026, or with its time (24-hour) 30-10-2026 16:40, in this
+ * computer's time zone. Stamps from the database without a zone are UTC.
+ */
+function euDate(stamp, withTime = false) {
+    if (!stamp) return '';
+    const text = String(stamp);
+    const d = /^\d{4}-\d\d-\d\d$/.test(text)
+        ? new Date(`${text}T00:00:00`)
+        : new Date(text.replace(' ', 'T') + (/[zZ]|[+-]\d\d:?\d\d$/.test(text) ? '' : 'Z'));
+    if (Number.isNaN(d.getTime())) return text;
+    const pad = (n) => String(n).padStart(2, '0');
+    const day = `${pad(d.getDate())}-${pad(d.getMonth() + 1)}-${d.getFullYear()}`;
+    return withTime ? `${day} ${pad(d.getHours())}:${pad(d.getMinutes())}` : day;
+}
+
+/**
  * Make an API request with proper error handling
  * @param {string} url - The API endpoint URL
  * @param {object} options - Fetch options

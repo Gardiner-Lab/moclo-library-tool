@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- Dates are written day-first, as in Europe: 30-10-2026, and 30-10-2026 16:40 on the 24-hour clock, for parts,
+  cassettes, backbones, plasmids, saved items and accounts, instead of the browser's own (often American) way.
+  Names made with a date in them (Cassette_2026-10-30) keep it as it was, so they sort.
+
 ## [1.16.0] - 2026-10-23
 
 ### Changed

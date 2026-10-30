@@ -369,7 +369,7 @@ loaders.users = async function() {
     tr.innerHTML = `
       <td>${u.username}${u.is_admin ? '<span class="badge-admin">admin</span>' : ''}</td>
       <td>${u.is_admin ? 'Admin' : 'User'}</td>
-      <td>${u.created_at ? u.created_at.slice(0,10) : '—'}</td>
+      <td>${u.created_at ? euDate(u.created_at) : '—'}</td>
       <td></td>`;
     const actionTd = tr.querySelector('td:last-child');
     actionTd.appendChild(editBtn);
@@ -515,7 +515,7 @@ loaders.cassettes = async function() {
       <td>${c.name}</td>
       <td class="truncate" title="${c.owner_id}">${c.owner_id}</td>
       <td>${c.part_count}</td>
-      <td>${c.created_at ? c.created_at.slice(0,10) : '—'}</td>
+      <td>${c.created_at ? euDate(c.created_at) : '—'}</td>
       <td></td>`;
     const actionTd = tr.querySelector('td:last-child');
     actionTd.appendChild(editBtn);
@@ -571,7 +571,7 @@ loaders.backbones = async function() {
       <td>${b.name}</td>
       <td class="truncate" title="${b.owner_id}">${b.owner_id}</td>
       <td class="truncate" title="${b.description || ''}">${b.description || '—'}</td>
-      <td>${b.created_at ? b.created_at.slice(0,10) : '—'}</td>
+      <td>${b.created_at ? euDate(b.created_at) : '—'}</td>
       <td></td>`;
     const actionTd = tr.querySelector('td:last-child');
     actionTd.appendChild(editBtn);
@@ -630,7 +630,7 @@ loaders.plasmids = async function() {
       <td>${p.name}</td>
       <td class="truncate" title="${p.owner_id}">${p.owner_id}</td>
       <td>${p.size}</td>
-      <td>${p.created_at ? p.created_at.slice(0,10) : '—'}</td>
+      <td>${p.created_at ? euDate(p.created_at) : '—'}</td>
       <td></td>`;
     tr.querySelector('td:last-child').appendChild(delBtn);
     tbody.appendChild(tr);

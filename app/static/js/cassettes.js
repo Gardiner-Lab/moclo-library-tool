@@ -81,7 +81,7 @@ function createCassetteCard(cassette) {
     card.className = 'cassette-card';
 
     // Format date
-    const createdDate = new Date(cassette.created_at).toLocaleDateString();
+    const createdDate = euDate(cassette.created_at);
 
     // Card header
     const header = document.createElement('div');
@@ -185,7 +185,7 @@ async function showCassetteDetail(cassetteId) {
 function renderCassetteDetail(cassette) {
     const content = document.getElementById('cassetteDetailContent');
 
-    const createdDate = new Date(cassette.created_at).toLocaleString();
+    const createdDate = euDate(cassette.created_at, true);
 
     let html = '';
 
