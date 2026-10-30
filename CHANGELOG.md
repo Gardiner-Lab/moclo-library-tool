@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.17.0] - 2026-10-30
+
 ### Added
 - A saved construct or plasmid on the dashboard links to what it is of: its title, and Open plasmid ↗ (or Open
   cassette ↗, for a transcription unit), open the plasmid or cassette itself in a tab of its own, not only its
