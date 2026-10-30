@@ -130,7 +130,28 @@ def list_saved_items(user):
     """Return all dashboard items the current user has saved."""
     from app.models.saved_item import SavedItem
     items = SavedItem.get_by_user(user.id)
-    return jsonify({'items': [i.to_dict() for i in items], 'count': len(items)}), 200
+    return jsonify({'items': [{**i.to_dict(), 'link': _saved_link(i)} for i in items], 'count': len(items)}), 200
+
+
+def _saved_link(item) -> dict:
+    """
+    What a saved item is of, to open it from the dashboard: the plasmid (saved from a plasmid, or the CRISPR
+    Designer's final one) or the cassette (a transcription unit) its ref_id names. 'gone' when that has since
+    been deleted; None when it names nothing.
+    """
+    from app.models.cassette import Cassette
+    from app.models.final_plasmid import FinalPlasmid
+    records = (item.summary or {}).get('records') or {}
+    ref = item.ref_id or records.get('plasmid_id') or (records.get('plasmid') or {}).get('id')
+    if not ref:
+        return None
+    plasmid = FinalPlasmid.get_by_id(ref)
+    if plasmid:
+        return {'kind': 'plasmid', 'url': f'/plasmids?view={ref}', 'name': plasmid.name}
+    cassette = Cassette.get_by_id(ref)
+    if cassette:
+        return {'kind': 'cassette', 'url': f'/cassettes?view={ref}', 'name': cassette.name}
+    return {'kind': 'gone'}
 
 
 @user_dashboard_bp.route('/saved', methods=['POST'])

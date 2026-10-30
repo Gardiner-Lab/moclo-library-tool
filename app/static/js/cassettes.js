@@ -15,6 +15,10 @@ async function initCassettes() {
 
     // Load cassettes
     await loadCassettes();
+
+    // Open a cassette's details if ?view=<id> is in the URL (as from a saved construct on the dashboard)
+    const viewId = new URLSearchParams(window.location.search).get('view');
+    if (viewId) showCassetteDetail(viewId);
 }
 
 /**

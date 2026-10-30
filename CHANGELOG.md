@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- A saved construct or plasmid on the dashboard links to what it is of: its title, and Open plasmid ↗ (or Open
+  cassette ↗, for a transcription unit), open the plasmid or cassette itself in a tab of its own, not only its
+  reactions. One whose plasmid has since been deleted says so. The cassettes page opens one given as
+  ?view=<id>, as the plasmids page does.
+
 ### Changed
 - Dates are written day-first, as in Europe: 30-10-2026, and 30-10-2026 16:40 on the 24-hour clock, for parts,
   cassettes, backbones, plasmids, saved items and accounts, instead of the browser's own (often American) way.

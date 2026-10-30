@@ -20,6 +20,7 @@
   .empty-msg { color: #888; font-style: italic; padding: 1rem 0; }
 
   .btn-sm { padding: 0.25rem 0.65rem; font-size: 0.8rem; border-radius: 4px; border: none; cursor: pointer; margin-right: 0.25rem; }
+  a.btn-sm { display: inline-block; text-decoration: none; }
   .btn-danger  { background: #dc3545; color: #fff; }
   .btn-warning { background: #fd7e14; color: #fff; }
   .btn-primary { background: var(--primary-color); color: #fff; }
@@ -124,7 +125,7 @@
     <h2 style="margin:0">Saved Constructs &amp; Plasmids <span class="count-badge" id="saved-count">0</span></h2>
   </div>
   <p class="hint" style="margin-top:-0.5rem;">Items you saved from the CRISPR Designer or a plasmid.
-     Open a saved reaction to pre-fill the reaction-mix calculator.</p>
+     Click a title (or Open plasmid) for the plasmid itself; open a saved reaction to pre-fill the reaction-mix calculator.</p>
   <table class="dash-table">
     <thead><tr><th>Title</th><th>Type</th><th>Saved</th><th>Reactions</th><th>Actions</th></tr></thead>
     <tbody id="saved-tbody">
@@ -362,6 +363,26 @@ async function loadSaved() {
     const actions = document.createElement('div');
     actions.style.cssText = 'display:flex; gap:0.35rem; flex-wrap:wrap;';
 
+    // What it is of, as the server found it: the plasmid, or the cassette (a transcription unit).
+    const link = it.link || null;
+    const plasmidUrl = link && link.url ? link.url : null;
+    if (plasmidUrl) {
+      const open = document.createElement('a');
+      open.className = 'btn-sm btn-primary';
+      open.href = plasmidUrl;
+      // A tab of its own: on the suite's dashboard this page is in a frame.
+      open.target = '_blank';
+      open.rel = 'noopener';
+      open.textContent = link.kind === 'cassette' ? 'Open cassette ↗' : 'Open plasmid ↗';
+      open.title = `${link.name || 'It'}: its map, parts and sequence`;
+      actions.appendChild(open);
+    } else if (link && link.kind === 'gone') {
+      const gone = document.createElement('span');
+      gone.className = 'hint';
+      gone.textContent = 'Its plasmid has been deleted';
+      actions.appendChild(gone);
+    }
+
     // "View protocol" regenerates the full Guide Designer output read-only.
     // Only for construct items that stored their design plan.
     if (it.item_type === 'construct' && it.summary && it.summary.plan) {
@@ -382,7 +403,8 @@ async function loadSaved() {
     actions.appendChild(delBtn);
 
     tr.innerHTML = `
-      <td class="truncate" title="${escHtml(it.title)}">${escHtml(it.title)}</td>
+      <td class="truncate" title="${escHtml(it.title)}">${plasmidUrl
+        ? `<a href="${escHtml(plasmidUrl)}" target="_blank" rel="noopener">${escHtml(it.title)}</a>` : escHtml(it.title)}</td>
       <td>${escHtml(it.item_type)}</td>
       <td>${it.created_at ? euDate(it.created_at) : '—'}</td>
       <td></td>
