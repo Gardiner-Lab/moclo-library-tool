@@ -228,6 +228,16 @@ def create_app():
             return redirect(url_for('login_page'))
         return render_template('protocol.html')
     
+    @app.route('/about')
+    def about_page():
+        """What the MoClo Library Tool is."""
+        return render_template('about.html')
+
+    @app.route('/help')
+    def help_page():
+        """How to use the MoClo Library Tool."""
+        return render_template('help.html')
+
     @app.route('/annotation-guide')
     def annotation_guide():
         """GenBank annotation best practices guide."""

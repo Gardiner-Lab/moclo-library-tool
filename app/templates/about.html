@@ -1,0 +1,112 @@
+{% extends "base.html" %}
+{% block title %}About &middot; MoClo Library Tool{% endblock %}
+
+{% block content %}
+<div class="help">
+    <h1>MoClo Library Tool {{ app_version }}</h1>
+    <p class="lead">The lab's Golden Gate parts library, and the planning that goes with it: the parts
+       everyone shares, the transcription units and multigene plasmids built from them, compatibility
+       checking, reaction mixes and a CRISPR guide designer.
+       <a href="/help">How to use it →</a></p>
+
+    <nav class="help-toc">
+        <a href="#holds">What it holds</a>
+        <a href="#levels">The levels</a>
+        <a href="#does">What it does for you</a>
+        <a href="#together">With the other tools</a>
+        <a href="#sees">Who sees what</a>
+        <a href="#licence">Licence</a>
+    </nav>
+
+    <section id="holds">
+        <h2>What it holds</h2>
+        <div class="help-cards">
+            <div class="help-card">
+                <h3>Parts</h3>
+                <p>Level 0 elements: promoters, coding sequences, terminators, introns and others, each with
+                   its 4&nbsp;bp fusion sites, where it came from and who contributed it.</p>
+            </div>
+            <div class="help-card">
+                <h3>Cassettes</h3>
+                <p>Level 1 transcription units &mdash; promoter, CDS, terminator &mdash; assembled from parts and
+                   kept with the parts they were made from.</p>
+            </div>
+            <div class="help-card">
+                <h3>Backbones</h3>
+                <p>The acceptor vectors each level assembles into, with their markers and the enzyme they
+                   are opened with.</p>
+            </div>
+            <div class="help-card">
+                <h3>Plasmids</h3>
+                <p>Assembled Level 1 and Level 2 plasmids, showing every part inside them, exportable as
+                   GenBank, FASTA, SnapGene or an image.</p>
+            </div>
+            <div class="help-card">
+                <h3>CRISPR Designer</h3>
+                <p>Guides and their oligos for a target, with the whole route planned from guide modules up to
+                   the final construct.</p>
+            </div>
+            <div class="help-card">
+                <h3>Saved constructs</h3>
+                <p>On your dashboard: what you planned, with its reactions ready to open in the calculator and
+                   a link to the plasmid itself.</p>
+            </div>
+        </div>
+    </section>
+
+    <section id="levels">
+        <h2>The levels</h2>
+        <p>Each level is cut by a different Type IIS enzyme, so building the next one never disturbs the
+           last:</p>
+        <div class="flow">
+            <span class="flow-box">Level 0 parts</span><span class="flow-arrow">— BsaI →</span>
+            <span class="flow-box">Level 1 transcription unit</span><span class="flow-arrow">— BpiI →</span>
+            <span class="flow-box">Level 2 multigene plasmid</span>
+        </div>
+        <p>What makes the library work is that the 4&nbsp;bp fusion sites are standard: a promoter from one
+           person's project drops into another's assembly without anything being redesigned.</p>
+    </section>
+
+    <section id="does">
+        <h2>What it does for you</h2>
+        <ul>
+            <li><b>Checks compatibility</b> before you order or pipette anything: overhangs that clash or leave
+                a gap, and internal BsaI or BpiI sites that the reaction would cut.</li>
+            <li><b>Assembles in silico</b>, joining the parts through their fusion sites and showing the plasmid
+                you are about to make, with every part marked.</li>
+            <li><b>Works out the reaction mix</b>, equimolar, scaled to the number of reactions.</li>
+            <li><b>Designs CRISPR guides</b> and plans the constructs that carry them, making the records as it
+                goes.</li>
+        </ul>
+    </section>
+
+    <section id="together">
+        <h2>With the other tools</h2>
+        <ul>
+            <li><b>Plasmid Editor</b> &mdash; shares this library. Parts, backbones and plasmids open there for
+                editing, restriction analysis or read alignment; a plasmid there can be contributed back as a
+                Golden Gate part once the editor has checked it.</li>
+            <li><b>Lab Stocks</b> &mdash; confirming an assembled plasmid by sequencing makes its glycerol
+                stock.</li>
+            <li><b>Lab Notebook</b> &mdash; a reaction can be put into a day page with its parts and volumes.</li>
+            <li><b>Seed Bank</b> &mdash; the lines carrying a plasmid, and their seeds and plants.</li>
+        </ul>
+    </section>
+
+    <section id="sees">
+        <h2>Who sees what</h2>
+        <p>The parts library is <b>shared by the lab</b>: that is the point of it. Each part keeps its
+           contributor and lab source, so credit and provenance stay with it. Your saved constructs on the
+           dashboard are yours. Everything is kept on the lab's own server and backed up each night with the
+           rest of the suite.</p>
+    </section>
+
+    <section id="licence">
+        <h2>Licence</h2>
+        <p>Free software under the GNU General Public License v3.0. It uses
+           <a href="https://biopython.org/" rel="noopener">Biopython</a> for sequence handling and
+           <a href="http://rebase.neb.com/" rel="noopener">REBASE</a> enzyme data; see the <code>NOTICE</code>
+           file.</p>
+    </section>
+</div>
+{% endblock %}

@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **About** and **Help** pages. *How to use the MoClo Library Tool* covers the levels, adding a part properly,
+  annotating before upload, checking compatibility, planning an assembly, the reaction calculator, the CRISPR
+  designer, saved constructs, and putting mistakes right. Both are linked from the top bar, and Help from the
+  empty parts list.
+
 ## [1.17.0] - 2026-10-30
 
 ### Added

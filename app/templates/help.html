@@ -1,0 +1,179 @@
+{% extends "base.html" %}
+{% block title %}Help &middot; MoClo Library Tool{% endblock %}
+
+{% block content %}
+<div class="help">
+    <h1>How to use the MoClo Library Tool</h1>
+    <p class="lead">Golden Gate cloning works because everyone's parts share the same fusion sites. This page
+       covers the levels, getting a part into the library properly, checking that an assembly will work,
+       planning one, the reaction calculator, the CRISPR designer, and what to do when a part will not fit.
+       <a href="/about">What the MoClo tool is →</a></p>
+
+    <nav class="help-toc">
+        <a href="#rules">Golden rules</a>
+        <a href="#levels">The levels</a>
+        <a href="#parts">Adding a part</a>
+        <a href="#annotation">Annotating before you upload</a>
+        <a href="#compat">Checking compatibility</a>
+        <a href="#assembly">Planning an assembly</a>
+        <a href="#calculator">The reaction calculator</a>
+        <a href="#crispr">The CRISPR designer</a>
+        <a href="#dashboard">Saving what you planned</a>
+        <a href="#editor">The editor and the rest of the suite</a>
+        <a href="#mistakes">Fixing mistakes</a>
+    </nav>
+
+    <section id="rules">
+        <h2>Golden rules</h2>
+        <ol class="rules">
+            <li><b>The fusion sites are the contract.</b> A part is only usable if its 4&nbsp;bp overhangs are the
+                standard ones for its position. Everything else about a part can be fixed later; these cannot.</li>
+            <li><b>No internal sites.</b> A Level 0 part must not contain BsaI, and a Level 1 plasmid must not
+                contain BpiI, or the enzyme will cut the thing you are trying to build. The tool checks, but
+                domesticate before you order the synthesis, not after.</li>
+            <li><b>Annotate before you upload.</b> A part whose promoter, CDS and terminator are marked is usable
+                by the whole lab; a bare sequence is a mystery in six months.</li>
+            <li><b>Say where it came from.</b> The lab source and contributor are how someone finds the tube, and
+                how credit stays with the person who made it.</li>
+            <li><b>Check compatibility before you order anything.</b> The checker takes a minute and finds the
+                clash that would otherwise appear as an empty plate.</li>
+            <li><b>Save the plan to your dashboard.</b> The reaction, its parts and its volumes are then there
+                when you come to do it at the bench, and again when it needs repeating.</li>
+        </ol>
+    </section>
+
+    <section id="levels">
+        <h2>The levels</h2>
+        <p>Golden Gate assembly goes up in levels, each cut by a different enzyme so the level below is never
+           disturbed:</p>
+        <div class="flow">
+            <span class="flow-box">Level 0 parts</span><span class="flow-arrow">— BsaI →</span>
+            <span class="flow-box">Level 1 transcription unit</span><span class="flow-arrow">— BpiI →</span>
+            <span class="flow-box">Level 2 multigene plasmid</span>
+        </div>
+        <ul>
+            <li><b>Level 0</b> is a single element: a promoter, a coding sequence, a terminator, an intron, or
+                something else. It lives in the <b>Parts</b> tab.</li>
+            <li><b>Level 1</b> joins those into one working transcription unit &mdash; promoter, CDS, terminator
+                &mdash; which the tool keeps as a <b>cassette</b>.</li>
+            <li><b>Level 2</b> joins several transcription units into one plasmid, under <b>Plasmids</b>.</li>
+            <li><b>Backbones</b> are the acceptor vectors each level assembles into.</li>
+        </ul>
+    </section>
+
+    <section id="parts">
+        <h2>Adding a part</h2>
+        <ol class="steps">
+            <li><b>Upload</b> the GenBank file, or use <b>Parts → add</b> and paste the sequence.</li>
+            <li>Give it a clear <b>name</b> and the right <b>type</b>: coding, promoter, terminator, intron,
+                other, or an expression cassette for a Level 1 unit.</li>
+            <li>Set the <b>5′ and 3′ overhangs</b> &mdash; the 4&nbsp;bp fusion sites. These decide where the part
+                can sit in an assembly, so take them from the standard for its position rather than from the
+                sequence by eye.</li>
+            <li>Fill in the <b>lab source</b> and <b>contributor</b>, so the tube can be found and the work
+                credited.</li>
+            <li>Save. The part is then in the lab's shared library and can be used by anyone.</li>
+        </ol>
+        <p>A plasmid in the <b>Plasmid Editor</b> can be ticked <b>Golden Gate ready</b> and contributed
+           straight to this library; the editor first checks that one enzyme releases a single clean insert with
+           two fusion sites.</p>
+    </section>
+
+    <section id="annotation">
+        <h2>Annotating before you upload</h2>
+        <p>What a part's GenBank file should carry, and how to mark it, is set out in detail in the
+           <a href="/annotation-guide">annotation guide</a>. In short: mark the real feature boundaries, use
+           consistent names and types, and leave out the vector the part arrived in.</p>
+    </section>
+
+    <section id="compat">
+        <h2>Checking compatibility</h2>
+        <p>Before ordering or setting up a reaction, have the tool check the set of parts you mean to use. It
+           looks for the two things that actually stop an assembly:</p>
+        <ul>
+            <li><b>Overhang clashes</b> &mdash; two parts offering the same fusion site, so the order is
+                ambiguous &mdash; and gaps, where nothing joins one part to the next.</li>
+            <li><b>Internal enzyme sites</b> &mdash; a BsaI site inside a Level 0 part, or a BpiI site inside a
+                Level 1 plasmid, which the reaction would cut.</li>
+        </ul>
+        <p>It tells you which part is at fault and why, rather than only that the set will not work.</p>
+    </section>
+
+    <section id="assembly">
+        <h2>Planning an assembly</h2>
+        <ol class="steps">
+            <li><b>Assembly</b>: choose the level you are building, and the <b>backbone</b> to assemble into.</li>
+            <li>Add the parts in the order they go: promoter, CDS, terminator for a Level 1; the transcription
+                units for a Level 2.</li>
+            <li>The tool joins them through their fusion sites and shows the <b>assembled plasmid</b> with its
+                parts marked, so you can see what you are about to make.</li>
+            <li>Save it under <b>Plasmids</b>, where it keeps the parts it was made from.</li>
+            <li>Send it to the <b>reaction calculator</b> to work out the mix.</li>
+        </ol>
+    </section>
+
+    <section id="calculator">
+        <h2>The reaction calculator</h2>
+        <p>Under <b>Protocol</b>. Give it the fragments and their sizes, or send a plasmid to it from its page,
+           and it works out how much of each to use for an equimolar reaction, with the enzyme, buffer and
+           ligase, scaled to the number of reactions you are setting up.</p>
+        <p>The same mix can be put straight into a <b>Lab Notebook</b> day page as a table, so what you pipetted
+           is recorded where the rest of the day is.</p>
+    </section>
+
+    <section id="crispr">
+        <h2>The CRISPR designer</h2>
+        <ol class="steps">
+            <li><b>CRISPR Designer</b>: give the target sequence and how many guides you want.</li>
+            <li>It designs the guides and the oligos for them, and plans the whole route: the Level&nbsp;−1 guide
+                modules, the Level 0 parts, the Level 1 plasmid and the Level 2 construct.</li>
+            <li>Name the records it will make, then let it make them. The parts and plasmids appear in the
+                library like any others.</li>
+            <li><b>Save to dashboard</b> keeps the whole protocol, so it can be read again later without
+                redesigning it.</li>
+        </ol>
+    </section>
+
+    <section id="dashboard">
+        <h2>Saving what you planned</h2>
+        <p><b>Save to dashboard</b>, on a plasmid or at the end of the CRISPR designer, keeps it under
+           <b>Saved constructs</b> on your dashboard, with the reactions it needs.</p>
+        <ul>
+            <li>Its <b>title</b>, and <b>Open plasmid ↗</b>, open the plasmid itself &mdash; or the cassette, for a
+                single transcription unit.</li>
+            <li>Each <b>reaction</b> opens the calculator already filled in, which is how you pick it up again at
+                the bench.</li>
+            <li><b>View protocol</b>, for a CRISPR construct, regenerates the whole protocol as it was.</li>
+        </ul>
+    </section>
+
+    <section id="editor">
+        <h2>The editor and the rest of the suite</h2>
+        <ul>
+            <li>Any part, backbone or plasmid <b>opens in the Plasmid Editor</b> for editing, restriction
+                analysis or read alignment: both tools share one library.</li>
+            <li>A plasmid confirmed by sequencing in the editor gets its <b>glycerol stock in Lab Stocks</b>.</li>
+            <li>A reaction can be put into a <b>Lab Notebook</b> page, with its parts and volumes.</li>
+            <li><b>Export</b> a part or plasmid as GenBank, FASTA, SnapGene or an image.</li>
+        </ul>
+    </section>
+
+    <section id="mistakes">
+        <h2>Fixing mistakes</h2>
+        <ul>
+            <li><b>A part will not go into an assembly:</b> check its overhangs first. They are the usual
+                cause, and they are easy to mistype.</li>
+            <li><b>The checker reports an internal site:</b> the part must be domesticated &mdash; the site
+                changed silently &mdash; before it can be used at that level.</li>
+            <li><b>Wrong part type or source:</b> edit the part. Its sequence and overhangs are what others
+                depend on; the rest is free to correct.</li>
+            <li><b>Assembled the wrong thing:</b> delete the plasmid and assemble again. The parts it used are
+                untouched.</li>
+            <li><b>A part is in the library twice:</b> keep the annotated one and delete the other, after
+                checking nothing was assembled from it.</li>
+            <li><b>Not sure a saved construct is still right:</b> open it from the dashboard &mdash; if its
+                plasmid has been deleted, the row says so rather than giving a broken link.</li>
+        </ul>
+    </section>
+</div>
+{% endblock %}

@@ -32,3 +32,12 @@ def test_health_route(client):
     assert response.status_code == 200
     data = response.get_json()
     assert data['status'] == 'healthy'
+
+
+def test_the_about_and_help_pages_are_there_and_point_at_each_other(client):
+    for path, heading in (('/about', 'MoClo Library Tool'), ('/help', 'How to use the MoClo Library Tool')):
+        r = client.get(path)
+        assert r.status_code == 200, path
+        assert heading in r.get_data(as_text=True)
+    assert '/help' in client.get('/about').get_data(as_text=True)
+    assert '/about' in client.get('/help').get_data(as_text=True)

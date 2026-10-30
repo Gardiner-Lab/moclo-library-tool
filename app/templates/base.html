@@ -41,6 +41,8 @@
             <nav class="tt-links">
                 <a href="{{ dashboard_url }}">Dashboard</a>
                 {% if session.get('is_admin') %}<a href="{{ admin_url }}">Admin</a>{% endif %}
+                <a href="/help">Help</a>
+                <a href="/about">About</a>
             </nav>
             <span class="tt-user">{{ session.get('username') }}</span>
             <a class="tt-logout" href="/logout">Log out</a>
@@ -48,6 +50,8 @@
             <nav class="tt-links">
                 <a href="/login">Log in</a>
                 <a href="{{ registration_url }}">Register</a>
+                <a href="/help">Help</a>
+                <a href="/about">About</a>
             </nav>
         {% endif %}
     </header>
