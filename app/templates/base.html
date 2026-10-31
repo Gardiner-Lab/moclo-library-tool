@@ -85,6 +85,7 @@
     <script src="{{ url_for('static', filename='js/main.js') }}?v={{ app_version }}"></script>
     <script src="{{ url_for('static', filename='js/notebook.js') }}?v={{ app_version }}"></script>
     <script src="{{ url_for('static', filename='js/svg-animate.js') }}?v=1.0"></script>
+    <script src="{{ url_for('static', filename='trellis/modules.js') }}?v={{ app_version }}" defer></script>
     {% block extra_js %}{% endblock %}
 </body>
 </html>

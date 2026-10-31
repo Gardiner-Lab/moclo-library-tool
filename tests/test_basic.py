@@ -57,3 +57,10 @@ def test_the_cassette_card_lets_its_buttons_wrap():
     buttons = css.split('.btn-export {', 1)[1].split('}', 1)[0]
     assert 'flex: 1 1 ' in buttons and 'flex: 1;' not in buttons, \
         'an export button needs a width of its own, so it wraps instead of being cut off'
+
+
+def test_every_page_reaches_the_suite_and_its_other_tools():
+    """The bar must carry the tool switcher, so every tool reaches every other one."""
+    from pathlib import Path
+    html = Path('app/templates/base.html').read_text()
+    assert 'trellis/modules.js' in html, 'the other tools are not linked from the bar'
