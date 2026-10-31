@@ -85,12 +85,16 @@
     .cassette-actions {
         padding: 1rem;
         display: flex;
+        /* Four export buttons and delete do not fit one row of a card; they wrap rather than
+           being clipped by the card's overflow. */
+        flex-wrap: wrap;
         gap: 0.5rem;
         border-top: 1px solid var(--border-color);
     }
 
     .btn-export {
-        flex: 1;
+        /* Share the row, but keep the whole label: wrap to the next line instead of being cut off. */
+        flex: 1 1 7rem;
         padding: 0.5rem 0.75rem;
         font-size: 0.875rem;
         background-color: var(--primary-color);
@@ -279,13 +283,14 @@
 
     .detail-actions {
         display: flex;
+        flex-wrap: wrap;
         gap: 0.75rem;
         padding-top: 1.5rem;
         border-top: 1px solid var(--border-color);
     }
 
     .detail-actions .btn {
-        flex: 1;
+        flex: 1 1 9rem;
     }
 
     /* Compatible Backbones Section */
@@ -353,10 +358,6 @@
     @media (max-width: 768px) {
         .cassettes-grid {
             grid-template-columns: 1fr;
-        }
-
-        .cassette-actions {
-            flex-wrap: wrap;
         }
 
         .detail-info-grid {

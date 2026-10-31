@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.18.1] - 2026-10-31
+
+### Fixed
+- On the Cassettes page, a card cut off its **SVG** and delete buttons: a fourth export button (SnapGene) was
+  added without widening the row, which does not wrap, and the card hides what overflows it. The buttons now
+  wrap onto a second line, each keeping its whole label. The same row in a cassette's details is fixed too.
+
 ## [1.18.0] - 2026-10-30
 
 ### Added

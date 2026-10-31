@@ -41,3 +41,19 @@ def test_the_about_and_help_pages_are_there_and_point_at_each_other(client):
         assert heading in r.get_data(as_text=True)
     assert '/help' in client.get('/about').get_data(as_text=True)
     assert '/about' in client.get('/help').get_data(as_text=True)
+
+
+def test_the_cassette_card_lets_its_buttons_wrap():
+    """
+    A fourth export button (SnapGene) once pushed SVG and delete out of the card, which clips what
+    overflows it. The row must wrap, and the buttons must keep their own width rather than being
+    squeezed to nothing.
+    """
+    from pathlib import Path
+    css = Path('app/templates/cassettes.html').read_text()
+    for rule in ('.cassette-actions {', '.detail-actions {'):
+        block = css.split(rule, 1)[1].split('}', 1)[0]
+        assert 'flex-wrap: wrap' in block, f'{rule} must let its buttons wrap onto another line'
+    buttons = css.split('.btn-export {', 1)[1].split('}', 1)[0]
+    assert 'flex: 1 1 ' in buttons and 'flex: 1;' not in buttons, \
+        'an export button needs a width of its own, so it wraps instead of being cut off'
