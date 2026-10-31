@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.19.0] - 2026-10-31
+
 ### Added
 - Every page's top bar now links to **all** the suite's tools, not a few: a row of them beside the tool's own
   name, the one you are on marked, names shown where there is room and icons alone when it is narrow. The list
