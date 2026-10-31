@@ -17,6 +17,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   pages of its own keeps a single row.
 
 ## [1.18.1] - 2026-10-31
+- The pages no longer assume whose lab is running the suite: "the Gardiner Lab" and "the lab's own server"
+  are now "your lab" and "your own server", so they read correctly wherever it is deployed.
 
 ### Fixed
 - On the Cassettes page, a card cut off its **SVG** and delete buttons: a fourth export button (SnapGene) was
