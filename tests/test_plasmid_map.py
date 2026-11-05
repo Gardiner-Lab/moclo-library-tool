@@ -1,5 +1,5 @@
 """
-Plasmid maps drawn as the Plasmid Editor draws them (app/services/plasmid_map.py).
+Plasmid maps drawn as the Sequence Editor draws them (app/services/plasmid_map.py).
 """
 
 import re

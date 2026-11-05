@@ -631,7 +631,7 @@ def export_fasta(user, plasmid_id):
 @require_auth
 def plasmid_map(user, plasmid_id):
     """
-    The plasmid's circular map, drawn as the Plasmid Editor draws it: features,
+    The plasmid's circular map, drawn as the Sequence Editor draws it: features,
     and the unique cutters of the editor's default enzymes. ?download=1 saves it.
     """
     plasmid = FinalPlasmid.get_by_id(plasmid_id)
@@ -700,7 +700,7 @@ def export_image(user, plasmid_id):
                 'error': 'Width must be between 100 and 4000 pixels'
             }), 400
         
-        # The Plasmid Editor's map of it (app/services/plasmid_map.py).
+        # The Sequence Editor's map of it (app/services/plasmid_map.py).
         svg_content = plasmid_map_svg(plasmid.name, plasmid.assembled_sequence, plasmid.features)
         
         # Convert to PNG

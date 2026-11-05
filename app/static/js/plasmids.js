@@ -316,7 +316,7 @@ function showPlasmidModal(plasmid) {
         `;
     }
 
-    // The map, drawn as the Plasmid Editor draws it; filled in once loaded.
+    // The map, drawn as the Sequence Editor draws it; filled in once loaded.
     html += `
         <div class="detail-section">
             <h3>Map</h3>
@@ -453,7 +453,7 @@ function showPlasmidModal(plasmid) {
 }
 
 /**
- * The plasmid's map, as the Plasmid Editor draws it, put in the page (not an
+ * The plasmid's map, as the Sequence Editor draws it, put in the page (not an
  * <img>) so hovering a feature or site names it.
  */
 async function loadPlasmidMap(plasmidId) {

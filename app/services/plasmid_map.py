@@ -1,5 +1,5 @@
 """
-Plasmid maps drawn the way the Plasmid Editor draws them.
+Plasmid maps drawn the way the Sequence Editor draws them.
 
 A Python port of the editor's static/js/plasmidmap.js (circular and linear),
 with its feature colours and its choice of enzymes, so a plasmid looks the

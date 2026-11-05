@@ -87,7 +87,7 @@ Data (parts, cassettes, plasmids, backups) is stored in the `moclo-data` named v
 On a new installation an `admin` account is created. Set `ADMIN_PASSWORD` to choose its
 password; otherwise it is the published default `admin123`, which you must change at once.
 
-To run it together with the Plasmid Editor, one port and one set of accounts for both, use the
+To run it together with the Sequence Editor, one port and one set of accounts for both, use the
 [Trellis Tools](https://github.com/Gardiner-Lab/gardiner-lab-suite) instead: its
 installer takes over an existing MoClo installation with its users and data. The suite sets
 `SUITE_HOME_URL` (a "Lab tools" link back to its landing page), `REGISTRATION_URL` (sign-up on

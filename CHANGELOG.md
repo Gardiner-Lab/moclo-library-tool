@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.19.1] - 2026-11-05
+
+### Changed
+- The Plasmid Editor is now called the **Sequence Editor**. Every mention and link here follows the new
+  name. Nothing else changes: the tool is at the same address, and records and links are untouched.
+
 ## [1.19.0] - 2026-10-31
 
 ### Added

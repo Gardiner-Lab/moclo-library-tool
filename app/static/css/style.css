@@ -2062,7 +2062,7 @@ a.btn-danger:active {
     font-style: italic;
 }
 
-/* the plasmid map, drawn as the Plasmid Editor draws it */
+/* the plasmid map, drawn as the Sequence Editor draws it */
 .plasmid-map { display: flex; justify-content: center; }
 .plasmid-map svg { max-width: 100%; height: auto; max-height: 560px; }
 
