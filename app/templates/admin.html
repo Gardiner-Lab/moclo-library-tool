@@ -105,7 +105,7 @@
   </div>
   <div id="reparse-status" style="display: none; margin-bottom: 1rem; padding: 0.75rem 1rem; border-radius: 0.5rem; font-size: 0.875rem;"></div>
   <table class="admin-table">
-    <thead><tr><th>Name</th><th>Type</th><th>Contributor</th><th>Lab Source</th><th>Actions</th></tr></thead>
+    <thead><tr><th>Name</th><th>Type</th><th>Contributor</th><th>Lab Source</th><th title="Seen by every lab, not only the contributor's chair group">Reference</th><th>Actions</th></tr></thead>
     <tbody id="parts-tbody"></tbody>
   </table>
 </div>
@@ -127,7 +127,7 @@
     <h2>Backbones <span class="count-badge" id="backbones-count">0</span></h2>
   </div>
   <table class="admin-table">
-    <thead><tr><th>Name</th><th>Owner ID</th><th>Description</th><th>Created</th><th>Actions</th></tr></thead>
+    <thead><tr><th>Name</th><th>Owner ID</th><th>Description</th><th>Created</th><th title="Seen by every lab, not only the owner's chair group">Reference</th><th>Actions</th></tr></thead>
     <tbody id="backbones-tbody"></tbody>
   </table>
 </div>
@@ -426,6 +426,23 @@ async function deleteUser(id) {
   loaders.users();
 }
 
+// ── REFERENCE ──────────────────────────────────────────────────────────────
+// A reference record (a public kit) is seen by every lab; anything else by the
+// chair group of whoever added it, and the chair groups that group shares with.
+function referenceBox(kind, record) {
+  const box = document.createElement('input');
+  box.type = 'checkbox';
+  box.checked = !!record.reference;
+  box.title = 'Seen by every lab';
+  box.setAttribute('aria-label', `${record.name}: seen by every lab`);
+  box.addEventListener('change', async () => {
+    const res = await apiFetch('/api/library/reference', {
+      method: 'PUT', body: JSON.stringify({ kind, id: record.id, reference: box.checked }) });
+    if (res.error) { box.checked = !box.checked; alert(res.error); }
+  });
+  return box;
+}
+
 // ── PARTS ──────────────────────────────────────────────────────────────────
 loaders.parts = async function() {
   const data = await apiFetch(`${API}/parts`);
@@ -452,7 +469,9 @@ loaders.parts = async function() {
       <td>${p.part_type}</td>
       <td>${p.contributor}</td>
       <td>${p.lab_source}</td>
+      <td></td>
       <td></td>`;
+    tr.children[4].appendChild(referenceBox('part', p));
     const actionTd = tr.querySelector('td:last-child');
     actionTd.appendChild(editBtn);
     actionTd.appendChild(delBtn);
@@ -572,7 +591,9 @@ loaders.backbones = async function() {
       <td class="truncate" title="${b.owner_id}">${b.owner_id}</td>
       <td class="truncate" title="${b.description || ''}">${b.description || '—'}</td>
       <td>${b.created_at ? euDate(b.created_at) : '—'}</td>
+      <td></td>
       <td></td>`;
+    tr.children[4].appendChild(referenceBox('backbone', b));
     const actionTd = tr.querySelector('td:last-child');
     actionTd.appendChild(editBtn);
     actionTd.appendChild(delBtn);

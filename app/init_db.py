@@ -258,6 +258,15 @@ def _ensure_demo_backbones():
         except (PartGenBankError, Exception) as e:  # noqa: BLE001
             logger.error(f"Demo part {fname}: {e}")
 
+    # A public Addgene kit: every lab sees it, whoever's chair group loaded it.
+    try:
+        from app.models.database import get_database
+        from app.services import library_access
+        with get_database().get_connection() as conn:
+            library_access.mark_plant_kit(conn.cursor())
+    except Exception as e:  # noqa: BLE001
+        logger.warning(f"Could not mark the Plant MoClo kit as reference: {e}")
+
     # Positional fusion-site linkers for multigene Level 2 assembly. Real MoClo
     # supplies these through position-specific Level 1 vectors; here they are
     # short Level 0 linker parts so the demo can chain three transcription units

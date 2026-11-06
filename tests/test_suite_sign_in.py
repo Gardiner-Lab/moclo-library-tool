@@ -117,7 +117,7 @@ def test_embedded_pages_leave_out_moclos_navigation(suite, client):
 
 def test_the_manifest_lists_moclos_tabs(suite, client):
     tabs = client.get('/suite-manifest.json').get_json()['tabs']
-    assert {t['id'] for t in tabs} == {'moclo-parts', 'moclo-saved', 'moclo-library'}
+    assert {t['id'] for t in tabs} == {'moclo-parts', 'moclo-saved', 'moclo-sharing', 'moclo-library'}
     assert next(t for t in tabs if t['id'] == 'moclo-library')['roles'] == ['admin']
 
 

@@ -76,6 +76,7 @@
   {% if not suite_mode %}<button class="dash-tab active" data-tab="account"><img class="tt-glyph" src="{{ url_for('static', filename='trellis/glyphs/person.svg') }}" alt=""> My Account</button>{% endif %}
   <button class="dash-tab" data-tab="parts"><img class="tt-glyph" src="{{ url_for('static', filename='trellis/glyphs/cassette.svg') }}" alt=""> My Parts</button>
   <button class="dash-tab" data-tab="saved">⭐ Saved</button>
+  {% if suite_mode %}<button class="dash-tab" data-tab="sharing">🤝 Library sharing</button>{% endif %}
 </div>
 
 <!-- ── ACCOUNT ── -->
@@ -134,6 +135,29 @@
   </table>
 </div>
 
+{% if suite_mode %}
+<!-- ── LIBRARY SHARING ── -->
+<div id="tab-sharing" class="dash-section">
+  <h2 style="margin-top:0">Library sharing</h2>
+  <p class="hint" style="margin-top:-0.5rem;">
+    Your chair group's labs see each other's parts, backbones and plasmids. Reference kits (the
+    MoClo toolkit, and kits an administrator marks) are seen by every lab. A chair group can also
+    share its library with another chair group, which then sees it read-only. Administrators,
+    and the leads of a lab in the chair group, decide.</p>
+  <div id="share-msg" class="hint" role="status"></div>
+  <div id="share-form" class="save-row" hidden>
+    <select id="share-from" aria-label="Chair group that shares"></select>
+    <span>shares its library with</span>
+    <select id="share-to" aria-label="Chair group it shares with"></select>
+    <button class="btn-sm btn-primary" id="share-add">Share</button>
+  </div>
+  <table class="dash-table" style="margin-top:1rem">
+    <thead><tr><th>Chair group</th><th>Its library is seen by</th><th>Since</th><th></th></tr></thead>
+    <tbody id="share-tbody"><tr><td colspan="4" class="empty-msg">Loading…</td></tr></tbody>
+  </table>
+</div>
+{% endif %}
+
 <!-- ── Edit Part Modal ── -->
 <div class="dash-modal-overlay" id="part-modal">
   <div class="dash-modal-box">
@@ -179,6 +203,7 @@ document.querySelectorAll('.dash-tab').forEach(btn => {
     btn.classList.add('active');
     if (name === 'parts') loadParts();
     if (name === 'saved') loadSaved();
+    if (name === 'sharing') loadSharing();
   });
 });
 
@@ -448,6 +473,60 @@ async function deleteSaved(id) {
   if (data.error) { alert(data.error); return; }
   loadSaved();
 }
+
+// ── Library sharing (inside the suite) ─────────────────────────────────────
+function cell(text) { const td = document.createElement('td'); td.textContent = text; return td; }
+
+function showSharing(data) {
+  const msg = document.getElementById('share-msg');
+  const tbody = document.getElementById('share-tbody');
+  if (!tbody) return;
+  tbody.innerHTML = '';
+  if (data.error) { msg.textContent = data.error; return; }
+  const groups = data.groups || [];
+  if (!groups.length) {
+    msg.textContent = 'There are no chair groups yet. An administrator makes them on the dashboard\'s Labs tab.';
+  }
+  const manageable = groups.filter(g => g.manage);
+  const form = document.getElementById('share-form');
+  form.hidden = !manageable.length || groups.length < 2;
+  const from = document.getElementById('share-from'), to = document.getElementById('share-to');
+  from.innerHTML = ''; to.innerHTML = '';
+  manageable.forEach(g => from.add(new Option(g.name, g.id)));
+  groups.forEach(g => to.add(new Option(g.name, g.id)));
+  const shares = data.shares || [];
+  if (!shares.length) {
+    const tr = document.createElement('tr');
+    const td = cell('No chair group shares its library with another yet.');
+    td.colSpan = 4; td.className = 'empty-msg'; tr.appendChild(td); tbody.appendChild(tr);
+  }
+  shares.forEach(s => {
+    const tr = document.createElement('tr');
+    tr.append(cell(s.from_name), cell(s.to_name), cell((s.created_at || '').slice(0, 10)));
+    const td = document.createElement('td');
+    if (groups.some(g => g.id === s.from_group && g.manage)) {
+      const b = document.createElement('button');
+      b.className = 'btn-sm'; b.textContent = 'Stop sharing';
+      b.addEventListener('click', () => changeSharing('DELETE', s.from_group, s.to_group));
+      td.appendChild(b);
+    }
+    tr.appendChild(td); tbody.appendChild(tr);
+  });
+}
+
+async function loadSharing() {
+  showSharing(await apiFetch('/api/library/sharing'));
+}
+
+async function changeSharing(method, fromGroup, toGroup) {
+  const data = await apiFetch('/api/library/sharing', {
+    method, body: JSON.stringify({ from_group: fromGroup, to_group: toGroup }) });
+  document.getElementById('share-msg').textContent = data.error || '';
+  if (!data.error) showSharing(data);
+}
+
+document.getElementById('share-add')?.addEventListener('click', () =>
+  changeSharing('POST', document.getElementById('share-from').value, document.getElementById('share-to').value));
 
 // Open the tab asked for (?tab=saved), or the first one.
 {

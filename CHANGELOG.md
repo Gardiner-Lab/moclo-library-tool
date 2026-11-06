@@ -7,6 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.20.0] - 2026-11-06
+
+### Changed
+- **The library is each chair group's.** Inside Trellis Tools, a part, backbone or assembled plasmid
+  belongs to the labs of whoever added it and is seen by their chair group (labs that work together, set
+  by an administrator on the suite's dashboard). A lab in no chair group keeps its records to itself.
+  Changing a record stays with its owner and administrators, as before. Lists, opening, compatibility,
+  translation, downloads, maps, building a cassette and the CRISPR Designer's pickers all follow it.
+  Outside the suite nothing changes: everyone sees everything.
+- **Reference records are everyone's.** The built-in MoClo toolkit (contributor or owner `system`) always
+  is; the bundled Plant MoClo kit (Addgene #1000000044) is marked reference once, when it is first found;
+  an administrator marks or un-marks any part or backbone in the Admin page's new *Reference* column.
+
+### Added
+- **Chair groups share their library.** A new *Library sharing* tab (also *MoClo sharing* on the suite's
+  dashboard) lets an administrator, or a lead of one of its labs, share a chair group's library with
+  another chair group, which sees it read-only. Sharing is one way. `GET/POST/DELETE /api/library/sharing`
+  and `PUT /api/library/reference`.
+- Two tables in `moclo.db`, `library_reference` and `library_shares`, created on start. The Sequence
+  Editor reads them for its MoClo card. Labs and chair groups are read from the suite's database
+  (`SUITE_DATABASE_PATH`), never written; the suite mounts it from 2.36.0.
+
 ## [1.19.1] - 2026-11-05
 
 ### Changed

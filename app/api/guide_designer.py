@@ -10,6 +10,7 @@ genome-editing MoClo toolkit.
 from flask import Blueprint, request, jsonify
 
 from app.services.authorization import require_auth
+from app.services import library_access
 from app.services.crispr_design import (
     design_trna_sgrna_strategy,
     design_oligos,
@@ -354,6 +355,7 @@ def search_l1_parts(user):
         include_all = request.args.get('include_all_levels') == '1'
 
         parts = Part.search(search) if search else Part.get_all()
+        parts = library_access.Viewer(user).parts(parts)
 
         results = []
         for p in parts:
@@ -383,7 +385,7 @@ def search_backbones(user):
     try:
         from app.models.backbone import Backbone
         search = (request.args.get('search') or '').strip().lower()
-        backbones = Backbone.get_all()
+        backbones = library_access.Viewer(user).backbones(Backbone.get_all())
         results = []
         for b in backbones:
             if search and search not in (b.name or '').lower():
@@ -517,6 +519,16 @@ def create_construct(user):
             return jsonify({'error': 'Both a Cas Level 1 part and a resistance Level 1 part are required.'}), 400
 
         other_part_ids = data.get('other_part_ids') or []
+        # Check the chosen parts and backbone up front, before anything is created.
+        viewer = library_access.Viewer(user)
+        chosen = [Part.get_by_id(pid) for pid in [cas_part_id, resistance_part_id] + list(other_part_ids)]
+        if any(p is not None and not viewer.sees_part(p) for p in chosen):
+            return library_access.refused()
+        if data.get('create_plasmid') and data.get('l2_backbone_id'):
+            from app.models.backbone import Backbone as _Backbone
+            chosen_backbone = _Backbone.get_by_id(data.get('l2_backbone_id'))
+            if chosen_backbone is not None and not viewer.sees_backbone(chosen_backbone):
+                return library_access.refused()
         contributor = user.username if hasattr(user, 'username') else 'unknown'
         names = data.get('names') or {}
         base_name = (data.get('construct_name') or '').strip() or f"CRISPR_{l1_acceptor}_{len(guides)}g"

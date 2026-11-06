@@ -17,6 +17,7 @@ from io import BytesIO
 from app.models.backbone import Backbone
 from app.models.cassette import Cassette
 from app.models.final_plasmid import FinalPlasmid
+from app.services import library_access
 from app.services.authorization import (
     require_auth, can_view_plasmid, can_edit_plasmid, plasmid_shared_with
 )
@@ -109,6 +110,8 @@ def create_plasmid(user):
                 'error': 'Backbone not found',
                 'message': f'Backbone {backbone_id} not found'
             }), 404
+        if not library_access.Viewer(user).sees_backbone(backbone):
+            return library_access.refused()
         
         # Get cassettes
         cassettes = []
@@ -225,6 +228,8 @@ def simulate_plasmid_assembly(user):
             return jsonify({
                 'error': 'Backbone not found'
             }), 404
+        if not library_access.Viewer(user).sees_backbone(backbone):
+            return library_access.refused()
         
         # Get cassettes
         cassettes = []
@@ -253,7 +258,8 @@ def simulate_plasmid_assembly(user):
 @require_auth
 def list_plasmids(user):
     """
-    List all plasmids visible to all authenticated users.
+    List the plasmids this person sees: their chair group's, those of chair
+    groups sharing their library with it, and reference ones.
     
     Query Parameters:
         include_sequence: Include full sequence (default: false)
@@ -277,16 +283,17 @@ def list_plasmids(user):
         401 Unauthorized: Authentication required
     """
     try:
-        # Get all plasmids (visible to all users)
-        all_plasmids = FinalPlasmid.get_all()
-        
+        viewer = library_access.Viewer(user)
+        all_plasmids = viewer.plasmids(FinalPlasmid.get_all())
+
         # Check if full sequence should be included
         include_sequence = request.args.get('include_sequence', 'false').lower() == 'true'
-        
+
         # Convert to dictionaries
         plasmids_data = []
         for plasmid in all_plasmids:
             data = plasmid.to_dict()
+            data['reference'] = viewer.is_reference('plasmid', plasmid.id, plasmid.owner_id)
             
             # Remove sequence if not requested
             if not include_sequence:
@@ -343,6 +350,8 @@ def get_plasmid(user, plasmid_id):
                 'error': 'Not found',
                 'message': f'Plasmid {plasmid_id} not found'
             }), 404
+        if not library_access.Viewer(user).sees_plasmid(plasmid):
+            return library_access.refused()
         
         # Plasmids are shared library objects: any authenticated user who can
         # see a plasmid can view and download it.
@@ -403,6 +412,8 @@ def update_plasmid(user, plasmid_id):
         if plasmid is None:
             return jsonify({'error': 'Not found',
                             'message': f'Plasmid {plasmid_id} not found'}), 404
+        if not library_access.Viewer(user).sees_plasmid(plasmid):
+            return library_access.refused()
 
         if not can_edit_plasmid(user, plasmid):
             return jsonify({
@@ -470,6 +481,8 @@ def delete_plasmid(user, plasmid_id):
                 'error': 'Not found',
                 'message': f'Plasmid {plasmid_id} not found'
             }), 404
+        if not library_access.Viewer(user).sees_plasmid(plasmid):
+            return library_access.refused()
         
         # Check if this is a system plasmid
         from app.models.user import User
@@ -531,6 +544,8 @@ def export_genbank(user, plasmid_id):
                 'error': 'Not found',
                 'message': f'Plasmid {plasmid_id} not found'
             }), 404
+        if not library_access.Viewer(user).sees_plasmid(plasmid):
+            return library_access.refused()
         
         # Plasmids are shared library objects: any authenticated user who can
         # see a plasmid can view and download it.
@@ -588,6 +603,8 @@ def export_fasta(user, plasmid_id):
                 'error': 'Not found',
                 'message': f'Plasmid {plasmid_id} not found'
             }), 404
+        if not library_access.Viewer(user).sees_plasmid(plasmid):
+            return library_access.refused()
         
         # Plasmids are shared library objects: any authenticated user who can
         # see a plasmid can view and download it.
@@ -637,6 +654,8 @@ def plasmid_map(user, plasmid_id):
     plasmid = FinalPlasmid.get_by_id(plasmid_id)
     if plasmid is None:
         return jsonify({'error': 'Not found', 'message': f'Plasmid {plasmid_id} not found'}), 404
+    if not library_access.Viewer(user).sees_plasmid(plasmid):
+        return library_access.refused()
     if not can_view_plasmid(user, plasmid):
         return jsonify({'error': 'Forbidden', 'message': 'Access denied to this plasmid'}), 403
     svg = plasmid_map_svg(plasmid.name, plasmid.assembled_sequence, plasmid.features)
@@ -680,6 +699,8 @@ def export_image(user, plasmid_id):
                 'error': 'Not found',
                 'message': f'Plasmid {plasmid_id} not found'
             }), 404
+        if not library_access.Viewer(user).sees_plasmid(plasmid):
+            return library_access.refused()
         
         # Plasmids are shared library objects: any authenticated user who can
         # see a plasmid can view and download it.
@@ -803,6 +824,8 @@ def get_plasmid_translation(user, plasmid_id):
                 'error': 'Not found',
                 'message': f'Plasmid {plasmid_id} not found'
             }), 404
+        if not library_access.Viewer(user).sees_plasmid(plasmid):
+            return library_access.refused()
         
         # Use stored translation only if it carries the per-unit coding fields;
         # older records predate them, so recompute in that case.

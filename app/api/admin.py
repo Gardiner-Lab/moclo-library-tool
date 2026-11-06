@@ -111,7 +111,10 @@ def delete_user(user, user_id):
 @require_admin
 def list_parts(user):
     parts = Part.get_all()
-    return jsonify({'parts': [p.to_dict() for p in parts], 'count': len(parts)}), 200
+    from app.services import library_access
+    refs = library_access.reference_ids('part')
+    return jsonify({'parts': [dict(p.to_dict(), reference=(p.contributor == library_access.SYSTEM or p.id in refs))
+                              for p in parts], 'count': len(parts)}), 200
 
 
 @admin_bp.route('/parts/<part_id>', methods=['PUT'])
@@ -206,7 +209,10 @@ def delete_cassette(user, cassette_id):
 @require_admin
 def list_backbones(user):
     backbones = Backbone.get_all()
-    return jsonify({'backbones': [b.to_dict() for b in backbones], 'count': len(backbones)}), 200
+    from app.services import library_access
+    viewer = library_access.Viewer(None)
+    return jsonify({'backbones': [dict(b.to_dict(), reference=viewer.is_reference('backbone', b.id, b.owner_id))
+                                  for b in backbones], 'count': len(backbones)}), 200
 
 
 @admin_bp.route('/backbones/<backbone_id>', methods=['PUT'])

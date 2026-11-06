@@ -16,6 +16,7 @@ from app.services.validation import (
     validate_part_for_upload, restriction_site_notice, ValidationError
 )
 from app.services.compatibility import find_compatible_parts
+from app.services import library_access
 from functools import wraps
 from typing import Callable, Any
 
@@ -102,9 +103,14 @@ def list_parts():
         else:
             # Get all parts
             parts = Part.get_all()
-        
+
+        # Only the person's chair group's parts, those shared with it, and reference parts.
+        viewer = library_access.current_viewer()
+        parts = viewer.parts(parts)
+
         # Convert to dictionaries
-        parts_data = [part.to_dict() for part in parts]
+        parts_data = [dict(part.to_dict(), reference=viewer.is_reference('part', part.id, part.contributor))
+                      for part in parts]
         
         return jsonify({
             'parts': parts_data,
@@ -155,8 +161,12 @@ def get_part(part_id: str):
             return jsonify({
                 'error': f'Part {part_id} not found'
             }), 404
-        
-        return jsonify(part.to_dict()), 200
+        viewer = library_access.current_viewer()
+        if not viewer.sees_part(part):
+            return library_access.refused()
+
+        return jsonify(dict(part.to_dict(),
+                            reference=viewer.is_reference('part', part.id, part.contributor))), 200
         
     except Exception as e:
         return jsonify({
@@ -606,9 +616,12 @@ def get_compatible_parts(part_id: str):
             return jsonify({
                 'error': f'Part {part_id} not found'
             }), 404
-        
-        # Get all parts
-        all_parts = Part.get_all()
+        viewer = library_access.current_viewer()
+        if not viewer.sees_part(target_part):
+            return library_access.refused()
+
+        # The parts this person sees
+        all_parts = viewer.parts(Part.get_all())
         
         # Find compatible parts
         compatible = find_compatible_parts(target_part, all_parts)
@@ -683,6 +696,8 @@ def get_part_translation(part_id: str):
             'error': 'Not found',
             'message': f'Part {part_id} not found'
         }), 404
+    if not library_access.current_viewer().sees_part(part):
+        return library_access.refused()
 
     try:
         translation = _analyze_part_translation(part)
@@ -731,7 +746,9 @@ def download_part_genbank(part_id: str):
                 'error': 'Not found',
                 'message': f'Part {part_id} not found'
             }), 404
-        
+        if not library_access.current_viewer().sees_part(part):
+            return library_access.refused()
+
         # Generate GenBank content
         genbank_content = export_part_genbank(part_id)
         

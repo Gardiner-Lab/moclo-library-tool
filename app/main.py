@@ -2,7 +2,7 @@
 Main Flask application entry point.
 """
 
-APP_VERSION = '1.19.1'
+APP_VERSION = '1.20.0'
 
 from flask import Flask, render_template, request, session, redirect, url_for
 from flask_cors import CORS
@@ -91,6 +91,7 @@ def create_app():
     # Register blueprints
     from app.api import auth_bp, parts_bp, cassettes_bp, visualize_bp, backbones_bp, plasmids_bp, admin_bp, guide_designer_bp
     from app.api.user_dashboard import user_dashboard_bp
+    from app.api.library import library_bp
     app.register_blueprint(auth_bp, url_prefix='/api/auth')
     app.register_blueprint(parts_bp, url_prefix='/api/parts')
     app.register_blueprint(cassettes_bp, url_prefix='/api/cassettes')
@@ -100,6 +101,7 @@ def create_app():
     app.register_blueprint(admin_bp, url_prefix='/api/admin')
     app.register_blueprint(guide_designer_bp, url_prefix='/api/guide-designer')
     app.register_blueprint(user_dashboard_bp, url_prefix='/api/me')
+    app.register_blueprint(library_bp, url_prefix='/api/library')
     
     # Web interface routes
     @app.route('/')

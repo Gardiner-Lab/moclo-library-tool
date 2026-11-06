@@ -12,6 +12,7 @@ from flask import Blueprint, jsonify, Response
 from app.models.part import Part
 from app.models.cassette import Cassette
 from app.services.authorization import require_auth, require_cassette_ownership
+from app.services import library_access
 from app.services.visualization import generate_part_svg, generate_cassette_svg
 
 # Create blueprint
@@ -52,7 +53,9 @@ def visualize_part(user, part_id: str):
             return jsonify({
                 'error': f'Part {part_id} not found'
             }), 404
-        
+        if not library_access.Viewer(user).sees_part(part):
+            return library_access.refused()
+
         # Generate SVG visualization
         svg_content = generate_part_svg(part)
         
@@ -153,6 +156,8 @@ def visualize_part_features(user, part_id: str):
         part = Part.get_by_id(part_id)
         if part is None:
             return jsonify({'error': f'Part {part_id} not found'}), 404
+        if not library_access.Viewer(user).sees_part(part):
+            return library_access.refused()
         
         features = part.features if hasattr(part, 'features') and part.features else []
         

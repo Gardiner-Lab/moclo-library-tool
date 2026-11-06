@@ -64,6 +64,8 @@ MANIFEST = {
          'src': '/dashboard?embed=1&tab=parts'},
         {'id': 'moclo-saved', 'title': 'Saved constructs', 'icon': '⭐', 'glyph': 'cassette', 'section': 'me',
          'src': '/dashboard?embed=1&tab=saved'},
+        {'id': 'moclo-sharing', 'title': 'MoClo sharing', 'icon': '🤝', 'glyph': 'library', 'section': 'me',
+         'src': '/dashboard?embed=1&tab=sharing'},
         {'id': 'moclo-library', 'title': 'MoClo library', 'icon': '🧬', 'glyph': 'library', 'section': 'admin',
          'roles': ['admin'], 'src': '/admin?embed=1&tab=parts'},
     ],

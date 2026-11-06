@@ -14,6 +14,7 @@ from flask import Blueprint, request, jsonify
 from app.models.backbone import Backbone
 from app.models.cassette import Cassette
 from app.services.authorization import require_auth
+from app.services import library_access
 from app.services.genbank_parser import (
     parse_genbank_file,
     validate_genbank_content,
@@ -289,16 +290,19 @@ def list_backbones(user):
             # Get only user's backbones
             backbones = Backbone.get_by_owner(user.id)
         else:
-            # Get all backbones (user's + system backbones)
+            # Their chair group's backbones, those shared with it, and reference ones
             backbones = Backbone.get_all()
-        
+        viewer = library_access.Viewer(user)
+        backbones = viewer.backbones(backbones)
+
         # Check if full sequence should be included
         include_sequence = request.args.get('include_sequence', 'false').lower() == 'true'
-        
+
         # Convert to dictionaries
         backbones_data = []
         for backbone in backbones:
             data = backbone.to_dict()
+            data['reference'] = viewer.is_reference('backbone', backbone.id, backbone.owner_id)
             
             # Remove sequence if not requested (can be large)
             if not include_sequence:
@@ -356,6 +360,8 @@ def get_backbone(user, backbone_id):
                 'error': 'Not found',
                 'message': f'Backbone {backbone_id} not found'
             }), 404
+        if not library_access.Viewer(user).sees_backbone(backbone):
+            return library_access.refused()
         
         # Allow access to own backbones and system backbones
         # (System backbones are shared reference backbones)
@@ -397,6 +403,8 @@ def delete_backbone(user, backbone_id):
                 'error': 'Not found',
                 'message': f'Backbone {backbone_id} not found'
             }), 404
+        if not library_access.Viewer(user).sees_backbone(backbone):
+            return library_access.refused()
         
         # Check if this is a system backbone
         from app.models.user import User
@@ -480,6 +488,8 @@ def update_backbone(user, backbone_id):
                 'error': 'Not found',
                 'message': f'Backbone {backbone_id} not found'
             }), 404
+        if not library_access.Viewer(user).sees_backbone(backbone):
+            return library_access.refused()
         
         # Check ownership
         if backbone.owner_id != user.id:
@@ -614,6 +624,8 @@ def get_restriction_sites(user, backbone_id):
                 'error': 'Not found',
                 'message': f'Backbone {backbone_id} not found'
             }), 404
+        if not library_access.Viewer(user).sees_backbone(backbone):
+            return library_access.refused()
         
         # Allow access to system backbones
         
@@ -680,6 +692,8 @@ def get_compatible_cassettes(user, backbone_id):
                 'error': 'Not found',
                 'message': f'Backbone {backbone_id} not found'
             }), 404
+        if not library_access.Viewer(user).sees_backbone(backbone):
+            return library_access.refused()
         
         # Allow access to system backbones
         
@@ -756,6 +770,8 @@ def download_backbone_genbank(user, backbone_id):
                 'error': 'Not found',
                 'message': f'Backbone {backbone_id} not found'
             }), 404
+        if not library_access.Viewer(user).sees_backbone(backbone):
+            return library_access.refused()
         
         # Generate GenBank content
         genbank_content = export_backbone_genbank(backbone_id)

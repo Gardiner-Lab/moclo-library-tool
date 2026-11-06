@@ -19,6 +19,7 @@ from app.models.cassette import Cassette
 from app.models.part import Part
 from app.models.backbone import Backbone
 from app.services.authorization import require_auth, require_cassette_ownership
+from app.services import library_access
 from app.services.assembly import (
     create_cassette,
     validate_parts_for_assembly,
@@ -342,7 +343,11 @@ def create_new_cassette(user):
             return jsonify({
                 'error': validation['error']
             }), 400
-        
+
+        # Only parts this person sees: their chair group's, shared with it, or reference.
+        if not all(library_access.Viewer(user).sees_part(p) for p in validation['parts']):
+            return library_access.refused()
+
         # Create the cassette
         try:
             cassette = create_cassette(
@@ -659,8 +664,8 @@ def get_compatible_backbones(user, cassette, cassette_id):
         404 Not Found: Cassette not found
     """
     try:
-        # Get all backbones
-        backbones = Backbone.get_all()
+        # The backbones this person sees
+        backbones = library_access.Viewer(user).backbones(Backbone.get_all())
         
         # Find compatible backbones
         compatible = find_compatible_backbones(cassette, backbones)

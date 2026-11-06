@@ -238,6 +238,12 @@ class Database:
         except Exception:
             pass
 
+        # Who sees what in the library, inside the suite: reference records and
+        # chair groups sharing their library (app/services/library_access.py).
+        from app.services import library_access
+        library_access.ensure_schema(cursor)
+        library_access.mark_plant_kit(cursor)
+
     def _create_indexes(self, cursor):
         """
         Create indexes for performance optimization.
