@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.21.0] - 2026-11-08
+
+### Demo
+- **The teaching demo sees only the demo's.** Someone in the suite's demo sees the demo's records and the kits MoClo ships with (the toolkit and the Plant kit): not another chair group's library shared with theirs, nor a part or backbone an administrator added or marked. Their Library sharing tab shows their own chair group only, and the demo's library is not shared out.
+
+### Added
+- **What an administrator adds is seen by every lab.** A part or backbone added by an administrator
+  of the suite is marked reference (public) as it is added, like the built-in kits, instead of
+  having to be marked by hand. It can still be un-marked, which takes it back to the
+  administrator's chair group. Records added before this are left as they were.
+
+### Changed
+- **Sharing a chair group's library with another is the lab admin's.** It used to be any lab lead's
+  of the chair group; now it is a lab admin's (a lab lead with the suite's `lab_admin` flag) and
+  administrators', as for notebooks. MoClo now reads that flag from the suite.
+- The help, About and Library sharing pages say who sees what: the chair group by default, the
+  chair groups it shares with, and every lab for reference kits.
+
 ## [1.20.0] - 2026-11-06
 
 ### Changed

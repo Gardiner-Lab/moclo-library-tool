@@ -2,7 +2,7 @@
 Main Flask application entry point.
 """
 
-APP_VERSION = '1.20.0'
+APP_VERSION = '1.21.0'
 
 from flask import Flask, render_template, request, session, redirect, url_for
 from flask_cors import CORS

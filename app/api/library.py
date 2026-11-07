@@ -10,8 +10,9 @@ Who sees the MoClo library, inside Trellis Tools (app/services/library_access.py
                                     a part, backbone or plasmid as reference
                                     (seen by every lab), or un-marks it
 
-Administrators share any chair group's library; a lab lead shares their own
-chair group's.
+Administrators share any chair group's library; a lab admin shares their own
+chair group's. A part or backbone an administrator adds is marked reference as it
+is added (library_access.mark_if_administrators); it can be un-marked here.
 """
 
 from flask import Blueprint, jsonify, request
@@ -28,12 +29,17 @@ library_bp = Blueprint('library', __name__)
 def _sharing(user):
     groups = library_access.chair_groups()
     mine = library_access.groups_of(user.username)
+    shares = library_access.shares()
+    if library_access.in_demo(user.username):
+        # The teaching demo is shown its own chair group only, not the real ones.
+        groups = {gid: name for gid, name in groups.items() if gid in mine}
+        shares = [s for s in shares if s.get('from_group') in mine and s.get('to_group') in mine]
     return {
         'enabled': library_access.enabled(),
         'groups': [{'id': gid, 'name': name, 'mine': gid in mine,
                     'manage': library_access.can_manage_shares(user, gid)}
                    for gid, name in sorted(groups.items(), key=lambda g: (g[1] or '').casefold())],
-        'shares': library_access.shares(),
+        'shares': shares,
     }
 
 
@@ -55,7 +61,9 @@ def add_sharing(user):
     if not from_group or not to_group:
         return jsonify({'error': 'Choose the chair group that shares and the one it shares with'}), 400
     if not library_access.can_manage_shares(user, from_group):
-        return jsonify({'error': "Only an administrator or a lead of one of its labs shares a chair group's library"}), 403
+        return jsonify({'error': "Only an administrator or a lab admin of one of its labs shares a chair group's library"}), 403
+    if library_access.in_demo(user.username):
+        return jsonify({'error': "The demo's library is not shared with other chair groups"}), 403
     try:
         library_access.add_share(from_group, to_group, user.username)
     except ValueError as exc:
@@ -68,7 +76,7 @@ def add_sharing(user):
 def remove_sharing(user):
     from_group, to_group = _pair()
     if not library_access.can_manage_shares(user, from_group):
-        return jsonify({'error': "Only an administrator or a lead of one of its labs changes a chair group's sharing"}), 403
+        return jsonify({'error': "Only an administrator or a lab admin of one of its labs changes a chair group's sharing"}), 403
     library_access.remove_share(from_group, to_group)
     return jsonify(_sharing(user)), 200
 

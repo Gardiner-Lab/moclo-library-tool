@@ -9,6 +9,15 @@ from datetime import datetime
 from app.models.parts_database import get_parts_database
 
 
+def _mark_if_administrators(kind: str, record_id: str, owner) -> None:
+    """Mark an administrator's new record public; never let that stop it being added."""
+    try:
+        from app.services import library_access
+        library_access.mark_if_administrators(kind, record_id, owner)
+    except Exception:  # pragma: no cover - the record stands; an administrator can still mark it
+        pass
+
+
 _COMPLEMENT = {'A': 'T', 'T': 'A', 'C': 'G', 'G': 'C', 'N': 'N'}
 
 
@@ -276,8 +285,10 @@ class Part:
                 (part_id,)
             )
             row = cursor.fetchone()
-            
-            return Part._from_row(row)
+
+        # A part an administrator adds is public, seen by every lab (library_access).
+        _mark_if_administrators('part', part_id, contributor)
+        return Part._from_row(row)
     
     @staticmethod
     def get_by_id(part_id: str) -> Optional['Part']:

@@ -12,6 +12,15 @@ from datetime import datetime, timezone
 from app.models.database import get_connection
 
 
+def _mark_if_administrators(kind: str, record_id: str, owner) -> None:
+    """Mark an administrator's new record public; never let that stop it being added."""
+    try:
+        from app.services import library_access
+        library_access.mark_if_administrators(kind, record_id, owner)
+    except Exception:  # pragma: no cover - the record stands; an administrator can still mark it
+        pass
+
+
 class Backbone:
     """
     Represents a MoClo plasmid backbone.
@@ -260,6 +269,8 @@ class Backbone:
         
         conn.commit()
         conn.close()
+        # A backbone an administrator adds is public, seen by every lab (library_access).
+        _mark_if_administrators('backbone', backbone.id, owner_id)
         
         return backbone
     

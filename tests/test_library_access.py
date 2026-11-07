@@ -21,8 +21,8 @@ GATTACA = 'GATTACA' * 12
 @pytest.fixture
 def suite(tmp_path, monkeypatch):
     """
-    Plant chair group: Gardiner Lab (ana, lead) and Smith Lab (zoe).
-    Microbe chair group: Jones Lab (tom, its lead jim). Solo Lab (sol) is in none.
+    Plant chair group: Gardiner Lab (ana; lead, its lab admin; lead2, a lab lead) and Smith Lab (zoe).
+    Microbe chair group: Jones Lab (tom, its lab admin jim). Solo Lab (sol) is in none.
     """
     monkeypatch.setenv('SUITE_AUTH', 'proxy')
     path = tmp_path / 'suite.db'
@@ -31,17 +31,19 @@ def suite(tmp_path, monkeypatch):
     conn.executescript("""
         CREATE TABLE chair_groups (id TEXT PRIMARY KEY, name TEXT);
         CREATE TABLE labs (id TEXT PRIMARY KEY, name TEXT, chair_group_id TEXT);
-        CREATE TABLE lab_members (username TEXT, lab_id TEXT, role TEXT, PRIMARY KEY (username, lab_id));
+        CREATE TABLE lab_members (username TEXT, lab_id TEXT, role TEXT, lab_admin INTEGER DEFAULT 0,
+                                  PRIMARY KEY (username, lab_id));
         INSERT INTO chair_groups VALUES ('plant', 'Plant Biology'), ('microbe', 'Microbiology');
         INSERT INTO labs VALUES ('g', 'Gardiner Lab', 'plant'), ('s', 'Smith Lab', 'plant'),
                                 ('j', 'Jones Lab', 'microbe'), ('solo', 'Solo Lab', NULL);
-        INSERT INTO lab_members VALUES ('ana', 'g', 'member'), ('lead', 'g', 'lab_lead'),
-                                       ('zoe', 's', 'member'), ('tom', 'j', 'member'),
-                                       ('jim', 'j', 'lab_lead'), ('sol', 'solo', 'member');
+        INSERT INTO lab_members VALUES ('ana', 'g', 'member', 0), ('lead', 'g', 'lab_lead', 1),
+                                       ('lead2', 'g', 'lab_lead', 0),
+                                       ('zoe', 's', 'member', 0), ('tom', 'j', 'member', 0),
+                                       ('jim', 'j', 'lab_lead', 1), ('sol', 'solo', 'member', 0);
     """)
     conn.commit()
     conn.close()
-    for name in ('ana', 'lead', 'zoe', 'tom', 'jim', 'sol'):
+    for name in ('ana', 'lead', 'lead2', 'zoe', 'tom', 'jim', 'sol'):
         User.create(name, 'password123')
     User.create('boss', 'password123', is_admin=True)
     User.create('system', 'password123')
@@ -114,9 +116,10 @@ def test_a_chair_group_shares_its_library_with_another(suite, client):
     _part('anaCDS', 'ana')
     share = lambda name, method='POST', frm='plant', to='microbe': client.open(
         '/api/library/sharing', method=method, headers=who(name), json={'from_group': frm, 'to_group': to})
-    # Only an administrator or a lead of one of its labs shares a chair group's library.
+    # Only an administrator or a lab admin of one of its labs shares a chair group's library.
     assert share('ana').status_code == 403
-    assert share('jim').status_code == 403            # a lead, but of the other group
+    assert share('lead2').status_code == 403          # a lab lead, not the lab's admin
+    assert share('jim').status_code == 403            # a lab admin, but of the other group
     r = share('lead')
     assert r.status_code == 200, r.get_json()
     assert [(s['from_name'], s['to_name']) for s in r.get_json()['shares']] == [('Plant Biology', 'Microbiology')]
@@ -181,3 +184,70 @@ def test_the_plasmid_routes_answer_inside_the_suite(suite, client):
     r = client.get('/api/backbones', headers=who('ana'))
     assert r.status_code == 200, r.get_json()
     assert client.get('/api/library/sharing', headers=who('ana')).status_code == 200
+
+
+def test_what_an_administrator_adds_is_seen_by_every_lab(suite, client):
+    """A part or backbone an administrator adds is public, as it is added; it can be un-marked."""
+    part = _part('boss promoter', 'boss', 'Gardiner Lab')
+    boss = User.get_by_username('boss')
+    Backbone.create(name='pBossBackbone', owner_id=boss.id, sequence=GATTACA * 3)
+    assert 'boss promoter' in _listed(client, 'tom') and 'boss promoter' in _listed(client, 'sol')
+    backbones = lambda name: {b['name'] for b in client.get('/api/backbones', headers=who(name)).get_json()['backbones']}
+    assert 'pBossBackbone' in backbones('tom')
+    assert library_access.reference_ids('part') >= {part.id}
+    # Someone else's part is still their chair group's alone.
+    _part('anaCDS', 'ana')
+    assert 'anaCDS' not in _listed(client, 'tom')
+    # The administrator can take a part of theirs back to the chair group.
+    client.put('/api/library/reference', headers=who('boss'), json={'kind': 'part', 'id': part.id, 'reference': False})
+    assert 'boss promoter' not in _listed(client, 'tom')
+
+
+def test_what_a_chair_group_adds_stays_in_the_chair_group(suite, client):
+    """Only a suite administrator's records are public: a lab admin's, lead's or member's are the chair group's."""
+    lead = User.get_by_username('lead')                 # Gardiner Lab's lab admin
+    for name, who_added in (('labAdminCDS', 'lead'), ('leadCDS', 'lead2'), ('memberCDS', 'ana')):
+        _part(name, who_added)
+    Backbone.create(name='pLabAdmin', owner_id=lead.id, sequence=GATTACA * 3)
+    plant = _listed(client, 'zoe')                      # Smith Lab, same chair group
+    assert {'labAdminCDS', 'leadCDS', 'memberCDS'} <= plant
+    assert not {'labAdminCDS', 'leadCDS', 'memberCDS'} & (_listed(client, 'tom') | _listed(client, 'sol'))
+    backbones = lambda name: {b['name'] for b in client.get('/api/backbones', headers=who(name)).get_json()['backbones']}
+    assert 'pLabAdmin' in backbones('zoe') and 'pLabAdmin' not in backbones('tom')
+    assert library_access.reference_ids('part') == set() and library_access.reference_ids('backbone') == set()
+
+
+def test_lab_admins_and_leads_are_told_apart(suite):
+    lead, lead2 = User.get_by_username('lead'), User.get_by_username('lead2')
+    assert library_access.can_manage_shares(lead, 'plant')
+    assert not library_access.can_manage_shares(lead2, 'plant')
+    assert not library_access.can_manage_shares(lead, 'microbe')
+
+
+def test_the_demo_sees_only_the_demo_and_the_kits(suite, client):
+    """Microbiology as the teaching demo: the kits it is built from, nothing of the real labs'."""
+    conn = sqlite3.connect(suite)
+    conn.execute('CREATE TABLE settings (key TEXT PRIMARY KEY, value TEXT)')
+    conn.execute("INSERT INTO settings VALUES ('demo.chair_group', 'microbe')")
+    conn.commit()
+    conn.close()
+    library_access._suite_cache = (None, {})
+    _part('toolkit filler', 'system', 'MoClo toolkit')
+    kit = _part('kit promoter', 'ana', library_access.PLANT_KIT_SOURCE)
+    from app.models.database import get_database
+    with get_database().get_connection() as c:
+        library_access.mark_plant_kit(c.cursor())            # marked by 'system': a shipped kit
+    _part('boss promoter', 'boss')                           # an administrator's: public, but not the demo's
+    _part('anaCDS', 'ana')
+    _part('tomCDS', 'tom', 'Jones Lab')
+    client.post('/api/library/sharing', headers=who('lead'), json={'from_group': 'plant', 'to_group': 'microbe'})
+    seen = _listed(client, 'tom')
+    assert {'toolkit filler', 'kit promoter', 'tomCDS'} <= seen
+    assert not {'boss promoter', 'anaCDS'} & seen
+    assert {'boss promoter', 'anaCDS'} <= _listed(client, 'sol') | _listed(client, 'zoe')
+    # Its sharing tab shows its own chair group only; it shares with no one.
+    sharing = client.get('/api/library/sharing', headers=who('jim')).get_json()
+    assert [g['id'] for g in sharing['groups']] == ['microbe'] and sharing['shares'] == []
+    assert client.post('/api/library/sharing', headers=who('jim'),
+                       json={'from_group': 'microbe', 'to_group': 'plant'}).status_code == 403
+    assert kit.id
