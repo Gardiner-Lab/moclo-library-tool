@@ -165,6 +165,16 @@ def list_cassettes(user):
         
         # Convert to dictionaries
         cassettes_data = [cassette.to_dict() for cassette in all_cassettes]
+
+        # And those of people who have left whom this person oversees (their lab's leads and
+        # lab admins), read-only, marked with whose they were.
+        from app.services import library_access
+        for name in sorted(library_access.overseen_archived(user)):
+            gone = User.get_by_username(name)
+            if gone is None or gone.id == user.id:
+                continue
+            for cassette in Cassette.get_by_owner(gone.id):
+                cassettes_data.append({**cassette.to_dict(), 'archived_owner': name})
         
         return jsonify({
             'cassettes': cassettes_data,

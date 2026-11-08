@@ -91,7 +91,8 @@ function createCassetteCard(cassette) {
     const header = document.createElement('div');
     header.className = 'cassette-header';
     header.innerHTML = `
-        <div class="cassette-name">${escapeHtml(cassette.name)}</div>
+        <div class="cassette-name">${escapeHtml(cassette.name)}${cassette.archived_owner
+            ? ` <span class="cassette-meta-item" title="They have left: their lab's leads and lab admins see it, read-only">from ${escapeHtml(cassette.archived_owner)}, archived</span>` : ''}</div>
         <div class="cassette-meta">
             <span class="cassette-meta-item">
                 <span><img class="tt-glyph" src="/static/trellis/glyphs/calendar.svg" alt=""></span>
@@ -138,9 +139,9 @@ function createCassetteCard(cassette) {
         <button class="btn-export" onclick="exportCassette('${cassette.id}', 'svg')" title="Export as SVG image">
             <img class="tt-glyph" src="/static/trellis/glyphs/image.svg" alt=""> SVG
         </button>
-        <button class="btn-delete" onclick="deleteCassette('${cassette.id}')" title="Delete cassette">
+        ${cassette.archived_owner ? '' : `<button class="btn-delete" onclick="deleteCassette('${cassette.id}')" title="Delete cassette">
             <img class="tt-glyph" src="/static/trellis/glyphs/trash.svg" alt="">
-        </button>
+        </button>`}
     `;
 
     card.appendChild(header);

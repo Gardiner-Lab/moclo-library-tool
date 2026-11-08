@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.22.0] - 2026-11-08
+
+### Changed
+- **What someone who left kept to themselves opens to their lab.** When a person is archived on the suite's dashboard, their transcription units and saved constructs (until then theirs alone) are shown to the lab leads and lab admins of their labs, and to administrators: read-only, marked "from <name>, archived". Their parts, backbones and plasmids were already their chair group's.
+
 ## [1.21.0] - 2026-11-08
 
 ### Demo

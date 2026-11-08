@@ -119,7 +119,9 @@ def _read_suite() -> dict:
                     name_of = {lab_id: (name or '').casefold() for lab_id, name, _ in labs}
                     # The teaching demo's chair group (the suite's demo/accounts.py records it).
                     demo = conn.execute("SELECT value FROM settings WHERE key = 'demo.chair_group'").fetchone()                         if 'settings' in tables else None
-                    found = {'labs_of': {}, 'leads': {}, 'lab_admins': {}, 'groups': groups,
+                    # People who have left (archived on the suite's dashboard).
+                    gone = {r[0] for r in conn.execute('SELECT username FROM archived')}                         if 'archived' in tables else set()
+                    found = {'labs_of': {}, 'leads': {}, 'lab_admins': {}, 'groups': groups, 'archived': gone,
                              'demo_group': demo[0] if demo and demo[0] else None,
                              'group_of': {(name or '').casefold(): group for _, name, group in labs if name}}
                     for username, lab_id, role, lab_admin in members:
@@ -137,6 +139,34 @@ def _read_suite() -> dict:
             return _suite_cache[1]
         _suite_cache = (stamp, found)
         return found
+
+
+def overseen_archived(user) -> Set[str]:
+    """
+    The usernames of people who have left (archived) whose own things this person may now open,
+    read-only: their transcription units and saved constructs, otherwise theirs alone. An
+    administrator: everyone archived. A lab lead or lab admin: those who were in a lab they lead.
+    """
+    suite = _read_suite()
+    gone = set(suite.get('archived', set()))
+    if not gone:
+        return set()
+    if getattr(user, 'is_admin', False):
+        return gone
+    led = suite.get('leads', {}).get(getattr(user, 'username', None), set())
+    return {u for u in gone if led & suite.get('labs_of', {}).get(u, set())}
+
+
+def oversees_owner(user, owner_id: Optional[str]) -> bool:
+    """Whether owner_id (a MoClo account id) is someone archived whom this person oversees."""
+    if not owner_id:
+        return False
+    try:
+        with _connect() as conn:
+            row = conn.execute('SELECT username FROM users WHERE id = ?', (owner_id,)).fetchone()
+    except sqlite3.Error:
+        return False
+    return bool(row) and row[0] in overseen_archived(user)
 
 
 def enabled() -> bool:

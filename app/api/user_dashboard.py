@@ -129,8 +129,16 @@ def delete_my_part(user, part_id):
 def list_saved_items(user):
     """Return all dashboard items the current user has saved."""
     from app.models.saved_item import SavedItem
-    items = SavedItem.get_by_user(user.id)
-    return jsonify({'items': [{**i.to_dict(), 'link': _saved_link(i)} for i in items], 'count': len(items)}), 200
+    items = [{**i.to_dict(), 'link': _saved_link(i)} for i in SavedItem.get_by_user(user.id)]
+    # And what people who have left saved, for their lab's leads and lab admins: read-only, marked whose.
+    from app.models.user import User
+    from app.services import library_access
+    for name in sorted(library_access.overseen_archived(user)):
+        gone = User.get_by_username(name)
+        if gone is None or gone.id == user.id:
+            continue
+        items += [{**i.to_dict(), 'link': _saved_link(i), 'archived_owner': name} for i in SavedItem.get_by_user(gone.id)]
+    return jsonify({'items': items, 'count': len(items)}), 200
 
 
 def _saved_link(item) -> dict:

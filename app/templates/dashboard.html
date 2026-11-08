@@ -125,7 +125,8 @@
   <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:1rem;">
     <h2 style="margin:0">Saved Constructs &amp; Plasmids <span class="count-badge" id="saved-count">0</span></h2>
   </div>
-  <p class="hint" style="margin-top:-0.5rem;">Items you saved from the CRISPR Designer or a plasmid.
+  <p class="hint" style="margin-top:-0.5rem;">Items you saved from the CRISPR Designer or a plasmid (and, for a lab
+     lead or lab admin, those of people from their lab who have been archived).
      Click a title (or Open plasmid) for the plasmid itself; open a saved reaction to pre-fill the reaction-mix calculator.</p>
   <table class="dash-table">
     <thead><tr><th>Title</th><th>Type</th><th>Saved</th><th>Reactions</th><th>Actions</th></tr></thead>
@@ -420,17 +421,21 @@ async function loadSaved() {
       actions.appendChild(viewBtn);
     }
 
-    const delBtn = document.createElement('button');
-    delBtn.className = 'btn-sm btn-danger';
-    delBtn.textContent = 'Delete';
-    delBtn.addEventListener('click', () => {
-      if (confirm(`Delete saved item "${it.title}"?`)) deleteSaved(it.id);
-    });
-    actions.appendChild(delBtn);
+    // Saved by someone who has left: shown to their lab's leads and lab admins, not to be deleted.
+    if (!it.archived_owner) {
+      const delBtn = document.createElement('button');
+      delBtn.className = 'btn-sm btn-danger';
+      delBtn.textContent = 'Delete';
+      delBtn.addEventListener('click', () => {
+        if (confirm(`Delete saved item "${it.title}"?`)) deleteSaved(it.id);
+      });
+      actions.appendChild(delBtn);
+    }
 
     tr.innerHTML = `
       <td class="truncate" title="${escHtml(it.title)}">${plasmidUrl
-        ? `<a href="${escHtml(plasmidUrl)}" target="_blank" rel="noopener">${escHtml(it.title)}</a>` : escHtml(it.title)}</td>
+        ? `<a href="${escHtml(plasmidUrl)}" target="_blank" rel="noopener">${escHtml(it.title)}</a>` : escHtml(it.title)}${it.archived_owner
+        ? ` <span class="hint">from ${escHtml(it.archived_owner)}, archived</span>` : ''}</td>
       <td>${escHtml(it.item_type)}</td>
       <td>${it.created_at ? euDate(it.created_at) : '—'}</td>
       <td></td>

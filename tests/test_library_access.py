@@ -251,3 +251,33 @@ def test_the_demo_sees_only_the_demo_and_the_kits(suite, client):
     assert client.post('/api/library/sharing', headers=who('jim'),
                        json={'from_group': 'microbe', 'to_group': 'plant'}).status_code == 403
     assert kit.id
+
+
+def test_what_someone_who_left_kept_to_themselves_opens_to_their_labs_leads(suite, client):
+    """Transcription units and saved constructs are their owner's alone, until the owner is archived."""
+    from app.models.cassette import Cassette
+    from app.models.saved_item import SavedItem
+    ana = User.get_by_username('ana')
+    p1, p2 = _part('anaPro', 'ana'), _part('anaCDS2', 'ana')
+    unit = Cassette.create(name='anaTU', owner_id=ana.id, part_ids=[p1.id, p2.id], assembled_sequence=GATTACA, level='1')
+    SavedItem.create(user_id=ana.id, item_type='plasmid', title='ana saved')
+    units = lambda name: {c['name']: c for c in client.get('/api/cassettes', headers=who(name)).get_json()['cassettes']}
+    saved = lambda name: {i['title']: i for i in client.get('/api/me/saved', headers=who(name)).get_json()['items']}
+    assert 'anaTU' not in units('lead') and 'ana saved' not in saved('lead')
+    assert client.get(f'/api/cassettes/{unit.id}', headers=who('lead')).status_code == 403
+    conn = sqlite3.connect(suite)
+    conn.execute('CREATE TABLE archived (username TEXT PRIMARY KEY, archived_at TEXT, archived_by TEXT)')
+    conn.execute("INSERT INTO archived VALUES ('ana', '2026-11-08T10:00:00Z', 'lead')")
+    conn.commit()
+    conn.close()
+    # Gardiner Lab's lab admin (lead) and lab lead (lead2), and an administrator: read-only, marked whose.
+    for name in ('lead', 'lead2', 'boss'):
+        assert units(name)['anaTU']['archived_owner'] == 'ana' and saved(name)['ana saved']['archived_owner'] == 'ana'
+        assert client.get(f'/api/cassettes/{unit.id}', headers=who(name)).status_code == 200
+    assert client.delete(f'/api/cassettes/{unit.id}', headers=who('lead')).status_code == 403
+    item = saved('lead')['ana saved']
+    assert client.delete(f"/api/me/saved/{item['id']}", headers=who('lead')).status_code == 403
+    # Not a member of her lab, nor another lab's lead.
+    for name in ('zoe', 'jim'):
+        assert 'anaTU' not in units(name) and 'ana saved' not in saved(name)
+        assert client.get(f'/api/cassettes/{unit.id}', headers=who(name)).status_code == 403

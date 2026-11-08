@@ -170,6 +170,12 @@ def require_cassette_ownership(f: Callable) -> Callable:
         
         # Check ownership
         is_owner, error_message = check_cassette_ownership(cassette_id, user.id)
+        if not is_owner and request.method == 'GET':
+            # Someone who has left: their lab's leads and lab admins open it, read-only.
+            from app.services import library_access
+            found = Cassette.get_by_id(cassette_id)
+            if found is not None and library_access.oversees_owner(user, found.owner_id):
+                is_owner, error_message = True, None
         
         if not is_owner:
             if "not found" in error_message:
