@@ -13,7 +13,8 @@ added it (a part's contributor, a backbone's or plasmid's owner). It is seen by:
 * everyone, when it is a reference record: a public kit rather than a lab's own
   work. The built-in MoClo toolkit (contributor "system", or owned by the
   "system" account) always is; others are marked in `library_reference` (the
-  bundled Plant MoClo kit, when it is loaded; every part and backbone an
+  bundled Plant MoClo kit, when it is loaded; the demo library's generated linkers and
+  acceptors; every part and backbone an
   administrator adds, as it is added; and whatever else an administrator marks);
 * administrators, always.
 
@@ -48,6 +49,12 @@ KINDS = ('part', 'backbone', 'plasmid')
 SYSTEM = 'system'
 # The bundled Plant MoClo kit's parts (app/init_db.py): a public Addgene kit.
 PLANT_KIT_SOURCE = 'Plant MoClo (Addgene #1000000044)'
+# The demo library's generated records (app/init_db.py _ensure_demo_backbones): four linker parts
+# and two acceptor backbones, which the demo's multigene assemblies are built from.
+GENERATED_SOURCE = 'Generated'
+DEMO_KIT_PARTS = ('DEMO end-linker A (CGCT->GTCA)', 'DEMO end-linker B (CGCT->TAGC)',
+                  'DEMO start-linker B (GTCA->GGAG)', 'DEMO start-linker C (TAGC->GGAG)')
+DEMO_KIT_BACKBONES = ('DEMO L1 acceptor (BsaI)', 'DEMO L2 acceptor (BpiI)')
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS library_reference (
@@ -219,6 +226,17 @@ def ensure_schema(cursor) -> None:
             cursor.execute(statement)
 
 
+def _mark_as_kit(cursor, kind: str, ids: Iterable[str]) -> None:
+    """
+    Mark records as shipped kits: reference, marked by 'system'. A record an administrator owns is
+    already marked reference when it is made, but by that administrator (mark_if_administrators);
+    the demo sees only what 'system' marked, so that mark is made 'system's.
+    """
+    cursor.executemany("INSERT INTO library_reference (kind, record_id, marked_by) VALUES (?, ?, 'system') "
+                       "ON CONFLICT (kind, record_id) DO UPDATE SET marked_by = 'system'",
+                       [(kind, i) for i in ids])
+
+
 def mark_plant_kit(cursor, parts_db_path: Optional[str] = None) -> None:
     """
     Mark the bundled Plant MoClo kit's parts as reference, once: the first time
@@ -240,9 +258,51 @@ def mark_plant_kit(cursor, parts_db_path: Optional[str] = None) -> None:
         return
     if not ids:
         return   # not loaded yet: init_db marks them when it loads the kit
-    cursor.executemany("INSERT OR IGNORE INTO library_reference (kind, record_id, marked_by) "
-                       "VALUES ('part', ?, 'system')", [(i,) for i in ids])
+    _mark_as_kit(cursor, 'part', ids)
     cursor.execute("INSERT OR IGNORE INTO library_flags (name) VALUES ('plant_kit_marked')")
+
+
+def mark_demo_kit(cursor, parts_db_path: Optional[str] = None) -> None:
+    """
+    Mark the demo library's generated linkers and acceptors as shipped kits (reference, marked by
+    'system'), like the Plant kit parts, once: the demo's accounts see only their own chair
+    group's records and the shipped kits, and these are what its Level 1 and Level 2 assemblies
+    are built from. On a fresh install they are made before the demo account exists, so they
+    belong to 'admin' and would otherwise be invisible to it.
+
+    Marked the first time all of them are found, then left alone: an administrator's un-marking
+    stands through restarts. Called when init_db makes them and at every start (for installs
+    that already have them). `cursor` is moclo.db's (backbones and library_reference are there);
+    the parts are in the separate parts database.
+    """
+    if cursor.execute("SELECT 1 FROM library_flags WHERE name = 'demo_kit_marked'").fetchone():
+        return
+    path = parts_db_path or os.environ.get('PARTS_DATABASE_PATH', '/data/parts.db')
+    part_ids: List[str] = []
+    if os.path.exists(path):
+        try:
+            parts = sqlite3.connect(f'file:{path}?mode=ro', uri=True, timeout=5)
+            try:
+                marks = ','.join('?' * len(DEMO_KIT_PARTS))
+                part_ids = [r[0] for r in parts.execute(
+                    f"SELECT id FROM parts WHERE lab_source = ? AND name IN ({marks})",
+                    (GENERATED_SOURCE, *DEMO_KIT_PARTS))]
+            finally:
+                parts.close()
+        except sqlite3.Error:
+            return
+    marks = ','.join('?' * len(DEMO_KIT_BACKBONES))
+    try:
+        backbone_ids = [r[0] for r in cursor.execute(
+            f"SELECT id FROM backbones WHERE lab_source = ? AND name IN ({marks})",
+            (GENERATED_SOURCE, *DEMO_KIT_BACKBONES))]
+    except sqlite3.Error:
+        return
+    _mark_as_kit(cursor, 'part', part_ids)
+    _mark_as_kit(cursor, 'backbone', backbone_ids)
+    # Done only when every one has been found; until then each start tries again.
+    if len(part_ids) >= len(DEMO_KIT_PARTS) and len(backbone_ids) >= len(DEMO_KIT_BACKBONES):
+        cursor.execute("INSERT OR IGNORE INTO library_flags (name) VALUES ('demo_kit_marked')")
 
 
 def reference_ids(kind: str, kits_only: bool = False) -> Set[str]:

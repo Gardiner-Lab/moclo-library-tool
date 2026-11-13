@@ -281,3 +281,34 @@ def test_what_someone_who_left_kept_to_themselves_opens_to_their_labs_leads(suit
     for name in ('zoe', 'jim'):
         assert 'anaTU' not in units(name) and 'ana saved' not in saved(name)
         assert client.get(f'/api/cassettes/{unit.id}', headers=who(name)).status_code == 403
+
+def test_the_demo_linkers_and_acceptors_are_shipped_kits_once(suite, client):
+    """A fresh install makes them before the demo account exists (so admin owns them); the demo must still see them."""
+    from app.init_db import _ensure_demo_backbones
+    from app.models.backbone import Backbone
+    from app.models.database import get_database
+    conn = sqlite3.connect(suite)
+    conn.execute('CREATE TABLE settings (key TEXT PRIMARY KEY, value TEXT)')
+    conn.execute("INSERT INTO settings VALUES ('demo.chair_group', 'microbe')")
+    conn.commit()
+    conn.close()
+    library_access._suite_cache = (None, {})
+    User.create('admin', 'password123', is_admin=True)       # no 'demo' account yet: admin owns what is made
+    _ensure_demo_backbones()
+    linkers = {p.name: p.id for p in Part.get_all() if p.lab_source == library_access.GENERATED_SOURCE}
+    acceptors = {b.name: b.id for b in Backbone.get_all() if b.lab_source == library_access.GENERATED_SOURCE}
+    assert set(linkers) == set(library_access.DEMO_KIT_PARTS)
+    assert set(acceptors) == set(library_access.DEMO_KIT_BACKBONES)
+    # Marked by 'system', not by the administrator who happened to own them.
+    assert set(linkers.values()) <= library_access.reference_ids('part', kits_only=True)
+    assert set(acceptors.values()) <= library_access.reference_ids('backbone', kits_only=True)
+    # The demo (Microbiology here) sees them.
+    assert set(linkers) <= _listed(client, 'tom')
+    backbones = lambda name: {b['name'] for b in client.get('/api/backbones', headers=who(name)).get_json()['backbones']}
+    assert set(acceptors) <= backbones('tom')
+    # An administrator who un-marks one is not overridden by a restart.
+    gone = linkers['DEMO end-linker A (CGCT->GTCA)']
+    library_access.set_reference('part', gone, False, 'boss')
+    with get_database().get_connection() as c:
+        library_access.mark_demo_kit(c.cursor())
+    assert gone not in library_access.reference_ids('part')

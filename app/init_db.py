@@ -316,6 +316,17 @@ def _ensure_demo_backbones():
         except Exception as e:  # noqa: BLE001
             logger.error(f"Demo backbone {name}: {e}")
 
+    # The linkers and acceptors are kits MoClo ships with, too: the demo's accounts (which do not
+    # exist yet on a fresh install, so these belong to admin) see only their own chair group's
+    # records and the shipped kits, and need these to build their Level 1 and Level 2 assemblies.
+    try:
+        from app.models.database import get_database
+        from app.services import library_access
+        with get_database().get_connection() as conn:
+            library_access.mark_demo_kit(conn.cursor())
+    except Exception as e:  # noqa: BLE001
+        logger.warning(f"Could not mark the demo linkers and acceptors as reference: {e}")
+
     # Demo Level 1 cassettes. One plain transcription unit, plus three
     # position-linked units (TU1..TU3) whose overhangs chain GGAG -> GTCA ->
     # TAGC -> CGCT so they assemble together into the Level 2 acceptor.

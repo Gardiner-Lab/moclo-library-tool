@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.22.1] - 2026-11-13
+
+### Fixed
+- **The teaching demo could not see its own linkers and acceptors on a fresh install.** The demo library's four generated linkers and two generated acceptors were not marked as kits MoClo ships with, so the demo's accounts (which see their own chair group and the shipped kits) could not see them, and `demo/demo.sh load` stopped. They are now marked as shipped kits when they are made, and at every start for installs that already have them, once: an administrator who un-marks one is not overridden. On a fresh install, where `admin` owns the demo records, the bundled Plant MoClo kit parts were likewise marked by `admin` rather than by MoClo; they are now MoClo's marks too.
+
 ## [1.22.0] - 2026-11-08
 
 ### Changed

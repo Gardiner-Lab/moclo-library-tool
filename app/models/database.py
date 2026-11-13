@@ -243,6 +243,7 @@ class Database:
         from app.services import library_access
         library_access.ensure_schema(cursor)
         library_access.mark_plant_kit(cursor)
+        library_access.mark_demo_kit(cursor)
 
     def _create_indexes(self, cursor):
         """
