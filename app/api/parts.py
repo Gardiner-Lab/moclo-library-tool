@@ -376,7 +376,10 @@ def _handle_genbank_upload():
         part_data = parse_part_genbank(file_content, preferred_enzyme=preferred_enzyme)
     except PartGenBankError as e:
         return jsonify({
-            'error': f'GenBank parsing error: {str(e)}'
+            # These messages already say what is wrong with the file and what to
+            # do about it; a "parsing error" prefix would suggest the file is
+            # malformed GenBank, which is usually not what stopped the upload.
+            'error': str(e)
         }), 400
     
     # Get optional form fields (can override auto-detected values)

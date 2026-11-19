@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.23.0] - 2026-11-19
+
+### Changed
+- **A .gb with more cloning sites than a part can have says so, and says which fragment is the part.**
+  A MoClo part carries exactly one pair of Type IIS sites, one at each end. A file from outside often
+  carries more — a whole plasmid exported as a part, or a part that was wrapped in sites twice — and the
+  upload then failed with "Sequence must start with the 5' overhang", which said nothing about the real
+  problem. The upload now counts the sites, says how many it found of each motif, says what the first pair
+  actually releases against the overhangs the file declares, and asks the person to go back to their sequence
+  and work out which stretch of it is the part before uploading only that. A file with one pair whose declared
+  overhangs simply disagree with its sequence is told that instead. The message does not guess which fragment
+  is the part: a guess would be read as the answer, and a part uploaded on a wrong guess stays wrong in the
+  library. Parse messages also lost their "GenBank parsing error:" prefix, which suggested the file was
+  malformed GenBank when it was not.
+
 ## [1.22.1] - 2026-11-13
 
 ### Fixed

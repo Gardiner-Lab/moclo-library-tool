@@ -184,6 +184,17 @@ def parse_part_genbank(file_content: str, preferred_enzyme: str = None) -> Dict[
             if ann_override is not None:
                 overhang_5prime, overhang_3prime, _declared_level = ann_override
                 overhang_source = 'declared_qualifiers'
+                # The sequence came from the FIRST forward and FIRST reverse site,
+                # the overhangs from the file's own annotation. If those two
+                # disagree, the pair used is not the pair that flanks the part —
+                # usually because the file carries more than one pair of sites
+                # (a whole plasmid, or a part that was wrapped twice). Say so
+                # here, instead of letting the upload fail later on a bare
+                # "must start with" message that names none of this.
+                _check_site_pairing(
+                    part_sequence, overhang_5prime, overhang_3prime, enzyme,
+                    forward_sites, reverse_sites
+                )
         
         # Extract metadata from GenBank record
         name = record.id or record.name or 'Unknown'
@@ -235,6 +246,55 @@ def parse_part_genbank(file_content: str, preferred_enzyme: str = None) -> Dict[
         if isinstance(e, PartGenBankError):
             raise
         raise PartGenBankError(f"Failed to parse GenBank file: {str(e)}")
+
+
+#: The two recognition motifs of each cloning enzyme, for the messages below.
+ENZYME_MOTIFS = {'BsaI': ('GGTCTC', 'GAGACC'), 'BpiI': ('GAAGAC', 'GTCTTC')}
+
+
+def _check_site_pairing(part_sequence, overhang_5prime, overhang_3prime, enzyme,
+                        forward_sites, reverse_sites):
+    """
+    Refuse a file whose declared overhangs do not match the fragment its sites release.
+
+    A MoClo part carries exactly one pair of cloning sites, one at each end. A
+    file from elsewhere may hold several — a whole plasmid, or a part that was
+    wrapped in sites twice — and then the first forward site and the first
+    reverse site are not necessarily the pair that flanks the part: the fragment
+    they release begins or ends in the wrong place. Say what was found and what
+    it contradicts, and leave it to the person to work out which piece of their
+    sequence is the part: a guess from here would be read as the answer, and a
+    part uploaded on a wrong guess is wrong in the library from then on.
+    """
+    starts = part_sequence[:4].upper() == (overhang_5prime or '').upper()
+    ends = part_sequence[-4:].upper() == (overhang_3prime or '').upper()
+    if starts and ends:
+        return
+
+    fwd_motif, rev_motif = ENZYME_MOTIFS.get(enzyme, ('', ''))
+    total = len(forward_sites) + len(reverse_sites)
+    counts = (f"{len(forward_sites)} × {fwd_motif} and {len(reverse_sites)} × {rev_motif}"
+              if fwd_motif else f"{total}")
+    declared = f"5' {overhang_5prime} and 3' {overhang_3prime}"
+    released = f"{len(part_sequence)} bp running {part_sequence[:4]}…{part_sequence[-4:]}"
+
+    if total > 2:
+        lines = [
+            f"This file has {total} {enzyme} sites ({counts}). A MoClo part has exactly "
+            f"two, one at each end, so it is not clear which pair flanks the part.",
+            f"The first pair releases {released}, but the file declares its overhangs as "
+            f"{declared}, so they are not that pair.",
+        ]
+    else:
+        lines = [
+            f"This file declares its overhangs as {declared}, but the fragment its {enzyme} sites "
+            f"release is {released}. One of the two is wrong.",
+        ]
+    lines.append(
+        f"Open the sequence and work out which stretch of it is the part you mean, then upload only "
+        f"that, with one {enzyme} site at each end and its overhangs at its ends."
+    )
+    raise PartGenBankError(' '.join(lines))
 
 
 def _overhangs_from_qualifiers(record):
