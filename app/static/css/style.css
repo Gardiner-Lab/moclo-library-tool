@@ -2114,3 +2114,16 @@ a.btn-danger:active {
 .faq dt { font-weight: 600; margin-top: .8rem; }
 .faq dd { margin: .2rem 0 0 1rem; }
 .help section { scroll-margin-top: 4rem; }
+
+/* Reaction calculators: a mix with a volume too small to pipette (reaction_volumes.js). */
+.pipette-error {
+    background: var(--tt-danger-soft, #fdecea);
+    border: 1px solid var(--tt-danger, #b42318);
+    color: var(--tt-danger, #b42318);
+    border-radius: 0.5rem;
+    padding: 1rem 1.25rem;
+    margin: 1rem 0;
+    font-size: 0.9rem;
+}
+.pipette-error p { margin: 0.5rem 0 0; color: inherit; }
+.pipette-error ul { margin: 0.5rem 0 0 1.25rem; padding: 0; }

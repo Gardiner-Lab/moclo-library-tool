@@ -7,6 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **The protocol, the reaction calculator and the cycler steps follow the lab's MoClo Protocol SOP.**
+  The reaction is now 10X rCutSmart Buffer (NEB) in place of 10x Buffer G (Thermo), 1 µL of T4 DNA Ligase
+  at 400,000 U/mL (400 units, was 0.4 µL and 2 units), and 1 µL of enzyme at 20,000 U/mL (20 units, was
+  10). The standard molar ratio is 1:3 acceptor vector to insert, so 40 fmol of vector and 120 fmol of each
+  insert, where it was 2:1 and 80 fmol; the calculator's ratio box now opens on 3:1. The thermal cycling
+  program is 37°C for 20 s, then 30 cycles of 37°C 5 min / 16°C 5 min, then 37°C 10 min, 50°C 5 min,
+  80°C 5 min and a 12°C hold — about 5.5 hours, where the old program was 60 cycles of 37°C/22°C for
+  about 20 hours and finished at 65°C. Difficult and multipart assemblies now say to transform the whole
+  20 µL rather than 5–10 µL. The materials list carries the suppliers and enzyme concentrations, and the
+  storage notes say MoClo components come from the -80°C glycerol stocks, with everything else at -20°C.
+  Level 2's enzyme is written BbsI-HF/BpiI, the two being isoschizomers, because BbsI-HF is what the SOP
+  stocks. The reaction mix shown after a plasmid assembly follows all of the same numbers.
+- **The reaction calculator says when a volume is too small to pipette, instead of showing 0.**
+  Below 0.2 µL (the bottom of a P2's range) a volume rounded to 0.00 or 0.0 and the mix still looked
+  usable. Now any volume under 0.2 µL is an error and no mix is shown. If a reagent that scales with the
+  reaction (buffer, ATP, enzyme, ligase) or the water is too small, the calculator asks for a larger
+  reaction and gives the smallest volume that works (a 10 µL reaction asks for 20 µL, for its 0.1 µL of ATP).
+  If a DNA volume is too small, it asks for the stock to be diluted and gives the concentration to dilute
+  to, because the fmol of DNA, and so its volume, doesn't change with the reaction volume. The mix shown
+  after a plasmid assembly gets the same check. The enzyme line now shows two decimals, so 0.75 µL is no
+  longer shown as 0.8.
+
 ## [1.23.0] - 2026-11-19
 
 ### Changed

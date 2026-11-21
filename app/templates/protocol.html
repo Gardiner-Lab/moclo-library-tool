@@ -311,10 +311,10 @@
                 <div class="materials-card">
                     <h4><img class="tt-glyph" src="{{ url_for('static', filename='trellis/glyphs/protocol.svg') }}" alt=""> Reagents</h4>
                     <ul>
-                        <li>10x Buffer G (Thermo)</li>
+                        <li>10X rCutSmart Buffer (NEB)</li>
                         <li>100 mM ATP (Thermo)</li>
-                        <li>BsaI or BpiI restriction enzyme (Thermo)</li>
-                        <li>T4 DNA Ligase (Thermo)</li>
+                        <li>BsaI-HF or BbsI-HF/BpiI restriction enzyme, 20,000 U/mL (NEB)</li>
+                        <li>T4 DNA Ligase, 400,000 U/mL (NEB)</li>
                         <li>Molecular-grade water (MQ)</li>
                         <li>DNA parts and vectors</li>
                     </ul>
@@ -360,16 +360,16 @@
                     </thead>
                     <tbody>
                         <tr>
-                            <td>10x Buffer G</td>
+                            <td>10X rCutSmart Buffer</td>
                             <td>2 µL</td>
                             <td>1x</td>
-                            <td>Thermo Fisher</td>
+                            <td>NEB</td>
                         </tr>
                         <tr>
                             <td>100 mM ATP</td>
                             <td>0.2 µL</td>
                             <td>1 mM</td>
-                            <td>Thermo Fisher</td>
+                            <td>Thermo</td>
                         </tr>
                         <tr>
                             <td>Acceptor Vector</td>
@@ -380,20 +380,20 @@
                         <tr>
                             <td>Insert DNA(s)</td>
                             <td>Y µL</td>
-                            <td>~80 fmol each</td>
-                            <td>2:1 molar ratio (insert:vector)</td>
+                            <td>~120 fmol each</td>
+                            <td>1:3 vector:insert molar ratio</td>
                         </tr>
                         <tr>
-                            <td>BsaI or BpiI</td>
+                            <td>BsaI-HF or BbsI-HF/BpiI</td>
                             <td>1 µL</td>
-                            <td>10 units</td>
-                            <td>BsaI for Level 1, BpiI for Level 2</td>
+                            <td>20 units</td>
+                            <td>20,000 U/mL (NEB). BsaI for Level 1, BbsI-HF/BpiI for Level 2</td>
                         </tr>
                         <tr>
                             <td>T4 DNA Ligase</td>
-                            <td>0.4 µL</td>
-                            <td>2 units</td>
-                            <td>Thermo Fisher</td>
+                            <td>1 µL</td>
+                            <td>400 units</td>
+                            <td>400,000 U/mL (NEB)</td>
                         </tr>
                         <tr>
                             <td>MQ Water</td>
@@ -406,8 +406,9 @@
             </div>
 
             <div class="info-box">
-                <strong>Molar Ratio Calculation:</strong> Use a 2:1 molar ratio of insert to vector (80 fmol insert : 40 fmol vector).
-                For multiple inserts, use 80 fmol of each insert. Calculate DNA amounts using the formula:
+                <strong>Molar Ratio Calculation:</strong> Use a 1:3 molar ratio of acceptor vector to insert
+                (40 fmol vector : 120 fmol insert). For multiple inserts, use 120 fmol of each insert.
+                Calculate DNA amounts using the formula:
                 <code>ng = (fmol × bp × 660) / 1,000,000</code>
             </div>
         </div>
@@ -430,32 +431,46 @@
                         <tr>
                             <td>1</td>
                             <td>37°C</td>
-                            <td>10 min</td>
-                            <td rowspan="2">60 cycles</td>
-                            <td>Digestion (BsaI/BpiI)</td>
+                            <td>20 sec</td>
+                            <td>1 cycle</td>
+                            <td>Initial equilibration</td>
                         </tr>
                         <tr>
                             <td>2</td>
-                            <td>22°C</td>
-                            <td>10 min</td>
-                            <td>Ligation (T4 Ligase)</td>
+                            <td>37°C</td>
+                            <td>5 min</td>
+                            <td rowspan="2">30 cycles</td>
+                            <td>Restriction digestion</td>
                         </tr>
                         <tr>
                             <td>3</td>
+                            <td>16°C</td>
+                            <td>5 min</td>
+                            <td>Ligation (T4 Ligase)</td>
+                        </tr>
+                        <tr>
+                            <td>4</td>
                             <td>37°C</td>
                             <td>10 min</td>
                             <td>1 cycle</td>
                             <td>Final digestion</td>
                         </tr>
                         <tr>
-                            <td>4</td>
-                            <td>65°C</td>
-                            <td>20 min</td>
+                            <td>5</td>
+                            <td>50°C</td>
+                            <td>5 min</td>
                             <td>1 cycle</td>
-                            <td>Enzyme inactivation</td>
+                            <td>Partial enzyme denaturation</td>
                         </tr>
                         <tr>
-                            <td>5</td>
+                            <td>6</td>
+                            <td>80°C</td>
+                            <td>5 min</td>
+                            <td>1 cycle</td>
+                            <td>Complete heat inactivation of all enzymes</td>
+                        </tr>
+                        <tr>
+                            <td>7</td>
                             <td>12°C</td>
                             <td>Hold</td>
                             <td>-</td>
@@ -466,8 +481,8 @@
             </div>
 
             <div class="info-box warning">
-                <strong>Troubleshooting:</strong> For difficult assemblies with many inserts, increase the cycle number 
-                from 60 to 80-100 cycles to improve assembly efficiency.
+                <strong>Troubleshooting:</strong> For difficult or multipart assemblies, raise the number of
+                digestion/ligation cycles above 30, and transform the whole 20 µL reaction rather than 5–10 µL.
             </div>
         </div>
 
@@ -509,8 +524,8 @@
                         <h4>Run Thermal Cycling</h4>
                         <ul>
                             <li>Place tubes in thermal cycler</li>
-                            <li>Start the MoClo program (60 cycles)</li>
-                            <li>Total run time: ~20 hours</li>
+                            <li>Start the MoClo program (30 digestion/ligation cycles)</li>
+                            <li>Total run time: ~5.5 hours</li>
                             <li>Can be run overnight</li>
                         </ul>
                     </div>
@@ -521,7 +536,7 @@
                     <div class="step-content">
                         <h4>Transform E. coli</h4>
                         <ul>
-                            <li>Use 5-10 µL of reaction for transformation</li>
+                            <li>Use 5–10 µL of reaction for transformation, or the whole 20 µL for difficult/multipart assemblies</li>
                             <li>Transform into competent E. coli cells</li>
                             <li>Plate on selective media (appropriate antibiotic)</li>
                             <li>Incubate overnight at 37°C</li>
@@ -551,10 +566,14 @@
                 <div class="storage-card">
                     <h4><img class="tt-glyph" src="{{ url_for('static', filename='trellis/glyphs/box.svg') }}" alt=""> Storage</h4>
                     <ul>
-                        <li><strong>Enzymes:</strong> Store at -20°C</li>
+                        <li><strong>Enzymes:</strong> T4 Ligase and BsaI/BbsI-HF/BpiI at -20°C</li>
                         <li><strong>Reaction mix:</strong> 4°C (short-term) or -20°C (long-term)</li>
                         <li><strong>Transformed cells:</strong> Glycerol stocks at -80°C</li>
                         <li><strong>Plasmids:</strong> -20°C in TE buffer or water</li>
+                        <li><strong>Sourcing parts:</strong> MoClo components are held as glycerol stocks of
+                            plasmid-carrying bacteria in the -80°C freezer; their location is recorded in the
+                            lab's stock inventory</li>
+                        <li><strong>-20°C freezer:</strong> purified plasmids, sequencing/PCR primers, buffers and enzymes</li>
                     </ul>
                 </div>
 
@@ -694,7 +713,7 @@
                         <label>Assembly Level</label>
                         <select id="calcLevel">
                             <option value="1">Level 1 (Parts → Cassette, BsaI)</option>
-                            <option value="2">Level 2 (Cassettes → Plasmid, BpiI)</option>
+                            <option value="2">Level 2 (Cassettes → Plasmid, BbsI-HF/BpiI)</option>
                         </select>
                     </div>
                     <div class="calc-field">
@@ -708,8 +727,8 @@
                     <div class="calc-field">
                         <label>Insert:Vector Molar Ratio</label>
                         <select id="calcRatio">
-                            <option value="2">2:1 (standard)</option>
-                            <option value="3">3:1 (difficult assemblies)</option>
+                            <option value="3" selected>3:1 (standard — 1:3 vector:insert)</option>
+                            <option value="2">2:1</option>
                             <option value="1">1:1 (two-part assembly)</option>
                         </select>
                     </div>
@@ -730,7 +749,7 @@
                             ng = (fmol × size in bp × 660) ÷ 1,000,000
                         </code>
                         <ul style="margin: 0.25rem 0 1rem 1.25rem; padding: 0;">
-                            <li><strong>fmol</strong> — femtomoles of DNA you want in the reaction (e.g. 40 fmol for vector, 80 fmol for inserts at 2:1 ratio)</li>
+                            <li><strong>fmol</strong> — femtomoles of DNA you want in the reaction (e.g. 40 fmol for vector, 120 fmol for inserts at the standard 1:3 vector:insert ratio)</li>
                             <li><strong>size in bp</strong> — total size of the plasmid in base pairs (not just the insert — see below)</li>
                             <li><strong>660</strong> — average molecular weight of one base pair of double-stranded DNA, in daltons (g/mol)</li>
                             <li><strong>÷ 1,000,000</strong> — unit conversion factor: fmol × Da = 10⁻¹⁵ mol × g/mol = 10⁻¹⁵ g = 10⁻⁶ ng, hence divide by 10⁶ to get nanograms</li>
@@ -749,7 +768,7 @@
                         <p style="margin: 0;">
                             Each insert part sits inside a Level 0 plasmid vector. When you pipette the DNA, you're pipetting the
                             <em>entire</em> plasmid — not just the insert fragment. One molecule of plasmid contains exactly one copy
-                            of the insert, so delivering 80 fmol of plasmid = 80 fmol of insert. But the <em>mass</em> you pipette
+                            of the insert, so delivering 120 fmol of plasmid = 120 fmol of insert. But the <em>mass</em> you pipette
                             reflects the whole plasmid. For example, a 500 bp insert in a 3000 bp plasmid means only ~17% of the DNA
                             mass is your actual insert — the rest is backbone that gets cut away by the restriction enzyme (BsaI/BpiI)
                             during the reaction.
@@ -1928,6 +1947,7 @@
 {% endblock %}
 
 {% block extra_js %}
+<script src="{{ url_for('static', filename='js/reaction_volumes.js') }}?v={{ app_version }}"></script>
 <script>
     // Reaction Mix Calculator
     function addFragment(prefill) {
@@ -2067,12 +2087,34 @@
         const bufferVol = 2 * scale;
         const atpVol = 0.2 * scale;
         const enzymeVol = 1 * scale;
-        const ligaseVol = 0.4 * scale;
+        const ligaseVol = 1 * scale;
 
         // Calculate DNA total volume
         const dnaTotal = fragments.reduce((sum, f) => sum + f.volume, 0);
         const fixedTotal = bufferVol + atpVol + enzymeVol + ligaseVol;
         const waterVol = totalVolume - fixedTotal - dnaTotal;
+
+        // Every volume must be one that can be pipetted; a "0.00 µL" line is
+        // an error, not a mix.
+        const check = ReactionVolumes.checkReaction({
+            totalVolume,
+            reagents: [
+                { name: '10X rCutSmart Buffer', volume: bufferVol },
+                { name: '100 mM ATP', volume: atpVol },
+                { name: enzyme, volume: enzymeVol },
+                { name: 'T4 DNA Ligase', volume: ligaseVol },
+            ],
+            dna: fragments.map(f => ({ name: f.name, volume: f.volume, ng: f.ng_needed, conc: f.conc })),
+            fixedTotal,
+            dnaTotal,
+        });
+        if (!check.ok) {
+            document.getElementById('calcResults').style.display = 'block';
+            document.getElementById('calcResultsContent').innerHTML =
+                ReactionVolumes.errorHtml(check, { totalVolume, canChangeVolume: true });
+            document.getElementById('calcResults').scrollIntoView({ behavior: 'smooth', block: 'start' });
+            return;
+        }
 
         // Build results
         let html = '<table class="result-table"><thead><tr>';
@@ -2080,9 +2122,9 @@
         html += '</tr></thead><tbody>';
 
         // Buffer
-        html += `<tr><td>10x Buffer G</td><td>${bufferVol.toFixed(1)}</td><td>1x final</td><td>Thermo Fisher</td></tr>`;
+        html += `<tr><td>10X rCutSmart Buffer</td><td>${bufferVol.toFixed(1)}</td><td>1x final</td><td>NEB</td></tr>`;
         // ATP
-        html += `<tr><td>100 mM ATP</td><td>${atpVol.toFixed(2)}</td><td>1 mM final</td><td>Thermo Fisher</td></tr>`;
+        html += `<tr><td>100 mM ATP</td><td>${atpVol.toFixed(2)}</td><td>1 mM final</td><td>Thermo</td></tr>`;
 
         // DNA fragments
         fragments.forEach(f => {
@@ -2091,9 +2133,9 @@
         });
 
         // Enzyme
-        html += `<tr><td>${enzyme}</td><td>${enzymeVol.toFixed(1)}</td><td>${(10 * scale).toFixed(0)} units</td><td>Type IIS restriction enzyme</td></tr>`;
+        html += `<tr><td>${enzyme}</td><td>${enzymeVol.toFixed(2)}</td><td>${(20 * scale).toFixed(0)} units</td><td>Type IIS restriction enzyme, 20,000 U/mL (NEB)</td></tr>`;
         // Ligase
-        html += `<tr><td>T4 DNA Ligase</td><td>${ligaseVol.toFixed(2)}</td><td>${(2 * scale).toFixed(0)} units</td><td>Thermo Fisher</td></tr>`;
+        html += `<tr><td>T4 DNA Ligase</td><td>${ligaseVol.toFixed(2)}</td><td>${(400 * scale).toFixed(0)} units</td><td>400,000 U/mL (NEB)</td></tr>`;
         // Water
         html += `<tr><td>MQ Water</td><td>${waterVol.toFixed(2)}</td><td>—</td><td>Molecular grade</td></tr>`;
         // Total
@@ -2111,7 +2153,7 @@
         html += '<ul>';
         html += `<li>Enzyme: <strong>${enzyme}</strong> (${level === '1' ? 'Level 0 → Level 1' : 'Level 1 → Level 2'} assembly)</li>`;
         html += `<li>Molar ratio: ${ratio}:1 insert:vector (${insertFmol} fmol insert : ${vectorFmol} fmol vector)</li>`;
-        html += '<li>Set up reaction on ice, then run thermal cycling program (60 cycles of 37°C/22°C)</li>';
+        html += '<li>Set up reaction on ice, then run the thermal cycling program (37°C 20 s; 30 cycles of 37°C 5 min / 16°C 5 min; 37°C 10 min; 50°C 5 min; 80°C 5 min; hold 12°C)</li>';
         html += '<li>Transform 5–10 µL into competent cells after cycling</li>';
         html += '</ul></div>';
 

@@ -650,12 +650,13 @@ function renderAssemblyResult(result, bbConc, partData) {
 
     // Generate reaction mix
     const vectorFmol = 40;
-    const insertFmol = 80;
+    // 1:3 acceptor vector : insert molar ratio (MoClo Protocol SOP).
+    const insertFmol = 120;
     const totalVolume = 20;
     const bufferVol = 2;
     const atpVol = 0.2;
     const enzymeVol = 1;
-    const ligaseVol = 0.4;
+    const ligaseVol = 1;
 
     // Calculate DNA volumes
     const backboneSize = selectedBackbone ? selectedBackbone.size : 5000;
@@ -663,10 +664,13 @@ function renderAssemblyResult(result, bbConc, partData) {
 
     let dnaRows = '';
     let totalDnaVol = 0;
+    // Each DNA's volume, mass and stock, to check every one can be pipetted.
+    const dnaChecks = [];
 
     // Backbone row
     const bbVol = backboneNg / bbConc;
     totalDnaVol += bbVol;
+    dnaChecks.push({ name: selectedBackbone ? selectedBackbone.name : 'Backbone', volume: bbVol, ng: backboneNg, conc: bbConc });
     dnaRows += `<tr>
         <td>${escapeHtml(selectedBackbone ? selectedBackbone.name : 'Backbone')} <em>(acceptor vector)</em></td>
         <td>${bbVol.toFixed(2)}</td>
@@ -691,6 +695,7 @@ function renderAssemblyResult(result, bbConc, partData) {
                 const plasmidNg = (insertFmol * pd.size * 660) / 1000000;
                 const vol = plasmidNg / pd.conc;
                 totalDnaVol += vol;
+                dnaChecks.push({ name: part.part_name || 'Part', volume: vol, ng: plasmidNg, conc: pd.conc });
                 // Calculate how much of that mass is actually the insert
                 const insertFraction = insertSize > 0 ? (insertSize / pd.size) : 0;
                 const insertNg = plasmidNg * insertFraction;
@@ -709,6 +714,7 @@ function renderAssemblyResult(result, bbConc, partData) {
             const plasmidNg = (insertFmol * pd.size * 660) / 1000000;
             const vol = plasmidNg / pd.conc;
             totalDnaVol += vol;
+            dnaChecks.push({ name: cassette.name, volume: vol, ng: plasmidNg, conc: pd.conc });
             const insertFraction = cassetteInsertSize > 0 ? (cassetteInsertSize / pd.size) : 0;
             const insertNg = plasmidNg * insertFraction;
             const insertPct = (insertFraction * 100).toFixed(1);
@@ -723,6 +729,21 @@ function renderAssemblyResult(result, bbConc, partData) {
     });
 
     const waterVol = totalVolume - bufferVol - atpVol - enzymeVol - ligaseVol - totalDnaVol;
+
+    // A mix with a volume too small to pipette is shown as an error, not a
+    // table with "0.00 µL" in it.
+    const volumeCheck = ReactionVolumes.checkReaction({
+        totalVolume,
+        reagents: [
+            { name: '10X rCutSmart Buffer', volume: bufferVol },
+            { name: '100 mM ATP', volume: atpVol },
+            { name: enzyme, volume: enzymeVol },
+            { name: 'T4 DNA Ligase', volume: ligaseVol },
+        ],
+        dna: dnaChecks,
+        fixedTotal: bufferVol + atpVol + enzymeVol + ligaseVol,
+        dnaTotal: totalDnaVol,
+    });
 
     content.innerHTML = `
         <div class="alert alert-success">
@@ -749,7 +770,7 @@ function renderAssemblyResult(result, bbConc, partData) {
             <img class="tt-glyph" src="/static/trellis/glyphs/protocol.svg" alt=""> Reaction Mix (${totalVolume} µL)
         </h3>
         <p style="font-size: 0.9rem; color: var(--text-secondary); margin-bottom: 1rem;">
-            ${levelLabel} assembly using ${enzyme}. 2:1 molar ratio (${insertFmol} fmol insert : ${vectorFmol} fmol vector).
+            ${levelLabel} assembly using ${enzyme}. 1:3 vector:insert molar ratio (${vectorFmol} fmol vector : ${insertFmol} fmol each insert).
             Volume is calculated from total plasmid size since the insert is only a fraction of each plasmid's mass.
         </p>
 
@@ -784,6 +805,7 @@ function renderAssemblyResult(result, bbConc, partData) {
             </div>
         </details>
 
+        ${!volumeCheck.ok ? ReactionVolumes.errorHtml(volumeCheck, { totalVolume, canChangeVolume: false }) : `
         <table style="width: 100%; border-collapse: collapse; font-size: 0.9rem;">
             <thead>
                 <tr style="background: var(--primary-color); color: white;">
@@ -794,7 +816,7 @@ function renderAssemblyResult(result, bbConc, partData) {
                 </tr>
             </thead>
             <tbody>
-                <tr><td style="padding: 0.5rem 1rem; border-bottom: 1px solid var(--border-color);">10x Buffer G</td>
+                <tr><td style="padding: 0.5rem 1rem; border-bottom: 1px solid var(--border-color);">10X rCutSmart Buffer</td>
                     <td style="padding: 0.5rem 1rem; border-bottom: 1px solid var(--border-color);">${bufferVol.toFixed(1)}</td>
                     <td style="padding: 0.5rem 1rem; border-bottom: 1px solid var(--border-color);">1x final</td>
                     <td style="padding: 0.5rem 1rem; border-bottom: 1px solid var(--border-color);">Thermo Fisher</td></tr>
@@ -805,12 +827,12 @@ function renderAssemblyResult(result, bbConc, partData) {
                 ${dnaRows}
                 <tr><td style="padding: 0.5rem 1rem; border-bottom: 1px solid var(--border-color);">${enzyme}</td>
                     <td style="padding: 0.5rem 1rem; border-bottom: 1px solid var(--border-color);">${enzymeVol.toFixed(1)}</td>
-                    <td style="padding: 0.5rem 1rem; border-bottom: 1px solid var(--border-color);">10 units</td>
-                    <td style="padding: 0.5rem 1rem; border-bottom: 1px solid var(--border-color);">Type IIS enzyme</td></tr>
+                    <td style="padding: 0.5rem 1rem; border-bottom: 1px solid var(--border-color);">20 units</td>
+                    <td style="padding: 0.5rem 1rem; border-bottom: 1px solid var(--border-color);">Type IIS enzyme, 20,000 U/mL (NEB)</td></tr>
                 <tr><td style="padding: 0.5rem 1rem; border-bottom: 1px solid var(--border-color);">T4 DNA Ligase</td>
                     <td style="padding: 0.5rem 1rem; border-bottom: 1px solid var(--border-color);">${ligaseVol.toFixed(2)}</td>
-                    <td style="padding: 0.5rem 1rem; border-bottom: 1px solid var(--border-color);">2 units</td>
-                    <td style="padding: 0.5rem 1rem; border-bottom: 1px solid var(--border-color);">Thermo Fisher</td></tr>
+                    <td style="padding: 0.5rem 1rem; border-bottom: 1px solid var(--border-color);">400 units</td>
+                    <td style="padding: 0.5rem 1rem; border-bottom: 1px solid var(--border-color);">400,000 U/mL (NEB)</td></tr>
                 <tr><td style="padding: 0.5rem 1rem; border-bottom: 1px solid var(--border-color);">MQ Water</td>
                     <td style="padding: 0.5rem 1rem; border-bottom: 1px solid var(--border-color);">${waterVol < 0 ? '0.00' : waterVol.toFixed(2)}</td>
                     <td style="padding: 0.5rem 1rem; border-bottom: 1px solid var(--border-color);">—</td>
@@ -824,9 +846,11 @@ function renderAssemblyResult(result, bbConc, partData) {
         </table>
 
         ${waterVol < 0 ? '<div style="background: #fef3c7; border: 1px solid #f59e0b; padding: 0.75rem; border-radius: 0.375rem; margin-top: 1rem; font-size: 0.875rem;"><strong><img class="tt-glyph" src="/static/trellis/glyphs/hazard.svg" alt=""> Warning:</strong> DNA volumes exceed reaction volume! Increase total volume or dilute your DNA.</div>' : ''}
+        `}
 
         <div style="background: #dbeafe; padding: 1rem; border-radius: 0.5rem; margin-top: 1rem; font-size: 0.875rem;">
-            <strong>Thermal cycling:</strong> 60 cycles of 37°C (10 min) / 22°C (10 min), then 37°C (10 min), 65°C (20 min), hold 12°C.
+            <strong>Thermal cycling:</strong> 37°C (20 s), then 30 cycles of 37°C (5 min) / 16°C (5 min),
+            then 37°C (10 min), 50°C (5 min), 80°C (5 min), hold 12°C.
         </div>
 
         <div style="display: flex; gap: 0.75rem; margin-top: 1.5rem; flex-wrap: wrap; align-items: center;">
