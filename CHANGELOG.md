@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.24.0] - 2026-11-21
+
 ### Changed
 - **The protocol, the reaction calculator and the cycler steps follow the lab's MoClo Protocol SOP.**
   The reaction is now 10X rCutSmart Buffer (NEB) in place of 10x Buffer G (Thermo), 1 µL of T4 DNA Ligase
