@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.24.2] - 2026-11-23
+
+### Fixed
+- **A part uploaded from a plasmid is drawn from its own features, not its backbone's.** A part
+  keeps the whole source plasmid's annotation, so DEMO pNOS — 524 bp — carried its plasmid's SmR
+  promoter at 654–759 and SmR at 759–1770. Those were the two the drawing picked, and at 524 bp to
+  the canvas they landed past its right edge: the part looked blank. Anything annotated outside the
+  part's own length is now left out.
+- **A feature's type is recognised however the file writes it.** GenBank carries the type as its
+  author typed it — `Promoter`, `Misc._feature`, `5'_UTR` — and only the exact lower-case spellings
+  were matched, so a part's own promoter was passed over while its backbone's was drawn. Matching
+  ignores case and punctuation now, in the drawing and on the type badges, and 5'/3' UTRs and
+  primer-binding sites have colours of their own.
+
 ## [1.24.1] - 2026-11-23
 
 ### Fixed

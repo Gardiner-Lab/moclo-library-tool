@@ -557,20 +557,31 @@ def generate_part_features_svg(features: List[Dict[str, Any]], total_length: int
     if not features:
         return f'<svg width="{width}" height="{height}" xmlns="http://www.w3.org/2000/svg"><text x="10" y="30" font-size="14" fill="#666">No features</text></svg>'
     
+    # A part uploaded from a plasmid keeps the whole plasmid's annotation, so its backbone's
+    # features carry positions far past the part's own end. Drawn, they land off the canvas and
+    # the part looks empty: DEMO pNOS is 524 bp and was drawn from SmR at 654-1770.
+    def within(feat):
+        start, end = feat.get('start', 0), feat.get('end', 0)
+        return 0 <= start < end <= total_length
+
+    # GenBank writes a type however the file's author did: Promoter, misc_feature, 5'_UTR.
+    def kind(feat):
+        return str(feat.get('type') or '').strip().lower().replace("'", '').replace('.', '')
+
+    inside = [f for f in features if within(f)]
+
     # Filter to only show part-level features (CDS, promoter, terminator, intron)
-    part_features = [f for f in features if f.get('type') in ('CDS', 'promoter', 'terminator', 'intron', 'misc_feature') 
+    part_features = [f for f in inside if kind(f) in ('cds', 'promoter', 'terminator', 'intron', 'misc_feature')
                      and f.get('qualifiers', {}).get('source') == 'cassette']
-    
+
     # If no cassette-source features, show all typed features
     if not part_features:
-        part_features = [f for f in features if f.get('type') in ('CDS', 'promoter', 'terminator', 'intron')]
+        part_features = [f for f in inside if kind(f) in ('cds', 'promoter', 'terminator', 'intron')]
 
     # A part annotated with none of those is still drawn from what it does have: a CRISPR guide
     # module is a tRNA, a protospacer and a scaffold, and showed "No annotated parts" before
     if not part_features:
-        part_features = [f for f in features
-                         if f.get('type') and f.get('type') != 'source'
-                         and f.get('end', 0) > f.get('start', 0)]
+        part_features = [f for f in inside if kind(f) and kind(f) != 'source']
 
     if not part_features:
         return f'<svg width="{width}" height="{height}" xmlns="http://www.w3.org/2000/svg"><text x="10" y="30" font-size="14" fill="#666">No annotated parts</text></svg>'
@@ -578,24 +589,28 @@ def generate_part_features_svg(features: List[Dict[str, Any]], total_length: int
     # Sort by position
     part_features.sort(key=lambda f: f.get('start', 0))
     
-    # Color map (GenBank feature type → color)
+    # Color map (GenBank feature type → color), keyed by kind() so however the file
+    # writes the type — CDS, cds, Promoter, 5'_UTR — it finds its colour
     color_map = {
-        'CDS': '#4A90E2',
+        'cds': '#4A90E2',
         'promoter': '#7ED321',
         'terminator': '#D0021B',
         'intron': '#F5A623',
-        'tRNA': '#8E44AD',
-        'gRNA_Scaffold': '#16A085',
-        'misc_RNA': '#16A085',
-        'ncRNA': '#16A085',
+        '5_utr': '#B8E986',
+        '3_utr': '#B8E986',
+        'trna': '#8E44AD',
+        'grna_scaffold': '#16A085',
+        'misc_rna': '#16A085',
+        'ncrna': '#16A085',
         'rep_origin': '#607D8B',
+        'primer_bind': '#95A5A6',
         'misc_feature': '#9B9B9B'
     }
     # The protospacer, the one piece of a guide module that differs between guides
     guide_color = '#D35400'
 
     # Chevron types
-    chevron_types = {'CDS', 'promoter'}
+    chevron_types = {'cds', 'promoter'}
 
     def is_fusion_site(feat):
         """A 4 bp fusion site or overhang: a marker, not a block of its own."""
@@ -638,7 +653,7 @@ def generate_part_features_svg(features: List[Dict[str, Any]], total_length: int
     for feat in blocks:
         start = feat.get('start', 0)
         end = feat.get('end', 0)
-        feat_type = feat.get('type', 'misc_feature')
+        feat_type = kind(feat) or 'misc_feature'
         label = feat.get('label', '')
         strand = feat.get('strand', 1)
         color = color_map.get(feat_type, '#9B9B9B')

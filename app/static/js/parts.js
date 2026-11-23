@@ -416,6 +416,11 @@ function renderPartDetails(part) {
 
     const hasFeatures = part.features && part.features.length > 0;
     
+    // GenBank writes a feature's type however the file's author did — CDS, Promoter,
+    // Misc._feature, 5'_UTR — so the badge's class is normalised to find its colour.
+    const featureTypeClass = (type) =>
+        String(type || '').trim().toLowerCase().replace(/['.]/g, '').replace(/[^a-z0-9_-]+/g, '_');
+
     const html = `
         <div class="part-detail-section">
             <div class="detail-visualization" id="partVisualization">
@@ -436,7 +441,7 @@ function renderPartDetails(part) {
                                 <div class="feature-part-info">
                                     <div class="feature-part-name">${f.label || 'Unknown'}${strand}</div>
                                     <div class="feature-part-meta">
-                                        <span class="type-badge type-${f.type.toLowerCase()}">${f.type}</span>
+                                        <span class="type-badge type-${featureTypeClass(f.type)}">${f.type}</span>
                                         <span>${f.start}-${f.end} bp</span>
                                     </div>
                                 </div>

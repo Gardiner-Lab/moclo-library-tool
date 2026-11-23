@@ -2,6 +2,7 @@
 Unit tests for the visualization service.
 """
 
+import re
 import pytest
 from app.models.part import Part
 from app.services.visualization import (
@@ -620,3 +621,35 @@ class TestPartFeaturesSVG:
             [{'type': 'source', 'label': 'source', 'start': 0, 'end': 500, 'strand': 1}], 500)
 
         assert 'No annotated parts' in svg
+
+    def test_a_parts_own_features_are_drawn_not_its_source_plasmids(self):
+        """
+        A part uploaded from a plasmid keeps the whole plasmid's annotation.
+
+        DEMO pNOS is 524 bp, but carries its source plasmid's SmR promoter at 654-759
+        and SmR CDS at 759-1770. Those were the only two features whose type matched,
+        so the drawing was made of them -- at x=976 in an 800 px wide picture, off the
+        canvas, and the part looked blank.
+        """
+        features = [
+            {'type': 'Misc._feature', 'label': 'GGAG 4bp overhang', 'start': 9, 'end': 13, 'strand': 1},
+            {'type': 'Promoter', 'label': 'CsVMV promoter region', 'start': 13, 'end': 456, 'strand': 1},
+            {'type': 'promoter', 'label': 'SmR Promoter', 'start': 654, 'end': 759, 'strand': 1},
+            {'type': 'CDS', 'label': 'SmR', 'start': 759, 'end': 1770, 'strand': 1},
+        ]
+        svg = generate_part_features_svg(features, 524)
+
+        assert 'CsVMV promoter region' in svg, "the part's own promoter should be drawn"
+        assert 'SmR' not in svg, "the source plasmid's backbone should not be"
+        for x in re.findall(r'<rect x="([\d.]+)"', svg):
+            assert float(x) < 800, f'a block is drawn at x={x}, off an 800 px canvas'
+
+    def test_a_type_is_matched_however_the_file_writes_it(self):
+        """GenBank types come as Promoter, promoter or CDS, and all are the part's own."""
+        plain = generate_part_features_svg(
+            [{'type': 'promoter', 'label': 'p', 'start': 10, 'end': 300, 'strand': 1}], 400)
+        shouted = generate_part_features_svg(
+            [{'type': 'Promoter', 'label': 'p', 'start': 10, 'end': 300, 'strand': 1}], 400)
+
+        assert 'No annotated parts' not in shouted
+        assert '#7ED321' in plain and '#7ED321' in shouted, 'both should be the promoter green'
