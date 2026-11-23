@@ -176,3 +176,17 @@ window.clearAllErrors = clearAllErrors;
 window.setButtonLoading = setButtonLoading;
 window.validateField = validateField;
 window.showFlashMessage = showFlashMessage;
+
+/**
+ * The row of buttons under a modal's title: made once, below the title and the close button.
+ */
+function modalActionsBar(header) {
+    let bar = header.querySelector('.modal-header-actions');
+    if (!bar) {
+        bar = document.createElement('div');
+        bar.className = 'modal-header-actions';
+        header.appendChild(bar);
+    }
+    return bar;
+}
+window.modalActionsBar = modalActionsBar;

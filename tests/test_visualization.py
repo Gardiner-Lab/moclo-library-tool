@@ -7,6 +7,7 @@ from app.models.part import Part
 from app.services.visualization import (
     generate_part_svg,
     generate_cassette_svg,
+    generate_part_features_svg,
     PART_COLORS,
     CHEVRON_TYPES,
     _darken_color
@@ -551,3 +552,71 @@ class TestColorScheme:
         g = int(color[3:5], 16)
         b = int(color[5:7], 16)
         assert abs(r - g) < 20 and abs(g - b) < 20, "Other color should be gray"
+
+
+class TestPartFeaturesSVG:
+    """The diagram shown when a part's own features are drawn."""
+
+    @staticmethod
+    def guide_module_features():
+        """What a CRISPR guide module carries: no CDS, promoter, terminator or intron."""
+        return [
+            {'type': 'source', 'label': 'source', 'start': 0, 'end': 1978, 'strand': 1},
+            {'type': 'misc_feature', 'label': 'Transcription Start Signal (G)',
+             'start': 74, 'end': 75, 'strand': 1},
+            {'type': 'tRNA', 'label': 'tRNA Glycine', 'start': 75, 'end': 152, 'strand': 1},
+            {'type': 'gRNA_Scaffold', 'label': 'improved sgRNA backbone (part)',
+             'start': 172, 'end': 222, 'strand': 1},
+            {'type': 'misc_feature', 'label': 'guide (protospacer)',
+             'start': 152, 'end': 172, 'strand': 1},
+            {'type': 'misc_feature', 'label': "5' fusion site TGCA",
+             'start': 148, 'end': 152, 'strand': 1},
+        ]
+
+    def test_guide_module_is_drawn(self):
+        """A guide module's features are drawn, not refused as "No annotated parts"."""
+        svg = generate_part_features_svg(self.guide_module_features(), 1978)
+
+        assert 'No annotated parts' not in svg
+        # The background line, plus a block for each feature except source
+        assert svg.count('<rect') >= 6
+        assert 'tRNA Glycine' in svg
+
+    def test_feature_types_have_their_own_colours(self):
+        """A tRNA, a scaffold and the protospacer are told apart by colour."""
+        svg = generate_part_features_svg(self.guide_module_features(), 1978)
+
+        assert '#8E44AD' in svg, 'tRNA should have its own colour'
+        assert '#16A085' in svg, 'sgRNA scaffold should have its own colour'
+        assert '#D35400' in svg, 'the protospacer should have its own colour'
+
+    def test_every_block_is_named_on_hover(self):
+        """Labels that do not fit in a block are still readable by pointing at it."""
+        svg = generate_part_features_svg(self.guide_module_features(), 1978)
+
+        assert '<title>guide (protospacer) (152-172 bp)</title>' in svg
+
+    def test_a_short_stretch_is_drawn_rather_than_the_whole_part(self):
+        """200 bp of features in 2 kb are drawn as that stretch, not a sliver."""
+        svg = generate_part_features_svg(self.guide_module_features(), 1978)
+
+        assert '(of 1978)' in svg, 'the scale should say only a stretch is shown'
+        assert '>0 bp<' not in svg
+
+    def test_the_whole_part_is_drawn_when_features_span_it(self):
+        """A part annotated end to end keeps its plain 0 bp .. length scale."""
+        features = [
+            {'type': 'promoter', 'label': 'AtU6-26p', 'start': 4, 'end': 452, 'strand': 1},
+            {'type': 'terminator', 'label': 'terminator', 'start': 452, 'end': 980, 'strand': 1},
+        ]
+        svg = generate_part_features_svg(features, 1000)
+
+        assert '(of ' not in svg
+        assert '>0 bp<' in svg
+
+    def test_a_part_with_nothing_to_draw_still_says_so(self):
+        """A part whose only feature is source has nothing to show."""
+        svg = generate_part_features_svg(
+            [{'type': 'source', 'label': 'source', 'start': 0, 'end': 500, 'strand': 1}], 500)
+
+        assert 'No annotated parts' in svg

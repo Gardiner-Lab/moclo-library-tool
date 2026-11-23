@@ -7,6 +7,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.24.1] - 2026-11-23
+
+### Fixed
+- **A part's diagram shows its blocks again.** They were drawn, then faded in by an animation that
+  set their opacity in the wrong place and never lifted it, so a part opened as its white labels on
+  a white background. The diagram also stands still now, drawn as it is, when the animation library
+  cannot be fetched.
+- **A CRISPR guide module has a diagram at all.** Only CDS, promoter, terminator and intron features
+  were ever drawn, and a guide module has none of them, so it said "No annotated parts". A part
+  annotated with anything else is now drawn from what it has: the tRNA in purple, the sgRNA scaffold
+  in teal, and the protospacer — the one piece that differs between guides — in orange. The 4 bp
+  fusion sites are thin markers across the blocks they sit in, rather than blocks of their own, and
+  pointing at any block names it with its position, for when the label does not fit inside it.
+- **A guide module is drawn at a size it can be read at.** Its 200 bp of features inside a 2 kb part
+  were a sliver at one end; when everything annotated sits within less than half the part, that
+  stretch is drawn instead and the scale says so, as `278 bp (of 2035)`.
+- **A feature's type badge is readable.** Types without a colour of their own — `misc_feature`,
+  `tRNA`, `gRNA_Scaffold` — were white text on a transparent background. Every badge now has a
+  background, and those three carry the colours their blocks are drawn in.
+
+### Changed
+- **The buttons above a part or a backbone sit in a row of their own**, below the title, all the same
+  height, and wrap together when the window is narrow. They were spaced along the title line, where a
+  long part name squeezed them to different widths and pushed them off the edge. Deleting sits apart
+  from the rest.
+- Stylesheets and scripts are fetched afresh when the tool is updated, instead of browsers holding on
+  to old copies of them.
+
 ## [1.24.0] - 2026-11-21
 
 ### Changed

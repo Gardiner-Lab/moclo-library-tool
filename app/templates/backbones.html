@@ -255,7 +255,7 @@
 {% endblock %}
 
 {% block extra_js %}
-<script src="{{ url_for('static', filename='js/backbones.js') }}"></script>
+<script src="{{ url_for('static', filename='js/backbones.js') }}?v={{ app_version }}"></script>
 <script>
     document.addEventListener('DOMContentLoaded', () => {
         initBackbones();

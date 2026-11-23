@@ -220,7 +220,7 @@
 {% endblock %}
 
 {% block extra_js %}
-<script src="{{ url_for('static', filename='js/parts.js') }}"></script>
+<script src="{{ url_for('static', filename='js/parts.js') }}?v={{ app_version }}"></script>
 <script>
     document.addEventListener('DOMContentLoaded', function() {
         initPartsBrowser();

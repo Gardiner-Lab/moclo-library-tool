@@ -25,6 +25,9 @@ async function loadAndAnimateSVG(url, container, options = {}) {
         svg.style.height = 'auto';
         svg.setAttribute('preserveAspectRatio', 'xMidYMid meet');
         
+        // Without anime.js (the CDN unreachable) the diagram is shown as drawn
+        if (typeof anime === 'undefined') return;
+
         // Animate based on type
         const animType = options.type || 'cassette';
         
@@ -39,6 +42,23 @@ async function loadAndAnimateSVG(url, container, options = {}) {
 }
 
 /**
+ * Hide elements before they are animated in, and give back the opacity each is meant to end at.
+ *
+ * anime.js animates an SVG element's opacity ATTRIBUTE when it has one (the feature blocks are
+ * drawn with opacity="0.9"), so a style.opacity of 0 set here would never be lifted and the blocks
+ * stayed invisible behind their white labels. The attribute's value moves into the style instead.
+ */
+function hideForAnimation(elements, fallback = 1) {
+    elements.forEach(el => {
+        const attr = el.getAttribute('opacity');
+        el.dataset.endOpacity = attr !== null ? attr : String(fallback);
+        el.removeAttribute('opacity');
+        el.style.opacity = '0';
+    });
+    return el => [0, parseFloat(el.dataset.endOpacity)];
+}
+
+/**
  * Animate a cassette/features SVG - parts slide in sequentially
  */
 function animateCassetteSVG(svg, options = {}) {
@@ -47,17 +67,15 @@ function animateCassetteSVG(svg, options = {}) {
     const paths = svg.querySelectorAll('path');
     
     // Initial state: hide all elements
-    rects.forEach(r => {
-        r.style.opacity = '0';
-        r.style.transform = 'translateY(20px)';
-    });
-    texts.forEach(t => { t.style.opacity = '0'; });
-    paths.forEach(p => { p.style.opacity = '0'; });
+    const rectOpacity = hideForAnimation(rects);
+    const textOpacity = hideForAnimation(texts);
+    const pathOpacity = hideForAnimation(paths, 0.6);
+    rects.forEach(r => { r.style.transform = 'translateY(20px)'; });
     
     // Animate rects (part blocks) sliding in from below
     anime({
         targets: Array.from(rects),
-        opacity: [0, 1],
+        opacity: rectOpacity,
         translateY: [20, 0],
         duration: 600,
         delay: anime.stagger(120, { start: 100 }),
@@ -67,7 +85,7 @@ function animateCassetteSVG(svg, options = {}) {
     // Animate text fading in after rects
     anime({
         targets: Array.from(texts),
-        opacity: [0, 1],
+        opacity: textOpacity,
         duration: 400,
         delay: anime.stagger(80, { start: 500 }),
         easing: 'easeOutQuad'
@@ -76,7 +94,7 @@ function animateCassetteSVG(svg, options = {}) {
     // Animate chevrons/paths
     anime({
         targets: Array.from(paths),
-        opacity: [0, 0.6],
+        opacity: pathOpacity,
         duration: 300,
         delay: anime.stagger(50, { start: 700 }),
         easing: 'easeOutQuad'
@@ -92,18 +110,18 @@ function animatePartSVG(svg, options = {}) {
     const paths = svg.querySelectorAll('path');
     
     // Initial state
+    const rectOpacity = hideForAnimation(rects);
+    const textOpacity = hideForAnimation(texts);
+    const pathOpacity = hideForAnimation(paths, 0.6);
     rects.forEach(r => {
-        r.style.opacity = '0';
         r.style.transform = 'scale(0.8)';
         r.style.transformOrigin = 'center';
     });
-    texts.forEach(t => { t.style.opacity = '0'; });
-    paths.forEach(p => { p.style.opacity = '0'; });
     
     // Animate rect scaling in
     anime({
         targets: Array.from(rects),
-        opacity: [0, 1],
+        opacity: rectOpacity,
         scale: [0.8, 1],
         duration: 500,
         easing: 'easeOutBack'
@@ -112,7 +130,7 @@ function animatePartSVG(svg, options = {}) {
     // Text fade in
     anime({
         targets: Array.from(texts),
-        opacity: [0, 1],
+        opacity: textOpacity,
         duration: 400,
         delay: 300,
         easing: 'easeOutQuad'
@@ -121,7 +139,7 @@ function animatePartSVG(svg, options = {}) {
     // Chevrons
     anime({
         targets: Array.from(paths),
-        opacity: [0, 0.6],
+        opacity: pathOpacity,
         duration: 300,
         delay: 400,
         easing: 'easeOutQuad'

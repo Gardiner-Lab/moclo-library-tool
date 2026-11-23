@@ -347,12 +347,11 @@ function renderPartDetails(part) {
     downloadBtn.id = 'downloadPartBtn';
     downloadBtn.className = 'btn btn-primary btn-sm';
     downloadBtn.textContent = 'Download GenBank';
-    downloadBtn.style.marginRight = '10px';
     downloadBtn.onclick = (e) => {
         e.stopPropagation();
         downloadPartGenBank(part.id);
     };
-    modalHeader.insertBefore(downloadBtn, document.getElementById('closeModal'));
+    modalActionsBar(modalHeader).appendChild(downloadBtn);
 
     // The same, as a SnapGene file
     document.getElementById('downloadPartSnapGeneBtn')?.remove();
@@ -360,12 +359,11 @@ function renderPartDetails(part) {
     snapGeneBtn.id = 'downloadPartSnapGeneBtn';
     snapGeneBtn.className = 'btn btn-secondary btn-sm';
     snapGeneBtn.textContent = 'Download SnapGene';
-    snapGeneBtn.style.marginRight = '10px';
     snapGeneBtn.onclick = (e) => {
         e.stopPropagation();
         downloadPartGenBank(part.id, 'snapgene');
     };
-    modalHeader.insertBefore(snapGeneBtn, document.getElementById('closeModal'));
+    modalActionsBar(modalHeader).appendChild(snapGeneBtn);
 
     // Into a day's page of the suite's Lab Notebook: its diagram and details.
     document.getElementById('notebookPartBtn')?.remove();
@@ -376,12 +374,11 @@ function renderPartDetails(part) {
         notebookBtn.className = 'btn btn-secondary btn-sm';
         notebookBtn.innerHTML = '<img class="tt-glyph" src="/static/trellis/glyphs/notebook.svg" alt=""> Add to notebook';
         notebookBtn.title = "Put this part into a day's page of your Lab Notebook";
-        notebookBtn.style.marginRight = '10px';
         notebookBtn.onclick = (e) => {
             e.stopPropagation();
             addShownPartToNotebook();
         };
-        modalHeader.insertBefore(notebookBtn, document.getElementById('closeModal'));
+        modalActionsBar(modalHeader).appendChild(notebookBtn);
     }
     
     // Add edit button for user-uploaded parts (not system parts) or if user is admin
@@ -397,12 +394,11 @@ function renderPartDetails(part) {
         editBtn.id = 'editPartBtn';
         editBtn.className = 'btn btn-secondary btn-sm';
         editBtn.textContent = 'Edit Metadata';
-        editBtn.style.marginRight = '10px';
         editBtn.onclick = (e) => {
             e.stopPropagation();
             showEditPartModal(part);
         };
-        modalHeader.insertBefore(editBtn, document.getElementById('closeModal'));
+        modalActionsBar(modalHeader).appendChild(editBtn);
     }
     
     // Add delete button for user-uploaded parts (not system parts)
@@ -411,12 +407,11 @@ function renderPartDetails(part) {
         deleteBtn.id = 'deletePartBtn';
         deleteBtn.className = 'btn btn-danger btn-sm';
         deleteBtn.textContent = 'Delete Part';
-        deleteBtn.style.marginRight = '10px';
         deleteBtn.onclick = (e) => {
             e.stopPropagation();
             deletePart(part.id, part.name);
         };
-        modalHeader.insertBefore(deleteBtn, document.getElementById('closeModal'));
+        modalActionsBar(modalHeader).appendChild(deleteBtn);
     }
 
     const hasFeatures = part.features && part.features.length > 0;

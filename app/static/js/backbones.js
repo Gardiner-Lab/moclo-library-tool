@@ -396,12 +396,11 @@ function showBackboneModal(backbone) {
     downloadBtn.id = 'downloadBackboneBtn';
     downloadBtn.className = 'btn btn-primary btn-sm';
     downloadBtn.textContent = 'Download GenBank';
-    downloadBtn.style.marginRight = '10px';
     downloadBtn.onclick = (e) => {
         e.stopPropagation();
         downloadBackboneGenBank(backbone.id);
     };
-    modalHeader.insertBefore(downloadBtn, modalHeader.querySelector('.modal-close'));
+    modalActionsBar(modalHeader).appendChild(downloadBtn);
 
     // The same, as a SnapGene file
     document.getElementById('downloadBackboneSnapGeneBtn')?.remove();
@@ -409,12 +408,11 @@ function showBackboneModal(backbone) {
     snapGeneBtn.id = 'downloadBackboneSnapGeneBtn';
     snapGeneBtn.className = 'btn btn-secondary btn-sm';
     snapGeneBtn.textContent = 'Download SnapGene';
-    snapGeneBtn.style.marginRight = '10px';
     snapGeneBtn.onclick = (e) => {
         e.stopPropagation();
         downloadBackboneGenBank(backbone.id, 'snapgene');
     };
-    modalHeader.insertBefore(snapGeneBtn, modalHeader.querySelector('.modal-close'));
+    modalActionsBar(modalHeader).appendChild(snapGeneBtn);
     
     // Build details HTML
     let html = `

@@ -564,7 +564,14 @@ def generate_part_features_svg(features: List[Dict[str, Any]], total_length: int
     # If no cassette-source features, show all typed features
     if not part_features:
         part_features = [f for f in features if f.get('type') in ('CDS', 'promoter', 'terminator', 'intron')]
-    
+
+    # A part annotated with none of those is still drawn from what it does have: a CRISPR guide
+    # module is a tRNA, a protospacer and a scaffold, and showed "No annotated parts" before
+    if not part_features:
+        part_features = [f for f in features
+                         if f.get('type') and f.get('type') != 'source'
+                         and f.get('end', 0) > f.get('start', 0)]
+
     if not part_features:
         return f'<svg width="{width}" height="{height}" xmlns="http://www.w3.org/2000/svg"><text x="10" y="30" font-size="14" fill="#666">No annotated parts</text></svg>'
     
@@ -577,22 +584,45 @@ def generate_part_features_svg(features: List[Dict[str, Any]], total_length: int
         'promoter': '#7ED321',
         'terminator': '#D0021B',
         'intron': '#F5A623',
+        'tRNA': '#8E44AD',
+        'gRNA_Scaffold': '#16A085',
+        'misc_RNA': '#16A085',
+        'ncRNA': '#16A085',
+        'rep_origin': '#607D8B',
         'misc_feature': '#9B9B9B'
     }
-    
+    # The protospacer, the one piece of a guide module that differs between guides
+    guide_color = '#D35400'
+
     # Chevron types
     chevron_types = {'CDS', 'promoter'}
-    
+
+    def is_fusion_site(feat):
+        """A 4 bp fusion site or overhang: a marker, not a block of its own."""
+        label = (feat.get('label') or '').lower()
+        return 'fusion site' in label or 'overhang' in label
+
     # Layout
     padding = 15
     label_height = 18
     rect_height = height - (2 * label_height) - (2 * padding)
     rect_y = label_height + padding
     draw_width = width - 2 * padding
-    
+
+    # When everything annotated sits in a small stretch of a long part — a guide module's 200 bp
+    # inside a 2 kb plasmid part — draw that stretch, instead of a sliver against an empty line
+    view_start, view_end = 0, total_length
+    span_start = min(f.get('start', 0) for f in part_features)
+    span_end = max(f.get('end', 0) for f in part_features)
+    if total_length > 0 and 0 < span_end - span_start < total_length / 2:
+        margin = max(10, int((span_end - span_start) * 0.05))
+        view_start = max(0, span_start - margin)
+        view_end = min(total_length, span_end + margin)
+    view_length = view_end - view_start
+
     # Scale factor: bp → pixels
-    scale = draw_width / total_length if total_length > 0 else 1
-    
+    scale = draw_width / view_length if view_length > 0 else 1
+
     svg_parts = [
         f'<svg width="{width}" height="{height}" viewBox="0 0 {width} {height}" '
         f'preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg">',
@@ -601,22 +631,29 @@ def generate_part_features_svg(features: List[Dict[str, Any]], total_length: int
         f'  <rect x="{padding}" y="{rect_y + rect_height/2 - 2}" width="{draw_width}" height="4" fill="#ddd" rx="2"/>',
     ]
     
-    for feat in part_features:
+    # Fusion sites are drawn last, as thin markers over the features they fall inside
+    blocks = [f for f in part_features if not is_fusion_site(f)]
+    markers = [f for f in part_features if is_fusion_site(f)]
+
+    for feat in blocks:
         start = feat.get('start', 0)
         end = feat.get('end', 0)
         feat_type = feat.get('type', 'misc_feature')
         label = feat.get('label', '')
         strand = feat.get('strand', 1)
         color = color_map.get(feat_type, '#9B9B9B')
-        
+        if any(word in (label or '').lower() for word in ('protospacer', 'guide', 'spacer')):
+            color = guide_color
+
         # Calculate pixel position
-        x = padding + (start * scale)
+        x = padding + ((start - view_start) * scale)
         feat_width = max((end - start) * scale, 8)  # minimum 8px wide
-        
-        # Draw feature rectangle
+
+        # Draw feature rectangle, named on hover for when the label does not fit
         svg_parts.append(
             f'  <rect x="{x:.1f}" y="{rect_y}" width="{feat_width:.1f}" height="{rect_height}" '
-            f'fill="{color}" stroke="#333" stroke-width="1.5" rx="3" opacity="0.9"/>'
+            f'fill="{color}" stroke="#333" stroke-width="1.5" rx="3" opacity="0.9">'
+            f'<title>{escape_xml(label or feat_type)} ({start}-{end} bp)</title></rect>'
         )
         
         # Add chevrons for CDS and promoter
@@ -651,17 +688,31 @@ def generate_part_features_svg(features: List[Dict[str, Any]], total_length: int
             svg_parts.append(
                 f'  <text x="{text_x:.1f}" y="{text_y:.1f}" text-anchor="middle" '
                 f'font-family="Arial, sans-serif" font-size="{font_size}" font-weight="bold" '
-                f'fill="white">{escape_xml(display_label)}</text>'
+                f'fill="white" pointer-events="none">{escape_xml(display_label)}</text>'
             )
-    
-    # Add scale bar
+
+    for feat in markers:
+        start = feat.get('start', 0)
+        end = feat.get('end', 0)
+        label = feat.get('label', '')
+        x = padding + ((start - view_start) * scale)
+        marker_width = max((end - start) * scale, 3)
+        svg_parts.append(
+            f'  <rect x="{x:.1f}" y="{rect_y - 6}" width="{marker_width:.1f}" '
+            f'height="{rect_height + 12}" fill="#333" rx="1" opacity="0.85">'
+            f'<title>{escape_xml(label)} ({start}-{end} bp)</title></rect>'
+        )
+
+    # Add scale bar; when only a stretch is drawn, it says so
+    end_label = (f'{view_end} bp' if (view_start, view_end) == (0, total_length)
+                 else f'{view_end} bp (of {total_length})')
     svg_parts.append(
         f'  <text x="{padding}" y="{height - 3}" font-family="monospace" font-size="10" fill="#666">'
-        f'0 bp</text>'
+        f'{view_start} bp</text>'
     )
     svg_parts.append(
         f'  <text x="{width - padding}" y="{height - 3}" text-anchor="end" '
-        f'font-family="monospace" font-size="10" fill="#666">{total_length} bp</text>'
+        f'font-family="monospace" font-size="10" fill="#666">{end_label}</text>'
     )
     
     svg_parts.append('</svg>')
